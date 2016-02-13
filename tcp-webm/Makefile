@@ -22,4 +22,4 @@ obj/picohttpparser.o: picohttpparser/.git
 
 
 picohttpparser/.git: ../.gitmodules
-	git sumodule update --init picohttpparser
+	git submodule update --init picohttpparser
