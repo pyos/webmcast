@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>asd</title>
+  </head>
+  <body>
+    <video id="display" controls></video>
+
+    <script src="/static/hls.js"></script>
+    <script>
+      if(Hls.isSupported()) {
+          var video = document.getElementById('display');
+          var hls = new Hls();
+          hls.loadSource('http://localhost:8000/hls/a.m3u8');
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED,function() {
+              video.play();
+          });
+      }
+    </script>
+  </body>
+</html>
