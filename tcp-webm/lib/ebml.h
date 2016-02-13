@@ -32,12 +32,12 @@ namespace EBML
         // PrevSize (level 2 tag inside a Cluster) should be reset to 0
         // on the first frame sent over a connection.
         static const uint64_t PrevSize = 0x2Bull;
-        // Second byte of a SimpleBlock (if it exists; level 2 tag inside a Cluster)
-        // has 0-th bit set if this block describes a keyframe.
+        // Third, or some later byte of a SimpleBlock (if it exists; level 2 tag
+        // inside a Cluster) has 0-th bit set if this block only contains keyframes.
         static const uint64_t SimpleBlock = 0x23ull;
         // BlockGroups (level 2 tags inside Clusters) contain Blocks.
         // A block followed by a ReferenceBlock with a value of 0
-        // is a keyframe.
+        // is a keyframe. Probably.
         static const uint64_t BlockGroup = 0x20ull;
         static const uint64_t Block = 0x21ull;
         static const uint64_t ReferenceBlock = 0x7Bull;
@@ -63,6 +63,11 @@ namespace EBML
     {
         // Elements with this length have indeterminate size.
         static const uint64_t ENDLESS = 0xFFFFFFFFFFFFFFull;
+        // ffmpeg: "endless = 0xFFFFFFFFFFFFFF"
+        // chrome: "endless = 0xFF"
+        // matroska standard: "endless = all ones"
+        // ...but the field is of variable length? what the fuck
+        static const uint64_t REALLY_ENDLESS = 0xFFull;
     };
 
 
@@ -121,6 +126,14 @@ namespace EBML
         if (!length.first)
             return length;
 
+        if (length.second == Marker::ENDLESS) {
+            // maybe it's invalid? let's try this one.
+            uint8_t * writable = (uint8_t *) buf.base;
+            writable[tag_id.first] = 0xFF;
+            writable[tag_id.first + 1] = 0xEC;  // Void
+            writable[tag_id.first + 2] = 0x85;  // 5 bytes: [x + 3 .. x + 8)
+        }
+
         if (length.second == Marker::ENDLESS || tag_id.second == ID::Segment)
             return std::make_pair(length.first, tag_id.second);
 
@@ -130,7 +143,6 @@ namespace EBML
 
         return std::pair<size_t, uint64_t>{ 0u, 0u };
     }
-
 
     std::pair<bool, std::vector<char>>
     drop_non_key_frames_from_cluster(const struct aio::stringview buf)
@@ -167,7 +179,17 @@ namespace EBML
                     // malformed SimpleBlock -- length < 4
                     goto error;
 
-                if (!(buf.base[start + 3] & 0x80))
+                // the very first field has a variable length. what a bummer.
+                // it doesn't even follow the same format as tag ids.
+             // auto field = ((uint8_t *) buf.base)[start];
+             // auto skip_field = get_encoded_uint_size(~field) + 1;
+                auto skip_field = 1;
+
+                if (tag.first - skip_field - start < 3)
+                    // still malformed, though.
+                    goto error;
+
+                if (!(((uint8_t *) buf.base)[start + skip_field + 2] & 0x80))
                     goto skip_tag;  // nope, not a keyframe.
 
                 have_blocks = true;
