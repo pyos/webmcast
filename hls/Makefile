@@ -14,7 +14,7 @@ run: nginx
 
 
 stream:
-	sudo ffmpeg -f video4linux2 -i /dev/video0 -c:v libx264 -f flv rtmp://localhost:1935/stream/$(STREAM)
+	sudo ffmpeg -f video4linux2 -i /dev/video0 -r 30 -c:v libx264 -keyint_min 60 -g 60 -f flv rtmp://localhost:1935/stream/$(STREAM)
 
 
 nginx: $(NGINX)/objs/nginx
