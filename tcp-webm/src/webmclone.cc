@@ -229,6 +229,8 @@ struct http_protocol : webm_target, aio::protocol
     {
         this->transport->write("0\r\n\r\n");
         this->transport->close_on_drain();
+        source->subscribers.erase(this);
+        source = NULL;
     }
 };
 
