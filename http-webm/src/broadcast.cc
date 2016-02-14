@@ -259,7 +259,7 @@ int webm_broadcast_send(struct WebMBroadcaster *b, const uint8_t *data, size_t s
         if (!b->saw_segments) {
             b->header.insert(b->header.end(), buf.base, buf.base + fwd_length);
             for (auto &c : b->callbacks)
-                c.write(c.data, buf.base, fwd_length);
+                c.write(c.data, buf.base, fwd_length, 1);
         } else if (tag.value.id == EBML::ID::Cluster) {
             b->saw_clusters = true;  // ignore any further metadata
 
@@ -268,7 +268,8 @@ int webm_broadcast_send(struct WebMBroadcaster *b, const uint8_t *data, size_t s
 
             for (auto &c : b->callbacks) {
                 if (c.had_keyframe) {
-                    c.write(c.data, buf.base, fwd_length);
+                    if (c.write(c.data, buf.base, fwd_length, 0) != 0)
+                        c.had_keyframe = false;
                     continue;
                 }
 
@@ -279,8 +280,8 @@ int webm_broadcast_send(struct WebMBroadcaster *b, const uint8_t *data, size_t s
                 }
 
                 if (refstripped_length != 0) {
-                    c.had_keyframe = true;
-                    c.write(c.data, refstripped, refstripped_length);
+                    if (c.write(c.data, refstripped, refstripped_length, 0) == 0)
+                        c.had_keyframe = true;
                 }
             }
 
@@ -288,7 +289,7 @@ int webm_broadcast_send(struct WebMBroadcaster *b, const uint8_t *data, size_t s
         } else if (!b->saw_clusters) {
             b->tracks.insert(b->tracks.end(), buf.base, buf.base + fwd_length);
             for (auto &c : b->callbacks)
-                c.write(c.data, buf.base, fwd_length);
+                c.write(c.data, buf.base, fwd_length, 1);
         }
 
         buf += fwd_length;
@@ -314,8 +315,8 @@ int webm_slot_connect(struct WebMBroadcaster *b, webm_write_cb *f, void *d)
     // TODO webm can contain multiple segments; what if we switch
     //      to a stream with different quality mid-air by sending
     //      a new track set and a new segment?
-    f(d, &b->header[0], b->header.size());
-    f(d, &b->tracks[0], b->tracks.size());
+    f(d, &b->header[0], b->header.size(), 1);
+    f(d, &b->tracks[0], b->tracks.size(), 1);
     b->callbacks.push_back({f, d, id, false});
     return id;
 }

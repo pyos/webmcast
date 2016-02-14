@@ -1,4 +1,4 @@
-typedef int webm_write_cb(void *, const uint8_t *, size_t);
+typedef int webm_write_cb(void *, const uint8_t *, size_t, int force);
 
 struct WebMBroadcaster;
 struct WebMBroadcaster *webm_broadcast_start(void);
