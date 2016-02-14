@@ -1,5 +1,3 @@
-// this file is passed to cffi without preprocessing.
-// don't use macros/directives here.
 typedef int webm_write_cb(void *, const uint8_t *, size_t);
 
 struct WebMBroadcaster;

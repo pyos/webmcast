@@ -3,8 +3,8 @@ import asyncio
 import itertools
 import contextlib
 
-from broadcast_ffi import ffi
-from broadcast_ffi.lib import *
+from .c import ffi
+from .c.lib import *
 
 
 @ffi.def_extern('webm_on_write', -1)
