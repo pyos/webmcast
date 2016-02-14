@@ -39,6 +39,11 @@ namespace aio
             return *a == 0;
         }
 
+        stringview operator+(int shift) const
+        {
+            return stringview(base + shift, size - shift);
+        }
+
         std::string as_string() const
         {
             return std::string(base, base + size);

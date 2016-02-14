@@ -38,12 +38,18 @@ struct dump_protocol : aio::protocol
 
         size_t consumed = 0;
         while (1) {
-            auto tag = EBML::consume_tag(buffer, consumed);
-            if (!tag.first)
+            auto tag = EBML::parse_tag(aio::stringview(buffer) + consumed);
+            if (!tag.consumed)
                 break;
 
-            printf("<%d> %s [%zu]\n", id, EBML::ID::name(tag.second), tag.first - consumed);
-            consumed = tag.first;
+            if (!tag.value.is_endless() && tag.value.id != EBML::ID::Segment) {
+                if (consumed + tag.consumed + tag.value.length > buffer.size())
+                    break;
+                consumed += tag.value.length;
+            }
+
+            consumed += tag.consumed;
+            printf("<%d> %s [%zu]\n", id, tag.value.name(), tag.value.length);
         }
 
         buffer.erase(0, consumed);
