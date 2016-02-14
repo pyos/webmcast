@@ -7,7 +7,7 @@ ffi.set_source('webm_stream.c', '#include <broadcast.h>', libraries=['broadcast'
     library_dirs=['./obj'],
     include_dirs=['./src'])
 ffi.cdef(
-    subprocess.check_output(['cpp', '-I./src', '-xc++', '-std=c++11', '-P'], input=b'''
+    subprocess.check_output(['cpp', '-I./src', '-std=c11', '-P'], input=b'''
         #include <broadcast.h>
         extern "Python" int webm_on_write(void *, const uint8_t *, size_t, int);
     ''').decode('utf-8')

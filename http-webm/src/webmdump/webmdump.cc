@@ -3,27 +3,27 @@
 #include "../broadcast.cc"
 
 
-static const char * ebml_tag_name(struct EBML::Tag t)
+static const char * ebml_tag_name(const struct ebml_tag t)
 {
     switch (t.id) {
-        case EBML::ID::EBML:           return "EBML";
-        case EBML::ID::Void:           return "Void";
-        case EBML::ID::CRC32:          return "CRC32";
-        case EBML::ID::Segment:        return "Segment";
-        case EBML::ID::SeekHead:       return "SeekHead";
-        case EBML::ID::Info:           return "Info";
-        case EBML::ID::Cluster:        return "Cluster";
-        case EBML::ID::PrevSize:       return "PrevSize";
-        case EBML::ID::SimpleBlock:    return "SimpleBlock";
-        case EBML::ID::BlockGroup:     return "BlockGroup";
-        case EBML::ID::Block:          return "Block";
-        case EBML::ID::ReferenceBlock: return "ReferenceBlock";
-        case EBML::ID::Tracks:         return "Tracks";
-        case EBML::ID::Cues:           return "Cues";
-        case EBML::ID::Chapters:       return "Chapters";
+        case EBML_TAG_EBML:           return "EBML";
+        case EBML_TAG_Void:           return "Void";
+        case EBML_TAG_CRC32:          return "CRC32";
+        case EBML_TAG_Segment:        return "Segment";
+        case EBML_TAG_SeekHead:       return "SeekHead";
+        case EBML_TAG_Info:           return "Info";
+        case EBML_TAG_Cluster:        return "Cluster";
+        case EBML_TAG_PrevSize:       return "PrevSize";
+        case EBML_TAG_SimpleBlock:    return "SimpleBlock";
+        case EBML_TAG_BlockGroup:     return "BlockGroup";
+        case EBML_TAG_Block:          return "Block";
+        case EBML_TAG_ReferenceBlock: return "ReferenceBlock";
+        case EBML_TAG_Tracks:         return "Tracks";
+        case EBML_TAG_Cues:           return "Cues";
+        case EBML_TAG_Chapters:       return "Chapters";
     }
 
-    static char unknown[32];
+    static char unknown[16];
     snprintf(unknown, sizeof(unknown), "0x%X", (unsigned) t.id);
     return unknown;
 }
@@ -48,21 +48,21 @@ struct protocol : aio::protocol
     int data_received(const struct aio::stringview data)
     {
         buffer.append(data.base, data.size);
-        EBML::buffer buf = { (const uint8_t *) buffer.data(), buffer.size() };
+        struct ebml_buffer buf = { (const uint8_t *) buffer.data(), buffer.size() };
 
         while (1) {
-            auto tag = EBML::parse_tag(buf);
+            struct ebml_tag tag = ebml_parse_tag(buf);
             if (!tag.consumed)
                 break;
 
-            if (!tag.value.is_endless() && tag.value.id != EBML::ID::Segment) {
-                if (tag.consumed + tag.value.length > buf.size)
+            if (!ebml_tag_is_endless(tag) && tag.id != EBML_TAG_Segment) {
+                if (tag.consumed + tag.length > buf.size)
                     break;
-                buf += tag.value.length;
+                buf = ebml_buffer_advance(buf, tag.length);
             }
 
-            buf += tag.consumed;
-            printf("<%d> %s [%zu]\n", id, ebml_tag_name(tag.value), tag.value.length);
+            buf = ebml_buffer_advance(buf, tag.consumed);
+            printf("<%d> %s [%zu]\n", id, ebml_tag_name(tag), tag.length);
         }
 
         buffer.erase(0, (const char *) buf.base - buffer.data());
