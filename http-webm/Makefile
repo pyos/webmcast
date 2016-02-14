@@ -6,11 +6,15 @@ CXXFLAGS ?= -O3
 .PHONY: all clean
 
 
-all: obj/libbroadcast.a
+all: broadcast_ffi.o
 
 
 clean:
-	rm -rf obj webmffi.*
+	rm -rf obj broadcast_ffi.*
+
+
+broadcast_ffi.o: obj/libbroadcast.a
+	python broadcast_ffi_gen.py
 
 
 obj/%.o: %.cc %.h
