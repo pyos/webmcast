@@ -292,7 +292,7 @@ struct WebMBroadcaster
                 // we'll deal with the contents later.
                 fwd_length = tag.consumed;
             } else if (tag.value.is_endless())
-                // can't forward blocks on infinite size.
+                // can't forward blocks of infinite size.
                 return -1;
 
             if (fwd_length > buf.size)
