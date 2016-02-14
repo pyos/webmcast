@@ -10,10 +10,7 @@ from .c.lib import *
 @ffi.def_extern('webm_on_write', -1)
 def _(handle, data, size, force):
     queue = ffi.from_handle(handle)
-    if force:
-        queue._put(ffi.buffer(data, size)[:])
-        return 0
-    if queue.full():
+    if not force and queue.qsize() > 0:
         return -1
     queue.put_nowait(ffi.buffer(data, size)[:])
     return 0
@@ -35,11 +32,11 @@ class Broadcast (asyncio.Event):
             raise ValueError('bad data')
 
     @contextlib.contextmanager
-    def connect(self, queue):
+    def connect(self, queue, skip_headers=False):
         handle = ffi.new_handle(queue)
-        slot = webm_slot_connect(self.obj, webm_on_write, handle)
+        slot = webm_slot_connect(self.obj, webm_on_write, handle, skip_headers)
         try:
-            yield None
+            yield self
         finally:
             if not self.is_set():
                 webm_slot_disconnect(self.obj, slot)
@@ -90,9 +87,20 @@ async def handle(req, idgen=itertools.count(0)):
         except (ValueError, KeyError):
             await req.respond(404, [], b'invalid stream\n')
         else:
-            queue = cno.Channel(1, loop=req.conn.loop)
-            with stream.connect(queue):
+            queue = cno.Channel(loop=req.conn.loop)
+
+            async def writer():
+                try:
+                    with stream.connect(queue):
+                        await stream.wait()
+                finally:
+                    queue.close()
+
+            writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
+            try:
                 await req.respond(200, [('content-type', 'video/webm')], queue)
+            finally:
+                writer.cancel()
         return
 
     await req.respond(404, [], b'not found\n')
