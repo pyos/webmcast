@@ -309,13 +309,11 @@ void webm_broadcast_stop(struct WebMBroadcaster *b)
 static std::atomic<int> next_callback_id(0);
 
 
-int webm_slot_connect(struct WebMBroadcaster *b, webm_write_cb *f, void *d)
+int webm_slot_connect(struct WebMBroadcaster *b, webm_write_cb *f, void *d, int skip_headers)
 {
     int id = next_callback_id++;
-    // TODO webm can contain multiple segments; what if we switch
-    //      to a stream with different quality mid-air by sending
-    //      a new track set and a new segment?
-    f(d, &b->header[0], b->header.size(), 1);
+    if (!skip_headers)
+        f(d, &b->header[0], b->header.size(), 1);
     f(d, &b->tracks[0], b->tracks.size(), 1);
     b->callbacks.push_back({f, d, id, false});
     return id;

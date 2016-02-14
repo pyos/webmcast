@@ -91,6 +91,11 @@ async def handle(req, idgen=itertools.count(0)):
 
             async def writer():
                 try:
+                    # XXX we can switch streams in the middle of the video
+                    #     by disconnecting the queue and reconnecting it
+                    #     with skip_headers=True. (that would make the server
+                    #     start a new webm segment) this might be useful
+                    #     for adaptive streaming.
                     with stream.connect(queue):
                         await stream.wait()
                 finally:
