@@ -1,75 +1,64 @@
 import cno
 import asyncio
 import itertools
+import contextlib
 
-from webmffi import ffi
-from webmffi.lib import *
+from broadcast_ffi import ffi
+from broadcast_ffi.lib import *
 
 
-@ffi.def_extern('webm_callback', -1)
-def _webm_callback(self, data, size):
-    ffi.from_handle(self).cb(ffi.buffer(data, size)[:])
+@ffi.def_extern('webm_on_write', -1)
+def _(self, data, size):
+    ffi.from_handle(self)(ffi.buffer(data, size)[:])
     return 0
 
 
-class BroadcastMap:
-    def __init__(self):
-        self._c = webm_broadcast_map_new()
-        self.active = set()
+class Broadcast (asyncio.Event):
+    def __enter__(self):
+        self.clear()
+        self.obj = webm_broadcast_start()
+        return self
 
-    def __del__(self):
-        webm_broadcast_map_destroy(self._c)
+    def __exit__(self, t, v, tb):
+        webm_broadcast_stop(self.obj)
+        self.set()
 
-    def start(self, i):
-        if webm_broadcast_start(self._c, i):
-            raise ValueError('this stream is already running')
-        self.active.add(i)
-
-    def send(self, i, chunk):
+    def send(self, chunk):
         s = ffi.new('uint8_t[]', chunk)
-        if webm_broadcast_send(self._c, i, s, len(chunk)):
-            raise ValueError('invalid stream/bad data')
+        if webm_broadcast_send(self.obj, s, len(chunk)):
+            raise ValueError('bad data')
 
-    def stop(self, i):
-        if webm_broadcast_stop(self._c, i):
-            raise ValueError('this stream does not exist')
-        self.active.discard(i)
-
-
-class Receiver:
-    def __init__(self, m, stream, cb):
-        self._c = ffi.new_handle(self)
-        self._m = m
-        self.cb = cb
-        if webm_broadcast_register(self._m._c, self._c, webm_callback, stream):
-            raise ValueError('stream does not exist')
-
-    def __del__(self):
-        if webm_broadcast_unregister(self._m._c, self._c):
-            pass
+    @contextlib.contextmanager
+    def connect(self, cb):
+        handle = ffi.new_handle(cb)
+        slot = webm_slot_connect(self.obj, webm_on_write, handle)
+        try:
+            yield None
+        finally:
+            if not self.is_set():
+                webm_slot_disconnect(self.obj, slot)
 
 
-bmap = BroadcastMap()
+bmap = {}
 
 
 async def handle(req, idgen=itertools.count(0)):
     if req.method == 'POST':
         sid = next(idgen)
-        try:
-            print('+++', sid)
-            bmap.start(sid)
-            while True:
-                chunk = await req.payload.read(16384)
-                if chunk == b'':
-                    break
-                bmap.send(sid, chunk)
-        finally:
-            print('---', sid)
-            bmap.stop(sid)
+        with Broadcast(loop=req.conn.loop) as stream:
+            bmap[sid] = stream
+            try:
+                while True:
+                    chunk = await req.payload.read(16384)
+                    if chunk == b'':
+                        break
+                    stream.send(chunk)
+            finally:
+                del bmap[sid]
         return
 
     if req.path == '/':
-        if not bmap.active:
+        if not bmap:
             await req.respond(404, [], b'no active streams\n')
         else:
             await req.respond(200, [('content-type', 'text/html')],
@@ -84,20 +73,21 @@ async def handle(req, idgen=itertools.count(0)):
                                 <source src='/{}.webm' type='video/webm' />
                             </video>
                     </html>
-                '''.format(max(bmap.active)).encode('utf-8')
+                '''.format(max(bmap)).encode('utf-8')
             )
         return
 
     if req.path.endswith('.webm'):
-        queue = cno.Channel(loop=req.conn.loop)
         try:
             sid = int(req.path.lstrip('/')[:-5])
-            rcv = Receiver(bmap, sid, queue.put_nowait)
-        except ValueError:
-            pass
+            stream = bmap[sid]
+        except (ValueError, KeyError):
+            await req.respond(404, [], b'invalid stream\n')
         else:
-            await req.respond(200, [('content-type', 'video/webm')], queue)
-            return
+            queue = cno.Channel(loop=req.conn.loop)
+            with stream.connect(queue.put_nowait):
+                await req.respond(200, [('content-type', 'video/webm')], queue)
+        return
 
     await req.respond(404, [], b'not found\n')
 

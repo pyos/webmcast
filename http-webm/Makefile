@@ -6,15 +6,17 @@ CXXFLAGS ?= -O3
 .PHONY: all clean
 
 
-all: obj/libwebmwrap.a
+all: obj/libbroadcast.a
+
+
 clean:
 	rm -rf obj webmffi.*
 
 
-obj/webmwrap.o: webmwrap.cc webmwrap.h webm.cc
+obj/%.o: %.cc %.h
 	@mkdir -p obj
-	$(CXX) $(CXXFLAGS) -std=c++11 -Wall -Wextra -Werror -fPIC $< -c -o obj/webmwrap.o
+	$(CXX) $(CXXFLAGS) -std=c++11 -Wall -Wextra -Werror -fPIC $< -c -o $@
 
 
-obj/libwebmwrap.a: obj/webmwrap.o
-	$(AR) rcs $@ obj/webmwrap.o
+obj/libbroadcast.a: obj/broadcast.o
+	$(AR) rcs $@ $<
