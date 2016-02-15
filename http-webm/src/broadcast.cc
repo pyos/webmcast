@@ -1,4 +1,3 @@
-#include <time.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -230,7 +229,8 @@ struct webm_broadcast_t
     std::vector<uint8_t> buffer;
     std::vector<uint8_t> header;  // [EBML .. Segment) -- once per webm
     std::vector<uint8_t> tracks;  // [Segment .. Cluster) -- can occur many times
-    uint64_t timecode_shift = 0;
+     int64_t timecode_shift = 0;
+    uint64_t timecode_last  = 0;
     bool saw_clusters = false;
     bool saw_segments = false;
 };
@@ -306,18 +306,15 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
                 if (tag2.id == EBML_TAG_Timecode) {
                     uint64_t tc = ebml_parse_fixed_uint(level2.base + tag2.consumed, tag2.length);
 
-                    if (b->saw_clusters)
-                        tc += b->timecode_shift;
-                    else
-                        // XXX may not be 1000 (Info->TimecodeScale)
-                        tc += b->timecode_shift = (uint64_t) time(NULL) * 1000 - tc;
+                    if (b->timecode_shift + tc <= b->timecode_last)
+                        b->timecode_shift = b->timecode_last + 1 - tc;
+                    b->timecode_last = tc += b->timecode_shift;
 
-                    /* now we just have to replace the contents of this tag with
-                       the new value. simple, right? NO. */
+                    /* replace the contents of this tag with the new value */
                     memcpy(cluster.base, tagbuf.base, level2.base + 1 - tagbuf.base);
 
                     size_t copied = level2.base + 1 - tagbuf.base;
-                    cluster.base[copied++] = 0x88;
+                    cluster.base[copied++] = 0x88;  /* length = 8 [1 octet] */
                     for (size_t i = 0; i < 8; i++)
                         cluster.base[copied++] = tc >> (56 - 8 * i);
 
