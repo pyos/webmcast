@@ -241,7 +241,7 @@ struct webm_broadcast_t * webm_broadcast_start(void)
     return new webm_broadcast_t;
 }
 
-#include <stdio.h>
+
 int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t size)
 {
     b->buffer.insert(b->buffer.end(), data, data + size);
