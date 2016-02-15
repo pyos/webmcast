@@ -21,6 +21,7 @@ enum EBML_TAG_ID  // https://www.matroska.org/technical/specs/index.html
     EBML_TAG_SeekHead       = 0x114D9B74UL,
     EBML_TAG_Info           = 0x1549A966UL,
     EBML_TAG_Cluster        = 0x1F43B675UL,
+    EBML_TAG_Timecode       = 0xE7UL,
     EBML_TAG_PrevSize       = 0xABUL,
     EBML_TAG_SimpleBlock    = 0xA3UL,
     EBML_TAG_BlockGroup     = 0xA0UL,
@@ -104,6 +105,15 @@ static struct ebml_uint ebml_parse_uint(const struct ebml_buffer data, bool keep
 }
 
 
+static uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
+{
+    uint64_t x = 0;
+    for (size_t i = 0; i < length; i++)
+        x = x << 8 | buf[i];
+    return x;
+}
+
+
 static struct ebml_tag ebml_parse_tag(const struct ebml_buffer buf)
 {
     struct ebml_uint id = ebml_parse_uint(buf, 1);
@@ -173,9 +183,8 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, uint8_t *targe
                     return -1;
 
                 if (tag.id == EBML_TAG_ReferenceBlock)
-                    for (size_t i = 0; i < tag.length; i++)
-                        if (sdata.base[tag.consumed + i] != 0)
-                            goto skip_tag;
+                    if (ebml_parse_fixed_uint(sdata.base + tag.consumed, tag.length) != 0)
+                        goto skip_tag;
 
                 sdata = ebml_buffer_advance(sdata, tag.consumed + tag.length);
             }
@@ -195,8 +204,69 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, uint8_t *targe
 }
 
 
+struct ebml_tc_shift
+{
+    uint64_t last_timecode;
+    uint64_t shifted_by;
+};
+
+
+static int ebml_ensure_monotonicity(struct ebml_buffer *buffer, struct ebml_tc_shift *tc)
+{
+    // timecodes must be strictly increasing. if a stream is interrupted,
+    // however, or if a client switches between streams with different timecodes,
+    // so we need to look for a timecode, and rewrite it if necessary.
+    struct ebml_buffer source = *buffer;
+    struct ebml_tag cluster = ebml_parse_tag(source);
+
+    if (!cluster.consumed || cluster.id != EBML_TAG_Cluster)
+        return -1;
+
+    for (source = ebml_buffer_advance(source, cluster.consumed); source.size; )
+    {
+        struct ebml_tag tag = ebml_parse_tag(source);
+
+        if (!tag.consumed || tag.consumed + tag.length > source.size)
+            return -1;
+
+        if (tag.id == EBML_TAG_Timecode) {
+            uint64_t timecode = ebml_parse_fixed_uint(source.base + tag.consumed, tag.length);
+
+            if (tc->shifted_by + timecode < tc->last_timecode)
+                tc->shifted_by = tc->last_timecode - timecode;
+
+            if (tc->shifted_by == 0) {
+                tc->last_timecode = timecode + 1;
+                return 0;
+            }
+
+            timecode += tc->shifted_by;
+            tc->last_timecode = timecode + 1;
+
+            uint8_t *copy = new uint8_t[buffer->size + 8];
+            size_t offset = source.base - buffer->base + 1;
+
+            memcpy(copy, buffer->base, offset);
+            copy[offset++] = 0x88;
+            for (size_t i = 0; i < 8; i++)
+                copy[offset++] = timecode >> (56 - 8 * i);
+            memcpy(copy + offset, source.base + tag.consumed + tag.length,
+                                  source.size - tag.consumed - tag.length);
+            buffer->base = copy;
+            buffer->size = offset + (source.size - tag.consumed - tag.length);
+            return 1;
+        }
+
+        source = ebml_buffer_advance(source, tag.consumed + tag.length);
+    }
+
+    return -1;  // clusters *must* contain timecodes
+}
+
+
 struct webm_slot_t
 {
+    struct ebml_tc_shift tc_shift;
     webm_write_cb *write;
     void *data;
     int id;
@@ -253,7 +323,11 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
         if (fwd_length > buf.size)
             break;
 
-        if (!b->saw_segments) {
+        if (tag.id == EBML_TAG_SeekHead) {
+            // skip this. (it's not required by the spec.)
+            // it contains offsets relative to the beginning of the first segment,
+            // and we don't know how much data our subscribers got already.
+        } else if (!b->saw_segments) {
             b->header.insert(b->header.end(), buf.base, buf.base + fwd_length);
             for (auto &c : b->callbacks)
                 if (!c.skip_headers)
@@ -265,21 +339,37 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
             size_t   refstripped_length = 0;
 
             for (auto &c : b->callbacks) {
+                struct ebml_buffer b = { buf.base, fwd_length };
+
                 if (c.had_keyframe) {
-                    if (c.write(c.data, buf.base, fwd_length, 0) != 0)
+                    int nonmonotonic = ebml_ensure_monotonicity(&b, &c.tc_shift);
+                    if (nonmonotonic < 0)
+                        return -1;
+
+                    if (c.write(c.data, b.base, b.size, 0) != 0)
                         c.had_keyframe = false;
+
+                    if (nonmonotonic > 0)
+                        delete (uint8_t *) b.base;
                     continue;
                 }
 
                 if (refstripped == NULL) {
                     refstripped = new uint8_t[fwd_length];
-                    struct ebml_buffer b = { buf.base, fwd_length };
                     ebml_strip_reference_frames(b, refstripped, &refstripped_length);
                 }
 
                 if (refstripped_length != 0) {
-                    if (c.write(c.data, refstripped, refstripped_length, 0) == 0)
+                    struct ebml_buffer b = { refstripped, refstripped_length };
+                    int nonmonotonic = ebml_ensure_monotonicity(&b, &c.tc_shift);
+                    if (nonmonotonic < 0)
+                        return -1;
+
+                    if (c.write(c.data, b.base, b.size, 0) == 0)
                         c.had_keyframe = true;
+
+                    if (nonmonotonic > 0)
+                        delete (uint8_t *) b.base;
                 }
             }
 
@@ -309,18 +399,28 @@ void webm_broadcast_stop(struct webm_broadcast_t *b)
 static std::atomic<int> next_callback_id(0);
 
 
-int webm_slot_connect(struct webm_broadcast_t *b, webm_write_cb *f, void *d, int skip_headers)
+int webm_slot_connect(struct webm_broadcast_t *b, webm_write_cb *f, void *d,
+                      int skip_headers, uint64_t last_timecode)
 {
     int id = next_callback_id++;
     if (!skip_headers)
         f(d, &b->header[0], b->header.size(), 1);
     f(d, &b->tracks[0], b->tracks.size(), 1);
-    b->callbacks.push_back((struct webm_slot_t) {f, d, id, skip_headers, false});
+    b->callbacks.push_back((struct webm_slot_t) {{ last_timecode, 0 }, f, d, id,
+                                                 skip_headers, false});
     return id;
 }
 
-void webm_slot_disconnect(struct webm_broadcast_t *b, int id)
+
+uint64_t webm_slot_disconnect(struct webm_broadcast_t *b, int id)
 {
-    for (auto it = b->callbacks.begin(); it != b->callbacks.end(); )
-        it = it->id == id ? b->callbacks.erase(it) : it + 1;
+    for (auto it = b->callbacks.begin(); it != b->callbacks.end(); ) {
+        if (it->id == id) {
+            uint64_t tc = it->tc_shift.last_timecode;
+            b->callbacks.erase(it);
+            return tc;
+        }
+    }
+
+    return 0;
 }

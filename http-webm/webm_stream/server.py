@@ -34,14 +34,13 @@ class Broadcast (asyncio.Event):
         if webm_broadcast_send(self.obj, s, len(chunk)):
             raise ValueError('bad data')
 
-    @contextlib.contextmanager
-    def connect(self, queue, skip_headers=False):
+    def connect(self, queue, skip_headers=False, timecode=0):
         handle = ffi.new_handle(queue)
-        slot = webm_slot_connect(self.obj, webm_on_write, handle, skip_headers)
-        try:
-            yield self
-        finally:
-            webm_slot_disconnect(self.obj, slot)
+        return handle, webm_slot_connect(self.obj, webm_on_write, handle, skip_headers, timecode)
+
+    def disconnect(self, handle):
+        handle, slot = handle
+        return webm_slot_disconnect(self.obj, slot)
 
 
 async def handle(req, streams = weakref.WeakValueDictionary(),
@@ -79,15 +78,16 @@ async def handle(req, streams = weakref.WeakValueDictionary(),
         queue = cno.Channel(loop=req.conn.loop)
 
         async def writer():
+            handle = stream.connect(queue)
             try:
                 # XXX we can switch streams in the middle of the video
                 #     by disconnecting the queue and reconnecting it
                 #     with skip_headers=True. (that would make the server
                 #     start a new webm segment) this might be useful
                 #     for adaptive streaming.
-                with stream.connect(queue):
-                    await stream.wait()
+                await stream.wait()
             finally:
+                timecode = stream.disconnect(handle)
                 queue.close()
 
         writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
