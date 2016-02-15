@@ -17,13 +17,14 @@ def _(handle, data, size, force):
 
 
 class Broadcast (asyncio.Event):
-    def __enter__(self):
-        self.clear()
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
         self.obj = webm_broadcast_start()
-        return self
 
-    def __exit__(self, t, v, tb):
+    def __del__(self):
         webm_broadcast_stop(self.obj)
+
+    def stop(self):
         self.set()
 
     def send(self, chunk):
@@ -38,8 +39,7 @@ class Broadcast (asyncio.Event):
         try:
             yield self
         finally:
-            if not self.is_set():
-                webm_slot_disconnect(self.obj, slot)
+            webm_slot_disconnect(self.obj, slot)
 
 
 bmap = {}
@@ -48,16 +48,16 @@ bmap = {}
 async def handle(req, idgen=itertools.count(0)):
     if req.method == 'POST':
         sid = next(idgen)
-        with Broadcast(loop=req.conn.loop) as stream:
-            bmap[sid] = stream
-            try:
-                while True:
-                    chunk = await req.payload.read(16384)
-                    if chunk == b'':
-                        break
-                    stream.send(chunk)
-            finally:
-                del bmap[sid]
+        bmap[sid] = stream = Broadcast(loop=req.conn.loop)
+        try:
+            while True:
+                chunk = await req.payload.read(16384)
+                if chunk == b'':
+                    break
+                stream.send(chunk)
+        finally:
+            stream.stop()
+            del bmap[sid]
         return
 
     if req.path == '/':
