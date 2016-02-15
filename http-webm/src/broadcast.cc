@@ -1,3 +1,4 @@
+#include <time.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -7,7 +8,8 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
+extern "C"
+{
     #include "broadcast.h"
 }
 
@@ -35,33 +37,36 @@ enum EBML_TAG_ID  // https://www.matroska.org/technical/specs/index.html
 
 struct ebml_buffer
 {
-    const uint8_t * base;
-    size_t size;
+    uint8_t * base;
+    size_t    size;
 };
-
-
-static inline struct ebml_buffer ebml_buffer_advance(struct ebml_buffer b, size_t shift)
-{
-    return (struct ebml_buffer) { b.base + shift, b.size - shift };
-}
 
 
 struct ebml_uint
 {
-    const size_t   consumed;
-    const uint64_t value;
+    size_t   consumed;
+    uint64_t value;
 };
 
 
 struct ebml_tag
 {
-    const size_t consumed;
-    const size_t length;
-    const uint32_t /* enum EBML_TAG_ID */ id;
+    size_t consumed;
+    size_t length;
+    uint32_t /* enum EBML_TAG_ID */ id;
 };
 
 
-static inline bool ebml_tag_is_endless(struct ebml_tag t)
+static inline struct ebml_buffer ebml_buffer_advance(const struct ebml_buffer b, size_t shift)
+{
+    return (struct ebml_buffer) { b.base + shift, b.size - shift };
+}
+
+
+/* true if a tag has indeterminate length, i.e. spans until the next tag
+ * defined to only appear at the same level. as this one. we only expect
+ * `Segment`s to have indeterminate length. */
+static inline bool ebml_tag_is_endless(const struct ebml_tag t)
 {
     return t.length == 0x0000007FUL || t.length == 0x000007FFFFFFFFULL ||
            t.length == 0x00003FFFUL || t.length == 0x0003FFFFFFFFFFULL ||
@@ -70,19 +75,36 @@ static inline bool ebml_tag_is_endless(struct ebml_tag t)
 }
 
 
-static inline bool ebml_tag_is_long_coded_endless(struct ebml_tag t)
+/* all of the above values are valid, but chrome only accepts 0x7F.
+ * other kinds must be recoded as this shortest form. however, this introduces
+ * some empty bytes into the stream, which must be filled with a `Void` tag to avoid
+ * decoding errors. but `Void` takes up at least 2 bytes, which means 0x3FFF, when
+ * recoded as 0x7F, leaves no space for a `Void`. */
+static inline bool ebml_tag_is_long_coded_endless(const struct ebml_tag t)
 {
-    // ffmpeg: "endless = 0xFFFFFFFFFFFFFF"
-    // chrome: "endless = 0xFF"
-    // matroska standard: "endless = all ones"
-    // ...but the field is of variable length? what the fuck
     return t.length != 0x7FUL && t.length != 0x3FFFUL && ebml_tag_is_endless(t);
 }
 
 
+static uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
+{
+    uint64_t x = 0;
+    while (length--) x = x << 8 | *buf++;
+    return x;
+}
+
+
+/* EBML-coded variable-size uints look like this:
+ *   1xxxxxxx
+ *   01xxxxxx xxxxxxxx
+ *   001xxxxx xxxxxxxx xxxxxxxx
+ *   ...
+ *   00000001 xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx
+ *          ^---- this length marker is included in tag ids but not in other ints
+ */
 static size_t ebml_parse_uint_size(uint8_t first_byte)
 {
-    return __builtin_clz((int) first_byte) - (sizeof(int) - sizeof(uint8_t)) * 8;
+    return __builtin_clz((int) first_byte) - (sizeof(int) - sizeof(uint8_t)) * 8 + 1;
 }
 
 
@@ -93,24 +115,11 @@ static struct ebml_uint ebml_parse_uint(const struct ebml_buffer data, bool keep
 
     size_t length = ebml_parse_uint_size(data.base[0]);
 
-    if (data.size < length + 1)
+    if (data.size < length)
         return (struct ebml_uint) { 0, 0 };
 
-    uint64_t i = keep_marker ? data.base[0] : data.base[0] & (0x7F >> length);
-
-    for (size_t k = 1; k <= length; k++)
-        i = i << 8 | data.base[k];
-
-    return (struct ebml_uint) { length + 1, i };
-}
-
-
-static uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
-{
-    uint64_t x = 0;
-    for (size_t i = 0; i < length; i++)
-        x = x << 8 | buf[i];
-    return x;
+    uint64_t i = ebml_parse_fixed_uint(data.base, length);
+    return (struct ebml_uint) { length, keep_marker ? i : i & ~(1ULL << (7 * length)) };
 }
 
 
@@ -128,145 +137,85 @@ static struct ebml_tag ebml_parse_tag(const struct ebml_buffer buf)
 }
 
 
-static int ebml_strip_reference_frames(struct ebml_buffer buffer, uint8_t *target, size_t *size)
+/* create a copy of a `Cluster` with all `(Simple)Block`s before the one
+ * containing the first keyframe removed. `out->base` must be a chunk of writable
+ * memory of same size as `buffer` (as the cluster can *start* with a keyframe).
+ * `out->size` will be set to the size of data written to that memory.
+ * 1 is returned if there are no keyframes in this cluster (=> `out` is empty)
+ *
+ * this is necessary because if a decoder happens to receive a block that references
+ * a block it did not see, it will error and drop the stream, and that would be bad.
+ * a keyframe, however, guarantees that no later block will reference any frame
+ * before that keyframe, while also not referencing anything itself. */
+static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_buffer *out)
 {
     struct ebml_tag cluster = ebml_parse_tag(buffer);
 
     if (cluster.id != EBML_TAG_Cluster)
         return -1;
 
-    bool had_keyframe = false;
-    // ok so this is the first cluster we forward. if it references
-    // older blocks/clusters (which this client doesn't have), the decoder
-    // will error and drop the stream. so we need to drop frames
-    // until the next keyframe. and boy is that hard.
-    const uint8_t *refptr = target;
-    memcpy(target, buffer.base, cluster.consumed);
-    target += cluster.consumed;
+    bool found_keyframe = false;
+    memcpy(out->base, buffer.base, cluster.consumed);
+    out->size = cluster.consumed;
 
-    // a cluster can actually contain many blocks. we can send
-    // the first keyframe-only block and all that follow
     for (buffer = ebml_buffer_advance(buffer, cluster.consumed); buffer.size; ) {
         struct ebml_tag tag = ebml_parse_tag(buffer);
-        if (!tag.consumed)
+
+        if (!tag.consumed || tag.consumed + tag.length > buffer.size)
             return -1;
 
-        if (tag.id == EBML_TAG_PrevSize)
-            // there is no previous cluster, so this data is not applicable.
-            goto skip_tag;
-
-        else if (tag.id == EBML_TAG_SimpleBlock && !had_keyframe) {
-            if (tag.length < 4)
+        if (tag.id == EBML_TAG_SimpleBlock && !found_keyframe) {
+            if (tag.length == 0)
                 return -1;
 
-            // the very first field has a variable length. what a bummer.
-            size_t skip_field = ebml_parse_uint_size(buffer.base[tag.consumed]) + 1;
-
-            if (tag.length < 3 + skip_field)
+            size_t skip_field = ebml_parse_uint_size(buffer.base[tag.consumed]);
+            if (tag.length < skip_field + 3)
                 return -1;
 
-            if (!(buffer.base[tag.consumed + skip_field + 2] & 0x80))
-                goto skip_tag;  // nope, not a keyframe.
-
-            had_keyframe = true;
+            if (buffer.base[tag.consumed + skip_field + 2] & 0x80) {
+                found_keyframe = true;
+                goto copy_tag;
+            }
         }
 
-        else if (tag.id == EBML_TAG_BlockGroup && !had_keyframe) {
-            // a BlockGroup actually contains only a single Block.
-            // it does have some additional tags with metadata, though.
-            // if there's a nonzero ReferenceBlock, this is def not a keyframe.
-            struct ebml_buffer sdata = { buffer.base + tag.consumed, tag.length };
+        else if (tag.id == EBML_TAG_BlockGroup && !found_keyframe) {
+            /* a `BlockGroup` actually contains only a single `Block`.
+               it does have some additional tags with metadata, though.
+               we're looking for one either w/o a `ReferenceBlock`, or a zeroed one. */
+            for (struct ebml_buffer sdata = { buffer.base + tag.consumed, tag.length };;) {
+                if (!sdata.size) {
+                    found_keyframe = true;
+                    goto copy_tag;
+                }
 
-            while (sdata.size) {
                 struct ebml_tag tag = ebml_parse_tag(sdata);
                 if (!tag.consumed)
                     return -1;
 
                 if (tag.id == EBML_TAG_ReferenceBlock)
                     if (ebml_parse_fixed_uint(sdata.base + tag.consumed, tag.length) != 0)
-                        goto skip_tag;
+                        break;
 
                 sdata = ebml_buffer_advance(sdata, tag.consumed + tag.length);
             }
-
-            had_keyframe = true;
         }
 
-        memcpy(target, buffer.base, tag.consumed + tag.length);
-        target += tag.consumed + tag.length;
-
-        skip_tag: buffer = ebml_buffer_advance(buffer, tag.consumed + tag.length);
-    }
-
-    if (had_keyframe)
-        *size = target - refptr;
-    return 0;
-}
-
-
-struct ebml_tc_shift
-{
-    uint64_t last_timecode;
-    uint64_t shifted_by;
-};
-
-
-static int ebml_ensure_monotonicity(struct ebml_buffer *buffer, struct ebml_tc_shift *tc)
-{
-    // timecodes must be strictly increasing. if a stream is interrupted,
-    // however, or if a client switches between streams with different timecodes,
-    // so we need to look for a timecode, and rewrite it if necessary.
-    struct ebml_buffer source = *buffer;
-    struct ebml_tag cluster = ebml_parse_tag(source);
-
-    if (!cluster.consumed || cluster.id != EBML_TAG_Cluster)
-        return -1;
-
-    for (source = ebml_buffer_advance(source, cluster.consumed); source.size; )
-    {
-        struct ebml_tag tag = ebml_parse_tag(source);
-
-        if (!tag.consumed || tag.consumed + tag.length > source.size)
-            return -1;
-
-        if (tag.id == EBML_TAG_Timecode) {
-            uint64_t timecode = ebml_parse_fixed_uint(source.base + tag.consumed, tag.length);
-
-            if (tc->shifted_by + timecode < tc->last_timecode)
-                tc->shifted_by = tc->last_timecode - timecode;
-
-            if (tc->shifted_by == 0) {
-                tc->last_timecode = timecode + 1;
-                return 0;
-            }
-
-            timecode += tc->shifted_by;
-            tc->last_timecode = timecode + 1;
-
-            uint8_t *copy = new uint8_t[buffer->size + 8];
-            size_t offset = source.base - buffer->base + 1;
-
-            memcpy(copy, buffer->base, offset);
-            copy[offset++] = 0x88;
-            for (size_t i = 0; i < 8; i++)
-                copy[offset++] = timecode >> (56 - 8 * i);
-            memcpy(copy + offset, source.base + tag.consumed + tag.length,
-                                  source.size - tag.consumed - tag.length);
-            buffer->base = copy;
-            buffer->size = offset + (source.size - tag.consumed - tag.length);
-            return 1;
+        /* we're assuming that this is the first `Cluster` in a `Segment`. */
+        else if (tag.id != EBML_TAG_PrevSize) copy_tag: {
+            memcpy(out->base + out->size, buffer.base, tag.consumed + tag.length);
+            out->size += tag.consumed + tag.length;
         }
 
-        source = ebml_buffer_advance(source, tag.consumed + tag.length);
+
+        buffer = ebml_buffer_advance(buffer, tag.consumed + tag.length);
     }
 
-    return -1;  // clusters *must* contain timecodes
+    return !found_keyframe;
 }
 
 
 struct webm_slot_t
 {
-    struct ebml_tc_shift tc_shift;
     webm_write_cb *write;
     void *data;
     int id;
@@ -281,6 +230,7 @@ struct webm_broadcast_t
     std::vector<uint8_t> buffer;
     std::vector<uint8_t> header;  // [EBML .. Segment) -- once per webm
     std::vector<uint8_t> tracks;  // [Segment .. Cluster) -- can occur many times
+    uint64_t timecode_shift = 0;
     bool saw_clusters = false;
     bool saw_segments = false;
 };
@@ -291,7 +241,7 @@ struct webm_broadcast_t * webm_broadcast_start(void)
     return new webm_broadcast_t;
 }
 
-
+#include <stdio.h>
 int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t size)
 {
     b->buffer.insert(b->buffer.end(), data, data + size);
@@ -302,87 +252,119 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
         if (!tag.consumed)
             break;
 
-        size_t fwd_length = tag.consumed + tag.length;
+        struct ebml_buffer tagbuf = { buf.base, tag.consumed + tag.length };
 
         if (tag.id == EBML_TAG_Segment) {
             if (ebml_tag_is_long_coded_endless(tag)) {
-                uint8_t * writable = (uint8_t *) buf.base;
-                // tag id = 4 bytes, the rest is its length.
-                writable[4] = 0xFF;  // a shorter representation of "endless"
-                writable[5] = EBML_TAG_Void;  // gotta hide all this now-unused space
-                writable[6] = 0x80 | (tag.consumed - 7);
+                buf.base[4] = 0xFF;           /* EBML_TAG_Segment = 4 octets */
+                buf.base[5] = EBML_TAG_Void;  /* EBML_TAG_Void = 1 octet */
+                buf.base[6] = 0x80 | (tag.consumed - 7);
             }
 
-            fwd_length = tag.consumed;
+            tagbuf.size = tag.consumed;  /* forward the header, parse the contents */
             b->saw_segments = true;
             b->saw_clusters = false;
             b->tracks.clear();
-        } else if (ebml_tag_is_endless(tag) || tag.length > 256 * 1024)
+        } else if (ebml_tag_is_endless(tag) || tag.length > 1024 * 1024)
+            /* wow, a megabyte-sized cluster? not forwarding that. */
             return -1;
 
-        if (fwd_length > buf.size)
+        if (tagbuf.size > buf.size)
             break;
 
-        if (tag.id == EBML_TAG_SeekHead) {
-            // skip this. (it's not required by the spec.)
-            // it contains offsets relative to the beginning of the first segment,
-            // and we don't know how much data our subscribers got already.
-        } else if (!b->saw_segments) {
-            b->header.insert(b->header.end(), buf.base, buf.base + fwd_length);
+        /* skip this tag. it's not required by the spec.
+           it contains offsets relative to the beginning of the first segment,
+           and we don't know how much data our subscribers got already. */
+        if (tag.id == EBML_TAG_SeekHead) {}
+
+        /* ignore duplicate EBML headers. the broadcaster probably had a connection
+           failure or something. */
+        else if (!b->saw_segments) {
+            b->header.insert(b->header.end(), tagbuf.base, tagbuf.base + tagbuf.size);
             for (auto &c : b->callbacks)
                 if (!c.skip_headers)
-                    c.write(c.data, buf.base, fwd_length, 1);
-        } else if (tag.id == EBML_TAG_Cluster) {
-            b->saw_clusters = true;  // ignore any further metadata
-
-            uint8_t *refstripped = NULL;
-            size_t   refstripped_length = 0;
-
-            for (auto &c : b->callbacks) {
-                struct ebml_buffer b = { buf.base, fwd_length };
-
-                if (c.had_keyframe) {
-                    int nonmonotonic = ebml_ensure_monotonicity(&b, &c.tc_shift);
-                    if (nonmonotonic < 0)
-                        return -1;
-
-                    if (c.write(c.data, b.base, b.size, 0) != 0)
-                        c.had_keyframe = false;
-
-                    if (nonmonotonic > 0)
-                        delete (uint8_t *) b.base;
-                    continue;
-                }
-
-                if (refstripped == NULL) {
-                    refstripped = new uint8_t[fwd_length];
-                    ebml_strip_reference_frames(b, refstripped, &refstripped_length);
-                }
-
-                if (refstripped_length != 0) {
-                    struct ebml_buffer b = { refstripped, refstripped_length };
-                    int nonmonotonic = ebml_ensure_monotonicity(&b, &c.tc_shift);
-                    if (nonmonotonic < 0)
-                        return -1;
-
-                    if (c.write(c.data, b.base, b.size, 0) == 0)
-                        c.had_keyframe = true;
-
-                    if (nonmonotonic > 0)
-                        delete (uint8_t *) b.base;
-                }
-            }
-
-            delete refstripped;
-        } else if (!b->saw_clusters) {
-            b->tracks.insert(b->tracks.end(), buf.base, buf.base + fwd_length);
-            for (auto &c : b->callbacks) {
-                c.write(c.data, buf.base, fwd_length, 1);
-                c.had_keyframe = true;
-            }
+                    c.write(c.data, tagbuf.base, tagbuf.size, 1);
         }
 
-        buf = ebml_buffer_advance(buf, fwd_length);
+        else if (tag.id == EBML_TAG_Cluster) {
+            /* inside each cluster is a timecode. these must be (somewhat) synchronized
+             * across streams so that segment switching works (also somewhat) fine.
+             * we'll just increase all timecodes in a segment so that the first cluster
+             * has a timecode equal to the system time at its arrival. */
+            struct ebml_buffer cluster = { new uint8_t[tagbuf.size + 8], 0 };
+
+            for (struct ebml_buffer level2 = ebml_buffer_advance(tagbuf, tag.consumed);;)
+            {
+                if (!level2.size)
+                    return -1;  /* each cluster *must* contain a timecode */
+
+                struct ebml_tag tag2 = ebml_parse_tag(level2);
+
+                if (!tag2.consumed || tag2.consumed + tag2.length > level2.size)
+                    return -1;
+
+                if (tag2.id == EBML_TAG_Timecode) {
+                    uint64_t tc = ebml_parse_fixed_uint(level2.base + tag2.consumed, tag2.length);
+
+                    if (b->saw_clusters)
+                        tc += b->timecode_shift;
+                    else
+                        // XXX may not be 1000 (Info->TimecodeScale)
+                        tc += b->timecode_shift = (uint64_t) time(NULL) * 1000 - tc;
+
+                    /* now we just have to replace the contents of this tag with
+                       the new value. simple, right? NO. */
+                    memcpy(cluster.base, tagbuf.base, level2.base + 1 - tagbuf.base);
+
+                    size_t copied = level2.base + 1 - tagbuf.base;
+                    cluster.base[copied++] = 0x88;
+                    for (size_t i = 0; i < 8; i++)
+                        cluster.base[copied++] = tc >> (56 - 8 * i);
+
+                    size_t tag_size = tag2.consumed + tag2.length;
+                    memcpy(cluster.base + copied, level2.base + tag_size, level2.size - tag_size);
+                    cluster.size = level2.base + level2.size - tag_size - tagbuf.base + 10;
+                    break;  /* there's only one timecode */
+                }
+
+                level2 = ebml_buffer_advance(level2, tag2.consumed + tag2.length);
+            }
+
+            b->saw_clusters = true;
+
+            int no_keyframes = 0;
+            struct ebml_buffer stripped = { NULL, 0 };
+
+            for (auto &c : b->callbacks) {
+                if (!c.had_keyframe) {
+                    if (stripped.base == NULL) {
+                        stripped.base = new uint8_t[cluster.size];
+                        no_keyframes = ebml_strip_reference_frames(cluster, &stripped);
+                    }
+
+                    if (no_keyframes)
+                        continue;
+
+                    if (c.write(c.data, stripped.base, stripped.size, 0) == 0)
+                        c.had_keyframe = true;
+                }
+
+                else if (c.write(c.data, cluster.base, cluster.size, 0) != 0)
+                    c.had_keyframe = false;
+            }
+
+            delete[] stripped.base;
+            delete[] cluster.base;
+        }
+
+        /* also skip stuff in between and after clusters (cueing data, attacments, ...) */
+        else if (!b->saw_clusters) {
+            b->tracks.insert(b->tracks.end(), tagbuf.base, tagbuf.base + tagbuf.size);
+            for (auto &c : b->callbacks)
+                c.write(c.data, tagbuf.base, tagbuf.size, 1);
+        }
+
+        buf = ebml_buffer_advance(buf, tagbuf.size);
     }
 
     b->buffer.erase(b->buffer.begin(), b->buffer.begin() + (buf.base - &b->buffer[0]));
@@ -399,28 +381,19 @@ void webm_broadcast_stop(struct webm_broadcast_t *b)
 static std::atomic<int> next_callback_id(0);
 
 
-int webm_slot_connect(struct webm_broadcast_t *b, webm_write_cb *f, void *d,
-                      int skip_headers, uint64_t last_timecode)
+int webm_slot_connect(struct webm_broadcast_t *b, webm_write_cb *f, void *d, int skip_headers)
 {
     int id = next_callback_id++;
     if (!skip_headers)
         f(d, &b->header[0], b->header.size(), 1);
     f(d, &b->tracks[0], b->tracks.size(), 1);
-    b->callbacks.push_back((struct webm_slot_t) {{ last_timecode, 0 }, f, d, id,
-                                                 skip_headers, false});
+    b->callbacks.push_back((struct webm_slot_t) {f, d, id, skip_headers, false});
     return id;
 }
 
 
-uint64_t webm_slot_disconnect(struct webm_broadcast_t *b, int id)
+void webm_slot_disconnect(struct webm_broadcast_t *b, int id)
 {
-    for (auto it = b->callbacks.begin(); it != b->callbacks.end(); ) {
-        if (it->id == id) {
-            uint64_t tc = it->tc_shift.last_timecode;
-            b->callbacks.erase(it);
-            return tc;
-        }
-    }
-
-    return 0;
+    for (auto it = b->callbacks.begin(); it != b->callbacks.end(); )
+        it = it->id == id ? b->callbacks.erase(it) : it + 1;
 }

@@ -34,9 +34,9 @@ class Broadcast (asyncio.Event):
         if webm_broadcast_send(self.obj, s, len(chunk)):
             raise ValueError('bad data')
 
-    def connect(self, queue, skip_headers=False, timecode=0):
+    def connect(self, queue, skip_headers=False):
         handle = ffi.new_handle(queue)
-        return handle, webm_slot_connect(self.obj, webm_on_write, handle, skip_headers, timecode)
+        return handle, webm_slot_connect(self.obj, webm_on_write, handle, skip_headers)
 
     def disconnect(self, handle):
         handle, slot = handle
@@ -87,7 +87,7 @@ async def handle(req, streams = weakref.WeakValueDictionary(),
                 #     for adaptive streaming.
                 await stream.wait()
             finally:
-                timecode = stream.disconnect(handle)
+                stream.disconnect(handle)
                 queue.close()
 
         writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
