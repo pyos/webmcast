@@ -44,15 +44,20 @@ class Broadcast (asyncio.Event):
             webm_slot_disconnect(self.obj, slot)
 
 
-async def handle(req, streams = weakref.WeakValueDictionary()):
+async def handle(req, streams = weakref.WeakValueDictionary(),
+                      collectors = {}):
     if req.path.endswith('.webm'):
         stream_id = req.path.lstrip('/')[:-5]
 
         if req.method == 'POST':
             if stream_id in streams:
-                return (await req.respond(403, [], b'stream id already taken'))
-
-            streams[stream_id] = stream = Broadcast(loop=req.conn.loop)
+                try:
+                    collectors.pop(stream_id).cancel()
+                except KeyError:
+                    return (await req.respond(403, [], b'stream id already taken'))
+                stream = streams[stream_id]
+            else:
+                streams[stream_id] = stream = Broadcast(loop=req.conn.loop)
             try:
                 while True:
                     chunk = await req.payload.read(16384)
@@ -60,7 +65,10 @@ async def handle(req, streams = weakref.WeakValueDictionary()):
                         break
                     stream.send(chunk)
             finally:
-                stream.stop()
+                async def collect():
+                    await asyncio.sleep(10, loop=req.conn.loop)
+                    stream.stop()
+                collectors[stream_id] = asyncio.ensure_future(collect(), loop=req.conn.loop)
             return (await req.respond(204, [], b''))
 
         try:
