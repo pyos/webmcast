@@ -48,7 +48,7 @@ struct protocol : aio::protocol
     int data_received(const struct aio::stringview data)
     {
         buffer.append(data.base, data.size);
-        struct ebml_buffer buf = { (const uint8_t *) buffer.data(), buffer.size() };
+        struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
 
         while (1) {
             struct ebml_tag tag = ebml_parse_tag(buf);
