@@ -150,10 +150,7 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, uint8_t *targe
                 return -1;
 
             // the very first field has a variable length. what a bummer.
-            // it doesn't even follow the same format as tag ids.
-         // auto field = buffer.base[tag.consumed];
-         // auto skip_field = parse_uint_size(~field) + 1;
-            size_t skip_field = 1;
+            size_t skip_field = ebml_parse_uint_size(buffer.base[tag.consumed]) + 1;
 
             if (tag.length < 3 + skip_field)
                 return -1;
@@ -203,6 +200,7 @@ struct webm_slot_t
     webm_write_cb *write;
     void *data;
     int id;
+    bool skip_headers;
     bool had_keyframe;
 };
 
@@ -258,7 +256,8 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
         if (!b->saw_segments) {
             b->header.insert(b->header.end(), buf.base, buf.base + fwd_length);
             for (auto &c : b->callbacks)
-                c.write(c.data, buf.base, fwd_length, 1);
+                if (!c.skip_headers)
+                    c.write(c.data, buf.base, fwd_length, 1);
         } else if (tag.id == EBML_TAG_Cluster) {
             b->saw_clusters = true;  // ignore any further metadata
 
@@ -287,8 +286,10 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
             delete refstripped;
         } else if (!b->saw_clusters) {
             b->tracks.insert(b->tracks.end(), buf.base, buf.base + fwd_length);
-            for (auto &c : b->callbacks)
+            for (auto &c : b->callbacks) {
                 c.write(c.data, buf.base, fwd_length, 1);
+                c.had_keyframe = true;
+            }
         }
 
         buf = ebml_buffer_advance(buf, fwd_length);
@@ -314,7 +315,7 @@ int webm_slot_connect(struct webm_broadcast_t *b, webm_write_cb *f, void *d, int
     if (!skip_headers)
         f(d, &b->header[0], b->header.size(), 1);
     f(d, &b->tracks[0], b->tracks.size(), 1);
-    b->callbacks.push_back((struct webm_slot_t) {f, d, id, false});
+    b->callbacks.push_back((struct webm_slot_t) {f, d, id, skip_headers, false});
     return id;
 }
 
