@@ -4,10 +4,10 @@ CXX      ?= g++
 CXXFLAGS ?= -O3
 
 
-.PHONY: python clean
+.PHONY: clean
 
 
-python: obj/libbroadcast.a
+webm_stream/c.o: obj/libbroadcast.a
 	$(PYTHON) mkffi.py
 
 
@@ -17,7 +17,7 @@ obj/libbroadcast.a: obj/broadcast.o
 
 obj/%.o: src/%.cc src/%.h
 	@mkdir -p obj
-	$(CXX) $(CXXFLAGS) -std=c++11 -Wall -Wextra -Werror -fPIC $< -c -o $@
+	$(CXX) $(CXXFLAGS) -std=c++11 -Wall -Wextra -Werror -fPIC -fno-exceptions $< -c -o $@
 
 
 clean:
