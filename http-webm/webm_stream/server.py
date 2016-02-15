@@ -1,5 +1,7 @@
 import cno
+import signal
 import asyncio
+import weakref
 import itertools
 import contextlib
 
@@ -42,73 +44,72 @@ class Broadcast (asyncio.Event):
             webm_slot_disconnect(self.obj, slot)
 
 
-bmap = {}
-
-
-async def handle(req, idgen=itertools.count(0)):
-    if req.method == 'POST':
-        sid = next(idgen)
-        bmap[sid] = stream = Broadcast(loop=req.conn.loop)
-        try:
-            while True:
-                chunk = await req.payload.read(16384)
-                if chunk == b'':
-                    break
-                stream.send(chunk)
-        finally:
-            stream.stop()
-            del bmap[sid]
-        return
-
-    if req.path == '/':
-        if not bmap:
-            await req.respond(404, [], b'no active streams\n')
-        else:
-            await req.respond(200, [('content-type', 'text/html')],
-                '''<!doctype html>
-                    <html>
-                        <head>
-                            <meta charset='utf-8' />
-                            <title>asd</title>
-                        </head>
-                        <body>
-                            <video autoplay preload='none'>
-                                <source src='/{}.webm' type='video/webm' />
-                            </video>
-                    </html>
-                '''.format(max(bmap)).encode('utf-8')
-            )
-        return
-
+async def handle(req, streams = weakref.WeakValueDictionary()):
     if req.path.endswith('.webm'):
-        try:
-            sid = int(req.path.lstrip('/')[:-5])
-            stream = bmap[sid]
-        except (ValueError, KeyError):
-            await req.respond(404, [], b'invalid stream\n')
-        else:
-            queue = cno.Channel(loop=req.conn.loop)
+        stream_id = req.path.lstrip('/')[:-5]
 
-            async def writer():
-                try:
-                    # XXX we can switch streams in the middle of the video
-                    #     by disconnecting the queue and reconnecting it
-                    #     with skip_headers=True. (that would make the server
-                    #     start a new webm segment) this might be useful
-                    #     for adaptive streaming.
-                    with stream.connect(queue):
-                        await stream.wait()
-                finally:
-                    queue.close()
+        if req.method == 'POST':
+            if stream_id in streams:
+                return (await req.respond(403, [], b'stream id already taken'))
 
-            writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
+            streams[stream_id] = stream = Broadcast(loop=req.conn.loop)
             try:
-                await req.respond(200, [('content-type', 'video/webm')], queue)
+                while True:
+                    chunk = await req.payload.read(16384)
+                    if chunk == b'':
+                        break
+                    stream.send(chunk)
             finally:
-                writer.cancel()
-        return
+                stream.stop()
+            return (await req.respond(204, [], b''))
 
-    await req.respond(404, [], b'not found\n')
+        try:
+            stream = streams[stream_id]
+        except KeyError:
+            return (await req.respond(404, [], b'this stream is offline'))
+
+        queue = cno.Channel(loop=req.conn.loop)
+
+        async def writer():
+            try:
+                # XXX we can switch streams in the middle of the video
+                #     by disconnecting the queue and reconnecting it
+                #     with skip_headers=True. (that would make the server
+                #     start a new webm segment) this might be useful
+                #     for adaptive streaming.
+                with stream.connect(queue):
+                    await stream.wait()
+            finally:
+                queue.close()
+
+        writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
+        try:
+            return (await req.respond(200, [('content-type', 'video/webm')], queue))
+        finally:
+            writer.cancel()
+
+    if req.method != 'GET':
+        return (await req.respond(405, [], b'/stream_name**.webm**'))
+
+    stream_id = req.path.strip('/')
+
+    if stream_id not in streams:
+        return (await req.respond(404, [], b'this stream is offline'))
+
+    await req.respond(200, [('content-type', 'text/html')],
+        '''<!doctype html>
+            <html>
+                <head>
+                    <meta charset='utf-8' />
+                    <title>asd</title>
+                </head>
+                <body>
+                    <video autoplay preload='none'>
+                        <source src='/{}.webm' type='video/webm' />
+                    </video>
+            </html>
+        '''.format(stream_id).encode('utf-8')
+    )
 
 
 async def main(loop):
