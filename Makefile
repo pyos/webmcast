@@ -1,24 +1,12 @@
-AR       ?= ar
-PYTHON   ?= python
-CXX      ?= g++
-CXXFLAGS ?= -O3
+PYTHON ?= python
 
 
 .PHONY: clean
 
 
-webm_stream/c.o: obj/libbroadcast.a
+webm_stream/c.o: mkffi.py src/broadcast.c src/broadcast.h src/buffer.h src/binary.h src/rewriting.h
 	$(PYTHON) mkffi.py
 
 
-obj/libbroadcast.a: obj/broadcast.o
-	$(AR) rcs $@ $<
-
-
-obj/%.o: src/%.cc src/%.h
-	@mkdir -p obj
-	$(CXX) $(CXXFLAGS) -std=c++11 -Wall -Wextra -Werror -fPIC -fno-exceptions $< -c -o $@
-
-
 clean:
-	rm -rf obj build
+	rm -rf obj/c.*

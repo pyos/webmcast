@@ -1,6 +1,7 @@
 // $CXX -std=c++11 webmdump.cc -pthread -o webmdump -Wall -Wextra -Werror
 #include "io-main.h"
-#include "../broadcast.cc"
+#include "../buffer.h"
+#include "../binary.h"
 
 
 static const char * ebml_tag_name(const struct ebml_tag t)
@@ -64,17 +65,17 @@ struct protocol : aio::protocol
             if (!tag.consumed)
                 break;
 
-            if (!ebml_tag_is_endless(tag) && tag.id != EBML_TAG_Segment) {
+            if (tag.length != EBML_INDETERMINATE && tag.id != EBML_TAG_Segment) {
                 if (tag.consumed + tag.length > buf.size)
                     break;
-                buf = ebml_buffer_advance(buf, tag.length);
+                buf = ebml_buffer_shift(buf, tag.length);
             }
 
-            buf = ebml_buffer_advance(buf, tag.consumed);
+            buf = ebml_buffer_shift(buf, tag.consumed);
             printf("<%d> %s [%zu]\n", id, ebml_tag_name(tag), tag.length);
         }
 
-        buffer.erase(0, (const char *) buf.base - buffer.data());
+        buffer.erase(0, (const char *) buf.data - buffer.data());
         return 0;
     }
 };

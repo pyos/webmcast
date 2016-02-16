@@ -9,7 +9,7 @@ from .c import ffi
 from .c.lib import *
 
 
-@ffi.def_extern('webm_on_write', -1)
+@ffi.def_extern('on_chunk_cb', -1)
 def _(handle, data, size, force):
     queue = ffi.from_handle(handle)
     if not force and queue.qsize() > 0:
@@ -21,26 +21,29 @@ def _(handle, data, size, force):
 class Broadcast (asyncio.Event):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.obj = webm_broadcast_start()
+        self.obj = broadcast_start()
 
     def __del__(self):
-        webm_broadcast_stop(self.obj)
+        broadcast_stop(self.obj)
 
     def stop(self):
         self.set()
 
     def send(self, chunk):
         s = ffi.new('uint8_t[]', chunk)
-        if webm_broadcast_send(self.obj, s, len(chunk)):
+        if broadcast_send(self.obj, s, len(chunk)):
             raise ValueError('bad data')
 
     def connect(self, queue, skip_headers=False):
         handle = ffi.new_handle(queue)
-        return handle, webm_slot_connect(self.obj, webm_on_write, handle, skip_headers)
+        slot = broadcast_connect(self.obj, on_chunk_cb, handle, skip_headers)
+        if slot < 0:
+            raise MemoryError
+        return handle, slot
 
     def disconnect(self, handle):
         handle, slot = handle
-        return webm_slot_disconnect(self.obj, slot)
+        return broadcast_disconnect(self.obj, slot)
 
 
 async def handle(req, streams = weakref.WeakValueDictionary(),
