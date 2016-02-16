@@ -5,10 +5,8 @@
 
 
 /* create a copy of a `Cluster` with all `(Simple)Block`s before the one
- * containing the first keyframe removed. `out->data` must be a chunk of writable
- * memory of same size as `buffer` (as the cluster can *start* with a keyframe).
- * `out->size` will be set to the size of data written to that memory.
- * 1 is returned if there are no keyframes in this cluster (=> `out` is empty)
+ * containing the first keyframe removed, return 1 if the resulting `Cluster`
+ * contains no blocks (i.e. there were no keyframes.)
  *
  * this is necessary because if a decoder happens to receive a block that references
  * a block it did not see, it will error and drop the stream, and that would be bad.
@@ -95,15 +93,15 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
 }
 
 
-/* inside each cluster is a timecode. these must be strictly increasing,
- * or else the decoder will silently drop frames from clusters "from the past".
- * this is true even across segments -- if segment 1 contains a cluster with timecode
- * 10000, and segment 2 starts with a timecode 0, frames will get dropped.
- * which is why, when switching streams, we need to ensure that the timecodes
- * in the new stream are at least as high as the last timecode seen in the old stream.
+/* create a copy of a `Cluster` with its `Timecode` advanced by some value,
+ * plus some more to ensure monotonicity. the resulting shift and timecode overwrite
+ * the provided parameters. if nothing is written to `out`, then the original cluster's
+ * timecode is good enough.
  *
- * `out->data` must be writable and at least `buffer.size + 8` in length.
- * `out->size` will be set on successful return. */
+ * this is needed because decoders will drop frames with timecodes less than
+ * what they've already seen, even for clusters in a different segment. thus if we
+ * choose to switch a client to a different segment, we need to make sure timecodes
+ * do not decrease. */
 static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer_dyn *out,
                                 uint64_t *shift, uint64_t *minimum)
 {
@@ -131,7 +129,7 @@ static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer_dy
                 struct ebml_buffer head = ebml_view(start.data + cluster.consumed,
                                                     buffer.data - start.data - cluster.consumed);
                 struct ebml_buffer tail = ebml_buffer_shift(buffer, tag.consumed + tag.length);
-
+                /* there's only one timecode in a cluster. this is it. */
                 cluster.length += 8 - tag.length;
                 if (ebml_write_tag(out, cluster)
                 ||  ebml_buffer_dyn_concat(out, head)
@@ -139,8 +137,8 @@ static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer_dy
                 ||  ebml_write_fixed_uint(out, tc, 8)
                 ||  ebml_buffer_dyn_concat(out, tail))
                     return -1;
-            }  // else out->data == NULL, just use the old buffer
-            return 0;  /* there's only one timecode */
+            }
+            return 0;
         }
 
         buffer = ebml_buffer_shift(buffer, tag.consumed + tag.length);
