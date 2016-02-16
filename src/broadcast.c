@@ -152,7 +152,7 @@ void broadcast_stop(struct broadcast *cast)
 }
 
 
-int next_callback_id = 0xDEAD;
+int next_callback_id = 0;
 int broadcast_connect(struct broadcast *cast, on_chunk *cb, void *data, int skip_headers)
 {
     if (!skip_headers)
