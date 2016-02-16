@@ -56,6 +56,14 @@ struct ebml_tag
 };
 
 
+static const uint64_t EBML_INDETERMINATE = 0xFFFFFFFFFFFFFFULL;
+static const uint64_t EBML_INDETERMINATE_MARKERS[] = {
+    // shortest encodings of uints with these values have special meaning
+    0x0000000000007FULL, 0x00000000003FFFULL, 0x000000001FFFFFULL, 0x0000000FFFFFFFULL,
+    0x000007FFFFFFFFULL, 0x0003FFFFFFFFFFULL, 0x01FFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFULL,
+};
+
+
 static inline struct ebml_buffer ebml_buffer_advance(struct ebml_buffer b, size_t shift)
 {
     return (struct ebml_buffer) { b.base + shift, b.size - shift };
@@ -68,30 +76,7 @@ static inline struct ebml_buffer ebml_buffer_contents(struct ebml_buffer b, stru
 }
 
 
-/* true if a tag has indeterminate length, i.e. spans until the next tag
- * defined to only appear at the same level. as this one. we only expect
- * `Segment`s to have indeterminate length. */
-static inline bool ebml_tag_is_endless(const struct ebml_tag t)
-{
-    return t.length == 0x0000007FUL || t.length == 0x000007FFFFFFFFULL ||
-           t.length == 0x00003FFFUL || t.length == 0x0003FFFFFFFFFFULL ||
-           t.length == 0x001FFFFFUL || t.length == 0x01FFFFFFFFFFFFULL ||
-           t.length == 0x0FFFFFFFUL || t.length == 0xFFFFFFFFFFFFFFULL;
-}
-
-
-/* all of the above values are valid, but chrome only accepts 0x7F.
- * other kinds must be recoded as this shortest form. however, this introduces
- * some empty bytes into the stream, which must be filled with a `Void` tag to avoid
- * decoding errors. but `Void` takes up at least 2 bytes, which means 0x3FFF, when
- * recoded as 0x7F, leaves no space for a `Void`. */
-static inline bool ebml_tag_is_long_coded_endless(const struct ebml_tag t)
-{
-    return t.length != 0x7FUL && t.length != 0x3FFFUL && ebml_tag_is_endless(t);
-}
-
-
-static uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
+static inline uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
 {
     uint64_t x = 0;
     while (length--) x = x << 8 | *buf++;
@@ -107,7 +92,7 @@ static uint64_t ebml_parse_fixed_uint(const uint8_t *buf, size_t length)
  *   00000001 xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx
  *          ^---- this length marker is included in tag ids but not in other ints
  */
-static size_t ebml_parse_uint_size(uint8_t first_byte)
+static inline size_t ebml_parse_uint_size(uint8_t first_byte)
 {
     return __builtin_clz((int) first_byte) - (sizeof(int) - sizeof(uint8_t)) * 8 + 1;
 }
@@ -124,6 +109,9 @@ static struct ebml_uint ebml_parse_uint(const struct ebml_buffer data, bool keep
         return (struct ebml_uint) { 0, 0 };
 
     uint64_t i = ebml_parse_fixed_uint(data.base, length);
+    if (i == EBML_INDETERMINATE_MARKERS[length - 1])
+        i = EBML_INDETERMINATE;
+
     return (struct ebml_uint) { length, keep_marker ? i : i & ~(1ULL << (7 * length)) };
 }
 
@@ -153,6 +141,10 @@ static inline uint8_t *ebml_write_uint(uint8_t *t, uint64_t v, bool has_marker)
 {
     size_t size = 0;
     while (v >> ((7 + has_marker) * size)) size++;
+
+    if (v && v < EBML_INDETERMINATE && EBML_INDETERMINATE_MARKERS[size - 1] == v)
+        size++;  /* encode as a longer sequence to avoid placing an indeterminate value */
+
     return ebml_write_fixed_uint(t, has_marker ? v : v | 1ull << (7 * size), size);
 }
 
@@ -352,7 +344,7 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
         struct ebml_buffer tagbuf = { buf.base, tag.consumed + tag.length };
 
         if (tag.id == EBML_TAG_Segment) {
-            if (ebml_tag_is_long_coded_endless(tag)) {
+            if (tag.length == EBML_INDETERMINATE && tag.consumed >= 7) {
                 buf.base[4] = 0xFF;           /* EBML_TAG_Segment = 4 octets */
                 buf.base[5] = EBML_TAG_Void;  /* EBML_TAG_Void = 1 octet */
                 buf.base[6] = 0x80 | (tag.consumed - 7);
@@ -362,7 +354,7 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
             b->saw_segments = true;
             b->saw_clusters = false;
             b->tracks.clear();
-        } else if (ebml_tag_is_endless(tag) || tag.length > 1024 * 1024)
+        } else if (tag.length > 1024 * 1024)
             /* wow, a megabyte-sized cluster? not forwarding that. */
             return -1;
 
