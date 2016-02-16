@@ -95,7 +95,7 @@ async def handle(req, streams = weakref.WeakValueDictionary(),
 
         writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
         try:
-            return (await req.respond(200, [('content-type', 'video/webm')], queue))
+            return (await req.respond(200, [('content-type', 'video/webm'), ('cache-control', 'no-cache')], queue))
         finally:
             writer.cancel()
 
