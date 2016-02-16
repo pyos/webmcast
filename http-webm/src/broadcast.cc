@@ -186,7 +186,8 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
     if (cluster.id != EBML_TAG_Cluster || cluster.consumed + cluster.length > buffer.size)
         return -1;
 
-    bool found_keyframe = false;
+    uint64_t found_keyframe = 0;  /* 1 bit per track (up to 64) */
+    uint64_t seen_tracks = 0;
     uint8_t *p = ebml_memcpy(out->base, buffer.base, cluster.consumed);
     uint8_t *q = out->base + 4 /* length of EBML_TAG_Cluster */;
     uint8_t *r = p;
@@ -197,37 +198,52 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
         if (!tag.consumed || tag.consumed + tag.length > buffer.size)
             return -1;
 
-        if (tag.id == EBML_TAG_SimpleBlock && !found_keyframe) {
-            if (tag.length == 0)
+        if (tag.id == EBML_TAG_SimpleBlock) {
+            const ebml_uint track = ebml_parse_uint(ebml_buffer_advance(buffer, tag.consumed), 0);
+
+            if (!track.consumed || tag.length < track.consumed + 3 || track.value >= 64)
                 return -1;
 
-            size_t skip_field = ebml_parse_uint_size(buffer.base[tag.consumed]);
-            if (tag.length < skip_field + 3)
-                return -1;
+            seen_tracks |= 1ull << track.value;
 
-            if (!(buffer.base[tag.consumed + skip_field + 2] & 0x80))
-                goto skip_tag;
+            if (!(found_keyframe & (1ull << track.value))) {
+                if (!(buffer.base[tag.consumed + track.consumed + 2] & 0x80))
+                    goto skip_tag;
 
-            found_keyframe = true;
+                found_keyframe |= 1 << track.value;
+            }
         }
 
-        else if (tag.id == EBML_TAG_BlockGroup && !found_keyframe) {
+        else if (tag.id == EBML_TAG_BlockGroup) {
             /* a `BlockGroup` actually contains only a single `Block`.
                it does have some additional tags with metadata, though.
                we're looking for one either w/o a `ReferenceBlock`, or a zeroed one. */
+            struct ebml_uint track = { 0, 0 };
+            uint64_t refblock = 0;
+
             for (struct ebml_buffer sdata = ebml_buffer_contents(buffer, tag); sdata.size;) {
                 struct ebml_tag tag = ebml_parse_tag(sdata);
                 if (!tag.consumed)
                     return -1;
 
+                if (tag.id == EBML_TAG_Block)
+                    track = ebml_parse_uint(ebml_buffer_advance(sdata, tag.consumed), 0);
+
                 if (tag.id == EBML_TAG_ReferenceBlock)
-                    if (ebml_parse_fixed_uint(sdata.base + tag.consumed, tag.length) != 0)
-                        goto skip_tag;
+                    refblock = ebml_parse_fixed_uint(sdata.base + tag.consumed, tag.length);
 
                 sdata = ebml_buffer_advance(sdata, tag.consumed + tag.length);
             }
 
-            found_keyframe = true;
+            if (!track.consumed || track.value >= 64)
+                return -1;
+
+            seen_tracks |= 1ull << track.value;
+
+            if (refblock != 0 && !(found_keyframe & (1ull << track.value)))
+                goto skip_tag;
+
+            found_keyframe |= 1ull << track.value;
         }
 
         p = ebml_memcpy(p, buffer.base, tag.consumed + tag.length);
@@ -237,7 +253,7 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
     out->size = p - out->base;
     /* have to recode cluster's length. `p - r <= cluster.length` => fits in `r - q` bytes. */
     ebml_write_fixed_uint(q, (p - r) | 1ull << (7 * (r - q)), r - q);
-    return !found_keyframe;
+    return found_keyframe != seen_tracks;
 }
 
 
