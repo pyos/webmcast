@@ -1,12 +1,9 @@
-#include <string.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdint.h>
-
-#include "buffer.h"
-#include "binary.h"
-#include "rewriting.h"
-#include "broadcast.h"
+// #include "ffi.h"
+// #include "buffer.h"
+// #include "binary.h"
+// #include "rewriting.h"
+#ifndef EBML_BROADCAST_H
+#define EBML_BROADCAST_H
 
 
 struct callback
@@ -192,3 +189,7 @@ void broadcast_disconnect(struct broadcast *cast, int id)
         }
     }
 }
+
+
+#undef EACH_CALLBACK
+#endif

@@ -1,4 +1,3 @@
-/obj
 /webm_stream/c.*
-/src/webmdump/webmdump
+/webmdump
 __pycache__
