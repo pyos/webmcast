@@ -42,6 +42,15 @@ struct protocol : aio::protocol
 
     virtual ~protocol()
     {
+        if (buffer.size()) {
+            struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
+            struct ebml_tag tag = ebml_parse_tag(buf);
+            if (!tag.consumed)
+                printf("<%d> junk at end of stream\n", id);
+            else
+                printf("<%d> incomplete %s [%zu; got %zu]\n", id,
+                    ebml_tag_name(tag), tag.length, buffer.size());
+        }
         printf("<%d> ---\n", id);
     }
 
