@@ -215,9 +215,9 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
         }
 
         else if (tag.id == EBML_TAG_BlockGroup) {
-            /* a `BlockGroup` actually contains only a single `Block`.
-               it does have some additional tags with metadata, though.
-               we're looking for one either w/o a `ReferenceBlock`, or a zeroed one. */
+            /* a `BlockGroup` actually contains only a single `Block`. it does
+               have some additional tags with metadata, though. we're looking
+               for one either w/o a `ReferenceBlock`, or with a zeroed one. */
             struct ebml_uint track = { 0, 0 };
             uint64_t refblock = 0;
 
