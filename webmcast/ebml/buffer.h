@@ -27,7 +27,7 @@ static const struct ebml_buffer     EBML_BUFFER_EMPTY     = {NULL, 0};
 static const struct ebml_buffer_dyn EBML_BUFFER_EMPTY_DYN = {NULL, 0, 0, 0};
 
 
-static struct ebml_buffer ebml_view(const uint8_t *data, size_t size)
+static inline struct ebml_buffer ebml_view(const uint8_t *data, size_t size)
 {
     return (struct ebml_buffer) { data, size };
 }
