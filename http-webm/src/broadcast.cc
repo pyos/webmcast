@@ -272,10 +272,10 @@ static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer *o
     struct ebml_buffer start = buffer;
     struct ebml_tag cluster = ebml_parse_tag(buffer);
 
-    if (cluster.id != EBML_TAG_Cluster)
+    if (cluster.id != EBML_TAG_Cluster || cluster.consumed + cluster.length > buffer.size)
         return -1;
 
-    for (buffer = ebml_buffer_advance(buffer, cluster.consumed); buffer.size;)
+    for (buffer = ebml_buffer_contents(buffer, cluster); buffer.size;)
     {
         struct ebml_tag tag = ebml_parse_tag(buffer);
 
@@ -371,35 +371,34 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
 
         if (tag.id == EBML_TAG_Cluster) {
             struct ebml_buffer cluster = { new uint8_t[tagbuf.size + 8], 0 };
-            if (ebml_adjust_timecode(tagbuf, &cluster, &b->timecode_shift, &b->timecode_last)) {
-                delete[] cluster.base;
-                return -1;
-            }
 
-            b->saw_clusters = true;
+            if (!ebml_adjust_timecode(tagbuf, &cluster, &b->timecode_shift, &b->timecode_last)) {
+                b->saw_clusters = true;
 
-            int no_keyframes = 0;
-            struct ebml_buffer stripped = { NULL, 0 };
+                int no_keyframes = 0;
+                struct ebml_buffer stripped = { NULL, 0 };
 
-            for (auto &c : b->callbacks) {
-                if (!c.had_keyframe) {
-                    if (stripped.base == NULL) {
-                        stripped.base = new uint8_t[cluster.size];
-                        no_keyframes = ebml_strip_reference_frames(cluster, &stripped);
+                for (auto &c : b->callbacks) {
+                    if (!c.had_keyframe) {
+                        if (stripped.base == NULL) {
+                            stripped.base = new uint8_t[cluster.size];
+                            no_keyframes = ebml_strip_reference_frames(cluster, &stripped);
+                        }
+
+                        if (no_keyframes)
+                            continue;
+
+                        if (c.write(c.data, stripped.base, stripped.size, 0) == 0)
+                            c.had_keyframe = true;
                     }
 
-                    if (no_keyframes)
-                        continue;
-
-                    if (c.write(c.data, stripped.base, stripped.size, 0) == 0)
-                        c.had_keyframe = true;
+                    else if (c.write(c.data, cluster.base, cluster.size, 0) != 0)
+                        c.had_keyframe = false;
                 }
 
-                else if (c.write(c.data, cluster.base, cluster.size, 0) != 0)
-                    c.had_keyframe = false;
+                delete[] stripped.base;
             }
 
-            delete[] stripped.base;
             delete[] cluster.base;
         }
         /* skip this tag. it's not required by the spec.
