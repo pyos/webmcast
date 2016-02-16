@@ -4,6 +4,7 @@
 // #include <string.h>
 #ifndef EBML_BUFFER_H
 #define EBML_BUFFER_H
+#define EBML_BUFFER_INCREMENT 4096
 
 
 struct ebml_buffer
@@ -78,7 +79,8 @@ static inline int ebml_buffer_dyn_concat(struct ebml_buffer_dyn *a, struct ebml_
         return 0;
     }
 
-    size_t new_size = (a->size + b.size + 511) / 512 * 512;
+    size_t new_size = (a->size + b.size + EBML_BUFFER_INCREMENT - 1) / EBML_BUFFER_INCREMENT
+                                                                     * EBML_BUFFER_INCREMENT;
     uint8_t *m = (uint8_t *) malloc(new_size);
 
     if (m == NULL)
