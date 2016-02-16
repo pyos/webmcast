@@ -1,7 +1,7 @@
 ```bash
 pip install cffi
 pip install git+https://github.com/pyos/libcno
-make
+python mkffi.py
 python -m webm_stream.server &
 ffmpeg ... -c:v vp8 -keyint_min 60 -g 60 \
            -deadline realtime -static-thresh 0 \
