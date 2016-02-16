@@ -213,6 +213,59 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
 }
 
 
+/* inside each cluster is a timecode. these must be strictly increasing,
+ * or else the decoder will silently drop frames from clusters "from the past".
+ * this is true even across segments -- if segment 1 contains a cluster with timecode
+ * 10000, and segment 2 starts with a timecode 0, frames will get dropped.
+ * which is why, when switching streams, we need to ensure that the timecodes
+ * in the new stream are at least as high as the last timecode seen in the old stream.
+ *
+ * `out->base` must be writable and at least `buffer.size + 8` in length.
+ * `out->size` will be set on successful return. */
+static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer *out,
+                                int64_t *shift, uint64_t *minimum)
+{
+    struct ebml_buffer start = buffer;
+    struct ebml_tag cluster = ebml_parse_tag(buffer);
+
+    if (cluster.id != EBML_TAG_Cluster)
+        return -1;
+
+    for (buffer = ebml_buffer_advance(buffer, cluster.consumed); buffer.size;)
+    {
+        struct ebml_tag tag = ebml_parse_tag(buffer);
+
+        if (!tag.consumed || tag.consumed + tag.length > buffer.size)
+            return -1;
+
+        if (tag.id == EBML_TAG_Timecode) {
+            uint64_t tc = ebml_parse_fixed_uint(buffer.base + tag.consumed, tag.length);
+
+            if (*shift + tc <= *minimum)
+                *shift = *minimum + 1 - tc;
+            *minimum = tc += *shift;
+
+            /* replace the contents of this tag with the new value */
+            memcpy(out->base, start.base, buffer.base + 1 - start.base);
+
+            size_t copied = buffer.base + 1 - start.base;
+            out->base[copied++] = 0x88;  /* length = 8 [1 octet] */
+            for (size_t i = 0; i < 8; i++)
+                out->base[copied++] = tc >> (56 - 8 * i);
+
+            size_t tag_size = tag.consumed + tag.length;
+            memcpy(out->base + copied, buffer.base + tag_size, buffer.size - tag_size);
+            out->size = buffer.base - start.base + buffer.size - tag_size + 10;
+            return 0;  /* there's only one timecode */
+        }
+
+        buffer = ebml_buffer_advance(buffer, tag.consumed + tag.length);
+    }
+
+    return -1;  /* each cluster *must* contain a timecode */
+}
+
+
 struct webm_slot_t
 {
     webm_write_cb *write;
@@ -287,44 +340,10 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
         }
 
         else if (tag.id == EBML_TAG_Cluster) {
-            /* inside each cluster is a timecode. these must be (somewhat) synchronized
-             * across streams so that segment switching works (also somewhat) fine.
-             * we'll just increase all timecodes in a segment so that the first cluster
-             * has a timecode equal to the system time at its arrival. */
             struct ebml_buffer cluster = { new uint8_t[tagbuf.size + 8], 0 };
-
-            for (struct ebml_buffer level2 = ebml_buffer_advance(tagbuf, tag.consumed);;)
-            {
-                if (!level2.size)
-                    return -1;  /* each cluster *must* contain a timecode */
-
-                struct ebml_tag tag2 = ebml_parse_tag(level2);
-
-                if (!tag2.consumed || tag2.consumed + tag2.length > level2.size)
-                    return -1;
-
-                if (tag2.id == EBML_TAG_Timecode) {
-                    uint64_t tc = ebml_parse_fixed_uint(level2.base + tag2.consumed, tag2.length);
-
-                    if (b->timecode_shift + tc <= b->timecode_last)
-                        b->timecode_shift = b->timecode_last + 1 - tc;
-                    b->timecode_last = tc += b->timecode_shift;
-
-                    /* replace the contents of this tag with the new value */
-                    memcpy(cluster.base, tagbuf.base, level2.base + 1 - tagbuf.base);
-
-                    size_t copied = level2.base + 1 - tagbuf.base;
-                    cluster.base[copied++] = 0x88;  /* length = 8 [1 octet] */
-                    for (size_t i = 0; i < 8; i++)
-                        cluster.base[copied++] = tc >> (56 - 8 * i);
-
-                    size_t tag_size = tag2.consumed + tag2.length;
-                    memcpy(cluster.base + copied, level2.base + tag_size, level2.size - tag_size);
-                    cluster.size = level2.base + level2.size - tag_size - tagbuf.base + 10;
-                    break;  /* there's only one timecode */
-                }
-
-                level2 = ebml_buffer_advance(level2, tag2.consumed + tag2.length);
+            if (ebml_adjust_timecode(tagbuf, &cluster, &b->timecode_shift, &b->timecode_last)) {
+                delete[] cluster.base;
+                return -1;
             }
 
             b->saw_clusters = true;
@@ -354,7 +373,7 @@ int webm_broadcast_send(struct webm_broadcast_t *b, const uint8_t *data, size_t 
             delete[] cluster.base;
         }
 
-        /* also skip stuff in between and after clusters (cueing data, attacments, ...) */
+        /* also skip stuff in between and after clusters (cueing data, attachments, ...) */
         else if (!b->saw_clusters) {
             b->tracks.insert(b->tracks.end(), tagbuf.base, tagbuf.base + tagbuf.size);
             for (auto &c : b->callbacks)
