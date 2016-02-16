@@ -1,7 +1,15 @@
-// $CXX -std=c++11 webmdump.cc -pthread -o webmdump -Wall -Wextra -Werror
-#include "io-main.h"
-#include "../buffer.h"
-#include "../binary.h"
+// $CXX -std=c++11 webmdump.cc -o webmdump -Wall -Wextra -Werror
+#include <errno.h>
+#include <stdio.h>
+#include <signal.h>
+
+#include "io.h"
+#include "ebml/buffer.h"
+#include "ebml/binary.h"
+
+#ifndef PORT
+#define PORT 12345
+#endif
 
 
 static const char * ebml_tag_name(const struct ebml_tag t)
@@ -30,13 +38,13 @@ static const char * ebml_tag_name(const struct ebml_tag t)
 }
 
 
+static int next_protocol_id = 0;
 struct protocol : aio::protocol
 {
-    const  int  id;
-    static int _id;
+    const int id;
     std::string buffer;
 
-    protocol(aio::transport *t) : aio::protocol(t), id(_id++)
+    protocol(aio::transport *t) : aio::protocol(t), id(next_protocol_id++)
     {
         printf("<%d> +++\n", id);
     }
@@ -81,10 +89,32 @@ struct protocol : aio::protocol
 };
 
 
-int protocol::_id = 0;
+static aio::evloop loop;
+
+
+static void sigcatch(int)
+{
+    loop.stop();
+    signal(SIGINT, SIG_DFL);
+}
 
 
 int main(void)
 {
-    return aio_main::run_server([](aio::transport *t) { return new protocol(t); });
+    signal(SIGINT, &sigcatch);
+
+    fprintf(stderr, "[-] 127.0.0.1:%d\n", PORT);
+    aio::server server(&loop, [](aio::transport *t) { return new protocol(t); }, 0, PORT);
+
+    if (!server.ok) {
+        fprintf(stderr, "[%d] could not create a server: %s\n", errno, strerror(errno));
+        return 1;
+    }
+
+    if (loop.run()) {
+        fprintf(stderr, "[%d] loop terminated: %s\n", errno, strerror(errno));
+        return 1;
+    }
+
+    return 0;
 }
