@@ -3,7 +3,6 @@ import signal
 import asyncio
 import weakref
 import itertools
-import contextlib
 
 from .c import ffi
 from .c.lib import *
