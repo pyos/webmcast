@@ -14,81 +14,87 @@
  * before that keyframe, while also not referencing anything itself. */
 static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_buffer_dyn *out)
 {
-    struct ebml_tag cluster = ebml_parse_tag(buffer);
-
-    if (cluster.id != EBML_TAG_Cluster || cluster.consumed + cluster.length > buffer.size)
+    struct ebml_tag lv1 = ebml_parse_tag(buffer);
+    if (lv1.id != EBML_TAG_Cluster)
         return -1;
 
-    uint64_t found_keyframe = 0;  /* 1 bit per track (up to 64) */
-    uint64_t seen_tracks = 0;
+    unsigned long long found_keyframe = 0;  // 1 bit per track (up to 64)
+    unsigned long long seen_tracks = 0;
 
-    if (ebml_buffer_dyn_concat(out, ebml_view(buffer.data, cluster.consumed)))
+    if (ebml_buffer_dyn_concat(out, ebml_view(buffer.data, lv1.consumed)))
         return -1;
 
-    for (buffer = ebml_tag_contents(buffer, cluster); buffer.size;) {
-        struct ebml_tag tag = ebml_parse_tag(buffer);
-
-        if (!tag.consumed || tag.consumed + tag.length > buffer.size)
+    for (buffer = ebml_tag_contents(buffer, lv1); buffer.size;) {
+        struct ebml_tag lv2 = ebml_parse_tag(buffer);
+        if (!lv2.consumed)
             return -1;
 
-        if (tag.id == EBML_TAG_SimpleBlock) {
-            struct ebml_uint track = ebml_parse_uint(ebml_buffer_shift(buffer, tag.consumed), 0);
-
-            if (!track.consumed || tag.length < track.consumed + 3 || track.value >= 64)
-                return -1;
-
-            seen_tracks |= 1ull << track.value;
-
-            if (!(found_keyframe & (1ull << track.value))) {
-                if (!(buffer.data[tag.consumed + track.consumed + 2] & 0x80))
-                    goto skip_tag;
-
-                found_keyframe |= 1 << track.value;
-            }
-        }
-
-        else if (tag.id == EBML_TAG_BlockGroup) {
-            /* a `BlockGroup` actually contains only a single `Block`. it does
-               have some additional tags with metadata, though. we're looking
-               for one either w/o a `ReferenceBlock`, or with a zeroed one. */
-            struct ebml_uint track = { 0, 0 };
-            uint64_t refblock = 0;
-
-            for (struct ebml_buffer sdata = ebml_tag_contents(buffer, tag); sdata.size;) {
-                struct ebml_tag tag = ebml_parse_tag(sdata);
-                if (!tag.consumed)
+        switch (lv2.id) {
+            case EBML_TAG_Timecode:
+            copy_tag:
+                if (ebml_buffer_dyn_concat(out, ebml_view(buffer.data, lv2.consumed + lv2.length)))
                     return -1;
 
-                if (tag.id == EBML_TAG_Block)
-                    track = ebml_parse_uint(ebml_buffer_shift(sdata, tag.consumed), 0);
+            case EBML_TAG_PrevSize:
+                break;
 
-                if (tag.id == EBML_TAG_ReferenceBlock)
-                    refblock = ebml_parse_fixed_uint(ebml_tag_contents(sdata, tag));
+            case EBML_TAG_SimpleBlock: {
+                struct ebml_uint track = ebml_parse_uint(ebml_tag_contents(buffer, lv2), 0);
+                if (!track.consumed || track.value >= 64 || lv2.length < track.consumed + 3)
+                    return -1;
 
-                sdata = ebml_buffer_shift(sdata, tag.consumed + tag.length);
+                seen_tracks |= 1ull << track.value;
+                if (found_keyframe & (1ull << track.value))
+                    goto copy_tag;
+                if (!(buffer.data[lv2.consumed + track.consumed + 2] & 0x80))
+                    break;
+                found_keyframe |= 1 << track.value;
+                goto copy_tag;
             }
 
-            if (!track.consumed || track.value >= 64)
-                return -1;
+            case EBML_TAG_BlockGroup: {
+                // there's actually only one Block in a BlockGroup
+                struct ebml_uint track = { 0, 0 };
+                unsigned long long refblock = 0;
 
-            seen_tracks |= 1ull << track.value;
+                for (struct ebml_buffer grp = ebml_tag_contents(buffer, lv2); grp.size;) {
+                    struct ebml_tag lv3 = ebml_parse_tag(grp);
+                    if (!lv3.consumed)
+                        return -1;
 
-            if (refblock != 0 && !(found_keyframe & (1ull << track.value)))
-                goto skip_tag;
+                    switch (lv3.id) {
+                        case EBML_TAG_Block:
+                            track = ebml_parse_uint(ebml_tag_contents(grp, lv3), 0);
+                            break;
 
-            found_keyframe |= 1ull << track.value;
+                        case EBML_TAG_ReferenceBlock:
+                            refblock = ebml_parse_fixed_uint(ebml_tag_contents(grp, lv3));
+                            break;
+                    }
+
+                    grp = ebml_buffer_shift(grp, lv3.consumed + lv3.length);
+                }
+
+                if (!track.consumed || track.value >= 64)
+                    return -1;
+
+                seen_tracks |= 1ull << track.value;
+                if (refblock && !(found_keyframe & (1ull << track.value)))
+                    break;
+                found_keyframe |= 1ull << track.value;
+                goto copy_tag;
+            }
+
+            default: return -1;
         }
 
-        if (ebml_buffer_dyn_concat(out, ebml_view(buffer.data, tag.consumed + tag.length)))
-            return -1;
-
-        skip_tag: buffer = ebml_buffer_shift(buffer, tag.consumed + tag.length);
+        buffer = ebml_buffer_shift(buffer, lv2.consumed + lv2.length);
     }
 
-    cluster.length = out->size - cluster.consumed;
-    /* have to recode cluster's length. 4 is the length of tag's id. */
-    size_t space = cluster.consumed - 4;
-    ebml_write_fixed_uint_at(out->data + 4, cluster.length | 1ull << (7 * space), space);
+    lv1.length = out->size - lv1.consumed;
+    // have to recode Cluster's length. 4 is the length of tag's id.
+    size_t space = lv1.consumed - 4;
+    ebml_write_fixed_uint_at(out->data + 4, lv1.length | 1ull << (7 * space), space);
     return found_keyframe != seen_tracks;
 }
 
@@ -103,48 +109,32 @@ static int ebml_strip_reference_frames(struct ebml_buffer buffer, struct ebml_bu
  * choose to switch a client to a different segment, we need to make sure timecodes
  * do not decrease. */
 static int ebml_adjust_timecode(struct ebml_buffer buffer, struct ebml_buffer_dyn *out,
-                                uint64_t *shift, uint64_t *minimum)
+                                unsigned long long *shift, unsigned long long *minimum)
 {
-    struct ebml_buffer start = buffer;
-    struct ebml_tag cluster = ebml_parse_tag(buffer);
-
-    if (cluster.id != EBML_TAG_Cluster || cluster.consumed + cluster.length > buffer.size)
+    struct ebml_tag lv1 = ebml_parse_tag(buffer);
+    if (lv1.id != EBML_TAG_Cluster)
+        return -1;
+    buffer = ebml_tag_contents(buffer, lv1);
+    // https://matroska.org/technical/order/index.html
+    // >the Cluster Timecode must be the first element in the Cluster
+    struct ebml_tag lv2 = ebml_parse_tag(buffer);
+    if (lv2.id != EBML_TAG_Timecode)
         return -1;
 
-    for (buffer = ebml_tag_contents(buffer, cluster); buffer.size;)
-    {
-        struct ebml_tag tag = ebml_parse_tag(buffer);
+    unsigned long long tc = ebml_parse_fixed_uint(ebml_tag_contents(buffer, lv2));
+    if (*shift + tc < *minimum)
+        *shift = *minimum - tc;
+    *minimum = tc += *shift;
 
-        if (!tag.consumed || tag.consumed + tag.length > buffer.size)
-            return -1;
+    if (!*shift)
+        return 0;
 
-        if (tag.id == EBML_TAG_Timecode) {
-            uint64_t tc = ebml_parse_fixed_uint(ebml_tag_contents(buffer, tag));
-
-            if (*shift + tc < *minimum)
-                *shift = *minimum - tc;
-            *minimum = tc += *shift;
-
-            if (*shift) {
-                struct ebml_buffer head = ebml_view(start.data + cluster.consumed,
-                                                    buffer.data - start.data - cluster.consumed);
-                struct ebml_buffer tail = ebml_buffer_shift(buffer, tag.consumed + tag.length);
-                /* there's only one timecode in a cluster. this is it. */
-                cluster.length += 8 - tag.length;
-                if (ebml_write_tag(out, cluster)
-                ||  ebml_buffer_dyn_concat(out, head)
-                ||  ebml_write_tag(out, (struct ebml_tag) { 0, 8, EBML_TAG_Timecode })
-                ||  ebml_write_fixed_uint(out, tc, 8)
-                ||  ebml_buffer_dyn_concat(out, tail))
-                    return -1;
-            }
-            return 0;
-        }
-
-        buffer = ebml_buffer_shift(buffer, tag.consumed + tag.length);
-    }
-
-    return -1;  /* each cluster *must* contain a timecode */
+    lv1.length += 8 + 1 + 1 - lv2.length - lv2.consumed;
+    return ebml_write_tag(out, lv1) ? -1
+         : ebml_write_tag(out, (struct ebml_tag) { 0, EBML_TAG_Timecode, 8 }) ? -1
+         : ebml_write_fixed_uint(out, tc, 8) ? -1
+         : ebml_buffer_dyn_concat(out, ebml_buffer_shift(buffer, lv2.consumed + lv2.length)) ? -1
+         : 0;
 }
 
 

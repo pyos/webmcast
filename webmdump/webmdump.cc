@@ -1,4 +1,4 @@
-// $CXX -std=c++11 webmdump.cc -o webmdump -Wall -Wextra -Werror
+// $CXX -std=c++11 webmdump.cc -o webmdump -Wall -Wextra -Wno-unused-function
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
@@ -17,7 +17,6 @@ static const char * ebml_tag_name(const struct ebml_tag t)
     switch (t.id) {
         case EBML_TAG_EBML:           return "EBML";
         case EBML_TAG_Void:           return "Void";
-        case EBML_TAG_CRC32:          return "CRC32";
         case EBML_TAG_Segment:        return "Segment";
         case EBML_TAG_SeekHead:       return "SeekHead";
         case EBML_TAG_Info:           return "Info";
@@ -53,7 +52,7 @@ struct protocol : aio::protocol
     {
         if (buffer.size()) {
             struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
-            struct ebml_tag tag = ebml_parse_tag(buf);
+            struct ebml_tag tag = ebml_parse_tag_incomplete(buf);
             if (!tag.consumed)
                 printf("<%d> junk at end of stream\n", id);
             else
@@ -69,7 +68,7 @@ struct protocol : aio::protocol
         struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
 
         while (1) {
-            struct ebml_tag tag = ebml_parse_tag(buf);
+            struct ebml_tag tag = ebml_parse_tag_incomplete(buf);
             if (!tag.consumed)
                 break;
 
