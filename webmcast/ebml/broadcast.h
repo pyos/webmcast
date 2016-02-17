@@ -129,7 +129,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 return -1;
 
             for EACH_CALLBACK(c, cast->recvs)
-                c->write(c->data, buf.data, buf.size, 1);
+                c->had_keyframe = !c->write(c->data, buf.data, buf.size, 1);
         }
 
         ebml_buffer_dyn_shift(&cast->buffer, buf.size);
