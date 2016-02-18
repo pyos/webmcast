@@ -51,9 +51,10 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     collectors = weakref.WeakKeyDictionary()):
     if req.path == '/':
         req.push('GET', '/static/css/uikit.min.css', req.accept_headers)
+        req.push('GET', '/static/css/layout.css',    req.accept_headers)
         req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
         req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
-        return await req.respond_with_static('index.html')
+        return await req.respond_with_template(200, [], 'index.html')
 
     if req.path.startswith('/static/'):
         return await req.respond_with_static(req.path[8:])
@@ -67,7 +68,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                 try:
                     collectors.pop(stream).cancel()
                 except KeyError:
-                    return await req.respond_with_error(403, [], 'stream id already taken')
+                    return await req.respond_with_error(403, [], 'Stream ID already taken.')
             else:
                 stream = streams[stream_id] = Broadcast(loop=req.conn.loop)
             try:
@@ -76,7 +77,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     if chunk == b'':
                         return await req.respond(204, [], b'')
                     if stream.send(chunk):
-                        return await req.respond_with_error(400, [], 'unacceptable data')
+                        return await req.respond_with_error(400, [], 'Unacceptable data.')
             finally:
                 collectors[stream] = asyncio.ensure_future(
                     stream.stop_later(10, req.conn.loop), loop=req.conn.loop)
@@ -84,7 +85,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             try:
                 stream = streams[stream_id]
             except KeyError:
-                return await req.respond_with_error(404, [], 'this stream is offline')
+                return await req.respond_with_error(404, [], 'This stream is offline.')
 
             queue = cno.Channel(loop=req.conn.loop)
             writer = asyncio.ensure_future(stream.attach(queue), loop=req.conn.loop)
@@ -94,6 +95,6 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             finally:
                 writer.cancel()
 
-        return await req.respond_with_error(405, [], 'streams can be GET or POSTed')
+        return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
 
-    return await req.respond_with_error(404, [], 'not found')
+    return await req.respond_with_error(404, [], 'This page is far away from anywhere.')

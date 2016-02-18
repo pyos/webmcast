@@ -2,13 +2,15 @@ import os
 import time
 import zlib
 import asyncio
+import functools
 import mimetypes
 import posixpath
 from urllib.parse import unquote
 
 import cno
+import jinja2
 
-from . import static
+from . import static, templates
 
 
 async def _read_file_to_queue(fd, queue):
@@ -45,7 +47,17 @@ def _rfc1123(ts):
     )
 
 
+tpl = jinja2.Environment()
+tpl.loader        = jinja2.FileSystemLoader(next(iter(templates.__path__)))
+tpl.autoescape    = True
+tpl.trim_blocks   = True
+tpl.lstrip_blocks = True
+
+
 class Request (cno.Request):
+    def render(self, _name, **kwargs):
+        return tpl.get_template(_name).render(request=self, **kwargs)
+
     async def respond_with_gzip(self, code, headers, data):
         for k, v in self.accept_headers:
             if k == 'accept-encoding' and 'gzip' in v:
@@ -61,17 +73,26 @@ class Request (cno.Request):
         finally:
             writer.cancel()
 
-    async def respond_with_error(self, code, headers, description):
+    async def respond_with_template(self, code, headers, name, **kwargs):
+        await self.respond_with_gzip(code, headers, self.render(name, **kwargs).encode('utf-8'))
+
+    async def respond_with_error(self, code, headers, message, **kwargs):
+        headers = headers + [('cache-control', 'no-cache')]
         try:
-            await self.respond_with_gzip(code, headers + [('cache-control', 'no-cache')],
-                description.encode('utf-8'))
+            payload = self.render('error.html', code=code, message=message, **kwargs)
+        except Exception as e:
+            loop.call_exception_handler({'message': 'error while rendering error page',
+                                         'exception': err, 'protocol': self.conn})
+            payload = 'error {}: {}'.format(code, message)
+        try:
+            await self.respond_with_gzip(code, headers, payload.encode('utf-8'))
         except ConnectionError:
             self.cancel()
 
     async def respond_with_static(self, path, headers = [], cacheable = True,
                                   root = next(iter(static.__path__))):
         if self.method not in ('GET', 'HEAD'):
-            return await self.respond_with_error(405, [], 'this resource is static')
+            return await self.respond_with_error(405, [], 'This resource is static.')
         # i'd serve everything as application/octet-stream, but then browsers
         # refuse to use these files as stylesheets/scripts.
         mime = mimetypes.guess_type(path, False)[0] or 'application/octet-stream'
@@ -83,7 +104,7 @@ class Request (cno.Request):
                  ('cache-control', 'private, max-age=31536000'),
                  ('content-type', mime)] if cacheable else [('content-type', mime)])
         except IOError:
-            return await self.respond_with_error(404, [], 'resource not found')
+            return await self.respond_with_error(404, [], 'Resource not found.')
         ch = cno.Channel(1, loop=self.conn.loop)
         writer = asyncio.ensure_future(_read_file_to_queue(fd, ch), loop=self.conn.loop)
         try:
@@ -106,5 +127,5 @@ async def serve(loop, root, *args, **kwargs):
         except Exception as err:
             loop.call_exception_handler({'message': 'error in request handler',
                                          'exception': err, 'protocol': req.conn})
-            await req.respond_with_error(500, [], 'exception')
+            await req.respond_with_error(500, [], 'Exception.', err=err)
     return await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)
