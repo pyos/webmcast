@@ -51,7 +51,7 @@ To start the server:
 python -m webmcast.server
 ```
 
-To start a stream, send a WebM to `/stream_name.webm` over an HTTP POST request:
+To start a stream, send a WebM to `/stream/<name>` over an HTTP POST request:
 
 ```bash
 # When streaming from a file, don't forget `-re` so that ffmpeg
@@ -60,11 +60,10 @@ To start a stream, send a WebM to `/stream_name.webm` over an HTTP POST request:
 ffmpeg ... -c:v vp8 -keyint_min 60 -g 60 \
            -deadline realtime -static-thresh 0 \
            -speed 6 -max-intra-rate 300 -b:v 2000k \
-           -f webm http://127.0.0.1:8000/stream_name.webm
+           -f webm http://127.0.0.1:8000/stream/test
 ```
 
-To view the stream, open either `/stream_name` in a browser
-or `/stream_name.webm` in a player.
+To view the stream, open `/stream/<name>` in a browser or a player.
 
 ### The Reality (alt. name: "Known Issues")
 
