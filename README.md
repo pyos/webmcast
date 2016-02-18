@@ -48,7 +48,7 @@ python mkffi.py
 To start the server:
 
 ```bash
-python -m webmcast.server
+python -m webmcast
 ```
 
 To start a stream, send a WebM to `/stream/<name>` over an HTTP POST request:

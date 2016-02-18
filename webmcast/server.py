@@ -1,10 +1,8 @@
 import asyncio
 import weakref
-import itertools
 
 import cno
 
-from . import stdhttp
 from .ebml import ffi, lib
 
 
@@ -98,8 +96,3 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             return await req.respond_with_error(405, [], 'streams can be GET or POSTed')
 
     return await req.respond_with_error(404, [], 'not found')
-
-
-print('http://127.0.0.1:8000/')
-loop = asyncio.get_event_loop()
-loop.run_until_complete(stdhttp.main(loop, root, '', 8000))
