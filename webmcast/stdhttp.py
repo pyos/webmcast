@@ -1,48 +1,59 @@
 import os
-import sys
+import time
 import zlib
 import asyncio
 import mimetypes
 import posixpath
+from urllib.parse import unquote
 
 import cno
 
-from urllib.parse import unquote
 from . import static
 
 
-async def _read_file_to_queue(fd, ch):
+async def _read_file_to_queue(fd, queue):
     try:
         while True:
-            data = fd.read(8196)
+            data = fd.read(8192)
             if not data:
                 break
-            await ch.put(data)
+            await queue.put(data)
     finally:
-        ch.close()
-        fd.close()
+        queue.close()
 
 
-async def _compress_into_queue(data, ch):
-    co = zlib.compressobj(wbits=31)
-    if isinstance(data, cno.Channel):
-        async for it in data:
-            ch.put_nowait(co.compress(it))
-    else:
-        ch.put_nowait(co.compress(data))
-    ch.put_nowait(co.flush())
-    ch.close()
+async def _compress_into_queue(data, queue):
+    try:
+        gz = zlib.compressobj(wbits=31)
+        if isinstance(data, cno.Channel):
+            async for chunk in data:
+                await queue.put(gz.compress(chunk))
+        else:
+            await queue.put(gz.compress(data))
+        await queue.put(gz.flush())
+    finally:
+        queue.close()
+
+
+def _rfc1123(ts):
+    ts = time.gmtime(ts)
+    return '%s, %02d %s %04d %02d:%02d:%02d GMT' % (
+        ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')[ts.tm_wday], ts.tm_mday,
+        ('---', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[ts.tm_mon],
+        ts.tm_year, ts.tm_hour, ts.tm_min, ts.tm_sec
+    )
 
 
 class Request (cno.Request):
     async def respond_with_gzip(self, code, headers, data):
-        for k, v in self.headers:
+        for k, v in self.accept_headers:
             if k == 'accept-encoding' and 'gzip' in v:
                 break
         else:
             return await self.respond(code, headers, data)
 
-        headers.append(('content-encoding', 'gzip'))
+        headers = headers + [('content-encoding', 'gzip')]
         ch = cno.Channel(loop=self.conn.loop)
         writer = asyncio.ensure_future(_compress_into_queue(data, ch), loop=self.conn.loop)
         try:
@@ -51,49 +62,49 @@ class Request (cno.Request):
             writer.cancel()
 
     async def respond_with_error(self, code, headers, description):
-        headers.append(('cache-control', 'no-cache'))
         try:
-            await self.respond_with_gzip(code, headers, description.encode('utf-8'))
+            await self.respond_with_gzip(code, headers + [('cache-control', 'no-cache')],
+                description.encode('utf-8'))
         except ConnectionError:
             self.cancel()
 
-    async def respond_with_static(self, path, headers = [], root = next(iter(static.__path__))):
+    async def respond_with_static(self, path, headers = [], cacheable = True,
+                                  root = next(iter(static.__path__))):
         if self.method not in ('GET', 'HEAD'):
             return await self.respond_with_error(405, [], 'this resource is static')
-
         # i'd serve everything as application/octet-stream, but then browsers
         # refuse to use these files as stylesheets/scripts.
         mime = mimetypes.guess_type(path, False)[0] or 'application/octet-stream'
         try:
             # `path` expected to be in normal form (no `.`/`..`)
-            fd = open(os.path.join(root, path), 'rb', buffering=0)
+            fd = open(os.path.join(root, path), 'rb', buffering=8192)
+            headers = headers + (
+                [('last-modified', _rfc1123(os.stat(fd.fileno()).st_mtime)),
+                 ('cache-control', 'private, max-age=31536000'),
+                 ('content-type', mime)] if cacheable else [('content-type', mime)])
         except IOError:
             return await self.respond_with_error(404, [], 'resource not found')
-
         ch = cno.Channel(1, loop=self.conn.loop)
         writer = asyncio.ensure_future(_read_file_to_queue(fd, ch), loop=self.conn.loop)
         try:
-            await self.respond_with_gzip(200, [('content-type', mime)] + headers, ch)
+            await self.respond_with_gzip(200, headers, ch)
         finally:
             writer.cancel()
+            fd.close()
 
 
-async def main(loop, root, *args, **kwargs):
+async def serve(loop, root, *args, **kwargs):
     async def handle(req):
         req.__class__ = Request
-        req.fullpath = req.path
         req.path, _, req.query = req.path.partition('?')
-        req.path = posixpath.normpath(unquote(req.path))
+        req.path = posixpath.normpath('///' + unquote(req.path))
+        req.accept_headers = [(k, v) for k, v in req.headers if k.startswith('accept')]
         try:
             await root(req)
         except asyncio.CancelledError:
             raise
         except Exception as err:
-            sys.excepthook(err.__class__, err, err.__traceback__)
+            loop.call_exception_handler({'message': 'error in request handler',
+                                         'exception': err, 'protocol': req.conn})
             await req.respond_with_error(500, [], 'exception')
-
-    http = await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)
-    try:
-        await asyncio.Future(loop=loop)
-    finally:
-        http.close()
+    return await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)

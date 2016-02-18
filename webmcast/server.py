@@ -20,9 +20,6 @@ class Broadcast (asyncio.Event):
     def __del__(self):
         lib.broadcast_stop(self.obj)
 
-    def stop(self):
-        self.set()
-
     def send(self, chunk):
         return lib.broadcast_send(self.obj, ffi.new('uint8_t[]', chunk), len(chunk))
 
@@ -40,27 +37,33 @@ class Broadcast (asyncio.Event):
         finally:
             lib.broadcast_disconnect(self.obj, slot)
 
+    def stop(self):
+        self.set()
+
     async def stop_later(self, timeout, loop=None):
         # can't just `return loop.call_later(timeout, self.stop)` because that handle
         # would reference the object, preventing it from being collected.
         await asyncio.sleep(timeout, loop=loop)
-        self.stop()
+        self.set()
 
 
 async def root(req, streams = weakref.WeakValueDictionary(),
                     collectors = weakref.WeakKeyDictionary()):
     if req.path == '/':
+        req.push('GET', '/static/css/uikit.min.css', req.accept_headers)
+        req.push('GET', '/static/css/index.css',     req.accept_headers)
+        req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
+        req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
+        req.push('GET', '/static/js/index.js',       req.accept_headers)
         return await req.respond_with_static('index.html')
 
     if req.path.startswith('/static/'):
         return await req.respond_with_static(req.path[8:])
 
-    if req.path.startswith('/stream/'):
+    if req.path.startswith('/stream/') and req.path.find('/', 8) == -1:
         stream_id = req.path[8:]
 
-        if '/' in stream_id:
-            return await req.respond_with_error(404, [], 'not found')
-        elif req.method == 'POST':
+        if req.method == 'POST':
             if stream_id in streams:
                 stream = streams[stream_id]
                 try:
@@ -92,7 +95,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                                                ('cache-control', 'no-cache')], queue)
             finally:
                 writer.cancel()
-        else:
-            return await req.respond_with_error(405, [], 'streams can be GET or POSTed')
+
+        return await req.respond_with_error(405, [], 'streams can be GET or POSTed')
 
     return await req.respond_with_error(404, [], 'not found')
