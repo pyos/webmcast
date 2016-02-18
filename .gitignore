@@ -1,3 +1,3 @@
-/webmcast/c.*
+/webmcast/ebml.*
 /webmdump/webmdump
 __pycache__

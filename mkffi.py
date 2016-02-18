@@ -5,7 +5,7 @@ import subprocess
 with open('webmcast/ebml/ffi.h') as ebml:
     ffi = cffi.FFI()
     ffi.set_source(
-        'webmcast.c', '''
+        'webmcast.ebml', '''
             #include "ebml/ffi.h"
             #include "ebml/buffer.h"
             #include "ebml/binary.h"

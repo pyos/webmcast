@@ -5,7 +5,7 @@ import itertools
 import cno
 
 from . import stdhttp
-from .c import ffi, lib
+from .ebml import ffi, lib
 
 
 @ffi.def_extern(error=-1)
@@ -49,8 +49,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
 
         if '/' in stream_id:
             return await req.respond_with_error(404, [], 'not found')
-
-        if req.method == 'POST':
+        elif req.method == 'POST':
             if stream_id in streams:
                 try:
                     collectors.pop(stream_id).cancel()
@@ -58,12 +57,12 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     return await req.respond_with_error(403, [], 'stream id already taken')
                 stream = streams[stream_id]
             else:
-                streams[stream_id] = stream = Broadcast(loop=req.conn.loop)
+                stream = streams[stream_id] = Broadcast(loop=req.conn.loop)
             try:
                 while True:
                     chunk = await req.payload.read(16384)
                     if chunk == b'':
-                        break
+                        return await req.respond(204, [], b'')
                     if stream.send(chunk):
                         return await req.respond_with_error(400, [], 'unacceptable data')
             finally:
@@ -71,34 +70,33 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     await asyncio.sleep(10, loop=req.conn.loop)
                     stream.stop()
                 collectors[stream_id] = asyncio.ensure_future(collect(), loop=req.conn.loop)
-            return await req.respond(204, [], b'')
-
-        try:
-            stream = streams[stream_id]
-        except KeyError:
-            return await req.respond_with_error(404, [], 'this stream is offline')
-
-        queue = cno.Channel(loop=req.conn.loop)
-
-        async def writer():
-            handle = stream.connect(queue)
+        elif req.method in ('GET', 'HEAD'):
             try:
-                # XXX we can switch streams in the middle of the video
-                #     by disconnecting the queue and reconnecting it
-                #     with skip_headers=True. (that would make the server
-                #     start a new webm segment) this might be useful
-                #     for adaptive streaming.
-                await stream.wait()
-            finally:
-                stream.disconnect(handle)
-                queue.close()
+                stream = streams[stream_id]
+            except KeyError:
+                return await req.respond_with_error(404, [], 'this stream is offline')
 
-        writer = asyncio.ensure_future(writer(), loop=req.conn.loop)
-        try:
-            return await req.respond(200, [('content-type', 'video/webm'),
-                                           ('cache-control', 'no-cache')], queue)
-        finally:
-            writer.cancel()
+            queue = cno.Channel(loop=req.conn.loop)
+            @stdhttp.spawn_inplace(req.conn.loop)
+            async def writer():
+                handle = stream.connect(queue)
+                try:
+                    # XXX we can switch streams in the middle of the video
+                    #     by disconnecting the queue and reconnecting it
+                    #     with skip_headers=True. (that would make the server
+                    #     start a new webm segment) this might be useful
+                    #     for adaptive streaming.
+                    await stream.wait()
+                finally:
+                    stream.disconnect(handle)
+                    queue.close()
+            try:
+                return await req.respond(200, [('content-type', 'video/webm'),
+                                               ('cache-control', 'no-cache')], queue)
+            finally:
+                writer.cancel()
+        else:
+            return await req.respond_with_error(405, [], 'streams can be GET or POSTed')
 
     return await req.respond_with_error(404, [], 'not found')
 
