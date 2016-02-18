@@ -51,10 +51,8 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     collectors = weakref.WeakKeyDictionary()):
     if req.path == '/':
         req.push('GET', '/static/css/uikit.min.css', req.accept_headers)
-        req.push('GET', '/static/css/index.css',     req.accept_headers)
         req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
         req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
-        req.push('GET', '/static/js/index.js',       req.accept_headers)
         return await req.respond_with_static('index.html')
 
     if req.path.startswith('/static/'):
