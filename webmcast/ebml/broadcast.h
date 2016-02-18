@@ -90,6 +90,11 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 ebml_buffer_dyn_clear(&cast->tracks);
 
             case EBML_TAG_Info:
+                if (tag.id == EBML_TAG_Info && ebml_get_timescale(buf) != 1000000ull)
+                    // 1000000 (1 ms) is the default value. using anything else
+                    // will screw with cross-stream synchronization.
+                    return -1;
+
             case EBML_TAG_Tracks:
                 if (ebml_buffer_dyn_concat(&cast->tracks, buf))
                     return -1;

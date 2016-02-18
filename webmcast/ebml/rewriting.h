@@ -4,6 +4,25 @@
 #define EBML_REWRITING_H
 
 
+static unsigned long long ebml_get_timescale(struct ebml_buffer buffer)
+{
+    struct ebml_tag lv1 = ebml_parse_tag(buffer);
+
+    if (lv1.id == EBML_TAG_Info) for (buffer = ebml_tag_contents(buffer, lv1); buffer.size;) {
+        struct ebml_tag lv2 = ebml_parse_tag(buffer);
+        if (!lv2.consumed)
+            return 0;
+
+        if (lv2.id == EBML_TAG_TimecodeScale)
+            return ebml_parse_fixed_uint(ebml_tag_contents(buffer, lv2));
+
+        buffer = ebml_buffer_shift(buffer, lv2.consumed + lv2.length);
+    }
+
+    return 0;
+}
+
+
 /* create a copy of a `Cluster` with all `(Simple)Block`s before the one
  * containing the first keyframe removed, return 1 if the resulting `Cluster`
  * contains no blocks (i.e. there were no keyframes.)
