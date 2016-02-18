@@ -11,8 +11,27 @@ from urllib.parse import unquote
 from . import static
 
 
-def spawn_inplace(loop, *args, **kwargs):
-    return lambda f: asyncio.ensure_future(f(*args, **kwargs), loop=loop)
+async def _read_file_to_queue(fd, ch):
+    try:
+        while True:
+            data = fd.read(8196)
+            if not data:
+                break
+            await ch.put(data)
+    finally:
+        ch.close()
+        fd.close()
+
+
+async def _compress_into_queue(data, ch):
+    co = zlib.compressobj(wbits=31)
+    if isinstance(data, cno.Channel):
+        async for it in data:
+            ch.put_nowait(co.compress(it))
+    else:
+        ch.put_nowait(co.compress(data))
+    ch.put_nowait(co.flush())
+    ch.close()
 
 
 class Request (cno.Request):
@@ -25,16 +44,7 @@ class Request (cno.Request):
 
         headers.append(('content-encoding', 'gzip'))
         ch = cno.Channel(loop=self.conn.loop)
-        @spawn_inplace(self.conn.loop)
-        async def writer():
-            co = zlib.compressobj(wbits=31)
-            if isinstance(data, cno.Channel):
-                async for it in data:
-                    ch.put_nowait(co.compress(it))
-            else:
-                ch.put_nowait(co.compress(data))
-            ch.put_nowait(co.flush())
-            ch.close()
+        writer = asyncio.ensure_future(_compress_into_queue(data, ch), loop=self.conn.loop)
         try:
             return await self.respond(code, headers, ch)
         finally:
@@ -61,17 +71,7 @@ class Request (cno.Request):
             return await self.respond_with_error(404, [], 'resource not found')
 
         ch = cno.Channel(1, loop=self.conn.loop)
-        @spawn_inplace(self.conn.loop)
-        async def writer():
-            try:
-                while True:
-                    data = fd.read(8196)
-                    if not data:
-                        break
-                    await ch.put(data)
-            finally:
-                ch.close()
-                fd.close()
+        writer = asyncio.ensure_future(_read_file_to_queue(fd, ch), loop=self.conn.loop)
         try:
             await self.respond_with_gzip(200, [('content-type', mime)] + headers, ch)
         finally:
