@@ -96,7 +96,7 @@ class Request (cno.Request):
                  ('cache-control', 'private, max-age=31536000'),
                  ('content-type', mime)] if cacheable else [('content-type', mime)])
         except IOError:
-            return await self.respond_with_error(404, [], 'Resource not found.')
+            return await self.respond_with_error(404, [], None)
         ch = cno.Channel(1, loop=self.conn.loop)
         writer = asyncio.ensure_future(_read_file_to_queue(fd, ch), loop=self.conn.loop)
         try:
@@ -119,5 +119,5 @@ async def serve(loop, root, *args, **kwargs):
         except Exception as err:
             loop.call_exception_handler({'message': 'error in request handler',
                                          'exception': err, 'protocol': req.conn})
-            await req.respond_with_error(500, [], 'Exception.')
+            await req.respond_with_error(500, [], 'This is an error-handling message.')
     return await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)

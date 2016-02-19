@@ -61,7 +61,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             code = int(req.path[7:])
         except ValueError:
             return await req.respond_with_error(400, [], 'Error codes are numbers, silly.')
-        return await req.respond_with_error(code, [], 'As you wish.')
+        return await req.respond_with_error(code, [], None)
 
     if req.path.startswith('/static/'):
         return await req.respond_with_static(req.path[8:])
@@ -84,7 +84,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     if chunk == b'':
                         return await req.respond(204, [], b'')
                     if stream.send(chunk):
-                        return await req.respond_with_error(400, [], 'Unacceptable data.')
+                        return await req.respond_with_error(400, [], 'Malformed EBML.')
             finally:
                 collectors[stream] = asyncio.ensure_future(
                     stream.stop_later(10, req.conn.loop), loop=req.conn.loop)
@@ -92,7 +92,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             try:
                 stream = streams[stream_id]
             except KeyError:
-                return await req.respond_with_error(404, [], 'This stream is offline.')
+                return await req.respond_with_error(404, [], None)
 
             queue = cno.Channel(loop=req.conn.loop)
             writer = asyncio.ensure_future(stream.attach(queue), loop=req.conn.loop)
@@ -104,4 +104,4 @@ async def root(req, streams = weakref.WeakValueDictionary(),
 
         return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
 
-    return await req.respond_with_error(404, [], 'This page is far away from anywhere.')
+    return await req.respond_with_error(404, [], None)

@@ -1,5 +1,6 @@
 import os
 import html
+import builtins
 import importlib
 
 
@@ -23,13 +24,12 @@ class Tag:
         return Tag(self._name, self._clsl + [name.replace('_', '-')])
 
     def __call__(self, *items, **kwargs):
+        args = ''.join(' %s' % k.replace('_', '-') if v is None else
+                       ' %s="%s"' % (k.replace('_', '-'), v) for k, v in kwargs.items())
         if self._clsl:
-            kwargs['class'] = ' '.join(self._clsl)
-        if self._name in Tag.VOID:
-            return '<' + self._name + ''.join(' %s="%s"' % k for k in kwargs.items()) + ' />'
-        else:
-            return '<' + self._name + ''.join(' %s="%s"' % k for k in kwargs.items()) + '>' \
-                 + ''.join(flatten(items)) + '</' + self._name + '>'
+            args += ' class="%s"' % ' '.join(self._clsl)
+        return '<' + self._name + args + ' />' if self._name in Tag.VOID else \
+               '<' + self._name + args + '>' + ''.join(flatten(items)) + '</' + self._name + '>'
 
 
 def load(name, cache={}):
@@ -41,7 +41,7 @@ def load(name, cache={}):
     if mtime != real_mtime:
         importlib.reload(mod)
         for maybe_tag in mod.render.__code__.co_names:
-            if maybe_tag not in mod.__dict__:
+            if maybe_tag not in mod.__dict__ and maybe_tag not in builtins.__dict__:
                 mod.__dict__[maybe_tag] = Tag(maybe_tag, [])
         mod.escape = html.escape
         mod.DOCTYPE = '<!doctype html>'
