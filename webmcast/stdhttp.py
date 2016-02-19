@@ -111,6 +111,7 @@ async def serve(loop, root, *args, **kwargs):
         req.__class__ = Request
         req.path, _, req.query = req.path.partition('?')
         req.path = posixpath.normpath('///' + unquote(req.path))
+        req.header_map = dict(req.headers)
         req.accept_headers = [(k, v) for k, v in req.headers if k.startswith('accept')]
         try:
             await root(req)

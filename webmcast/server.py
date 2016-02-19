@@ -54,7 +54,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
         req.push('GET', '/static/css/layout.css',    req.accept_headers)
         req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
         req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
-        return await req.respond_with_template(200, [], 'index')
+        return await req.respond_with_error(501, [], 'There is no UI yet.')
 
     if req.path.startswith('/error/'):
         try:

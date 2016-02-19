@@ -9,7 +9,7 @@ render = lambda request, code, message='': DOCTYPE + html(
     div.uk_flex_item_none.uk_flex.uk_flex_column(
       div.uk_flex_item_1(),
       div.uk_flex_item_none(
-          img(src="/static/img/%s.png" % code) if code in {404} else '',
+          img(src="/static/img/%s.png" % code) if code in set() else '',
           style="width:340px; margin: 60px",
       ),
       div.uk_flex_item_1(),
@@ -24,7 +24,8 @@ render = lambda request, code, message='': DOCTYPE + html(
               405: 'not doing that',
               409: 'gone',
               418: 'i\'m a little teapot',
-              500: 'internal server error' }.get(code, '???'),
+              500: 'internal server error',
+              501: 'not implemented' }.get(code, '???'),
           ),
         ),
         h2({400: 'Malformed EBML.',
@@ -33,8 +34,8 @@ render = lambda request, code, message='': DOCTYPE + html(
             405: 'Streams can only be GET or POSTed.',
             409: 'This world has been erased.',
             418: 'The coffee machine is at udp:192.168.3.15.',
-            500: 'This is an error-handling message.',
-           }.get(code, 'There is nothing special about that code.')
+           }.get(code, 'This is an error-handling message.' if 500 <= code < 600
+                  else 'There is nothing special about that code.')
            if message is None else message),
       ),
       div.uk_flex_item_none(
@@ -46,8 +47,10 @@ render = lambda request, code, message='': DOCTYPE + html(
              418: 'Try buying a donut.',
              500: ['Try ', a.uk_text_danger('submitting a bug report',
                               href='https://github.com/pyos/webmcast'), '.'],
+             501: 'Try waiting a bit.',
            }.get(code, 'Try something else.')
-        ),       ),
+        ),
       ),
+    ),
     error=code),
 )
