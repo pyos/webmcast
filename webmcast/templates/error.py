@@ -28,20 +28,31 @@ render = lambda request, code, message='': DOCTYPE + html(
               501: 'not implemented' }.get(code, '???'),
           ),
         ),
+        div('░░▄▀▄▀▀▀▀▄▀▄░░░░░░░░░░\n'
+            '░░█░░░░░░░░▀▄░░░░░░▄░░\n'
+            '░█░░▀░░▀░░░░░▀▄▄░░█░█░\n'
+            '░█░▄░█▀░▄░░░░░░░▀▀░░█░\n'
+            '░█░░▀▀▀▀░░░░░░░░░░░░█░\n'
+            '░█░░░░░░░░░░░░░░░░░░█░\n'
+            '░█░░░░░░░░░░░░░░░░░░█░\n'
+            '░░█░░▄▄░░▄▄▄▄░░▄▄░░█░░\n'
+            '░░█░▄▀█░▄▀░░█░▄▀█░▄▀░░\n'
+            '░░░▀░░░▀░░░░░▀░░░▀░░░░',
+            style='white-space:pre-line') if code == 404 else
+        h2(message) if message is not None else
         h2({400: 'Malformed EBML.',
             403: 'Invalid stream token.',
-            404: '* Annoying Dog absorbs the page.',
             405: 'Streams can only be GET or POSTed.',
             409: 'This world has been erased.',
             418: 'The coffee machine is at udp:192.168.3.15.',
            }.get(code, 'This is an error-handling message.' if 500 <= code < 600
-                  else 'There is nothing special about that code.')
-           if message is None else message),
+                  else 'There is nothing special about that code.')),
       ),
       div.uk_flex_item_none(
         h3({ 400: 'Try sending something nice instead.',
              403: 'Try not being a dirty hacker.',
-             404: ['Try ', a.uk_text_danger('resetting to the beginning', href='/'), '.'],
+             404: ['* The dog absorbs the page. '
+                   'Try ', a.uk_text_danger('resetting to the beginning', href='/'), '.'],
              405: 'Try a different course of action.',
              409: '<!-- Try giving up your SOUL. -->',
              418: 'Try buying a donut.',
