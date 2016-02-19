@@ -8,7 +8,6 @@ import posixpath
 from urllib.parse import unquote
 
 import cno
-import jinja2
 
 from . import static, templates
 
@@ -47,16 +46,9 @@ def _rfc1123(ts):
     )
 
 
-tpl = jinja2.Environment()
-tpl.loader        = jinja2.FileSystemLoader(next(iter(templates.__path__)))
-tpl.autoescape    = True
-tpl.trim_blocks   = True
-tpl.lstrip_blocks = True
-
-
 class Request (cno.Request):
     def render(self, _name, **kwargs):
-        return tpl.get_template(_name).render(request=self, **kwargs)
+        return templates.load(_name).render(request=self, **kwargs)
 
     async def respond_with_gzip(self, code, headers, data):
         for k, v in self.accept_headers:
@@ -79,10 +71,10 @@ class Request (cno.Request):
     async def respond_with_error(self, code, headers, message, **kwargs):
         headers = headers + [('cache-control', 'no-cache')]
         try:
-            payload = self.render('error.html', code=code, message=message, **kwargs)
+            payload = self.render('error', code=code, message=message, **kwargs)
         except Exception as e:
-            loop.call_exception_handler({'message': 'error while rendering error page',
-                                         'exception': err, 'protocol': self.conn})
+            self.conn.loop.call_exception_handler({'message': 'error while rendering error page',
+                                                   'exception': e, 'protocol': self.conn})
             payload = 'error {}: {}'.format(code, message)
         try:
             await self.respond_with_gzip(code, headers, payload.encode('utf-8'))
@@ -127,5 +119,5 @@ async def serve(loop, root, *args, **kwargs):
         except Exception as err:
             loop.call_exception_handler({'message': 'error in request handler',
                                          'exception': err, 'protocol': req.conn})
-            await req.respond_with_error(500, [], 'Exception.', err=err)
+            await req.respond_with_error(500, [], 'Exception.')
     return await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)

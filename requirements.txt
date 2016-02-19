@@ -1,3 +1,2 @@
 cffi
 git+https://github.com/pyos/libcno
-Jinja2

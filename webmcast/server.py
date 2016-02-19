@@ -54,7 +54,14 @@ async def root(req, streams = weakref.WeakValueDictionary(),
         req.push('GET', '/static/css/layout.css',    req.accept_headers)
         req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
         req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
-        return await req.respond_with_template(200, [], 'index.html')
+        return await req.respond_with_template(200, [], 'index')
+
+    if req.path.startswith('/error/'):
+        try:
+            code = int(req.path[7:])
+        except ValueError:
+            return await req.respond_with_error(400, [], 'Error codes are numbers, silly.')
+        return await req.respond_with_error(code, [], 'As you wish.')
 
     if req.path.startswith('/static/'):
         return await req.respond_with_static(req.path[8:])
