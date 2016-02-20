@@ -43,6 +43,7 @@ enum EBML_TAG_ID  // https://www.matroska.org/technical/specs/index.html
           EBML_TAG_DiscardPadding = 0x75A2L,
       EBML_TAG_Cues           = 0x1C53BB6BL,
       EBML_TAG_Chapters       = 0x1043A770L,
+      EBML_TAG_Tags           = 0x1254C367L,
 };
 
 
@@ -102,10 +103,11 @@ static struct ebml_uint ebml_parse_uint(struct ebml_buffer buf, int keep_marker)
         return (struct ebml_uint) { 0, 0 };
 
     unsigned long long i = ebml_parse_fixed_uint(ebml_view(buf.data, length));
-    if (i == EBML_INDETERMINATE_MARKERS[length - 1])
-        i = EBML_INDETERMINATE;
+    unsigned long long k = i & ~(1ULL << (7 * length));
+    if (k == EBML_INDETERMINATE_MARKERS[length - 1])
+        return (struct ebml_uint) { length, EBML_INDETERMINATE };
 
-    return (struct ebml_uint) { length, keep_marker ? i : i & ~(1ULL << (7 * length)) };
+    return (struct ebml_uint) { length, keep_marker ? i : k };
 }
 
 
@@ -154,10 +156,13 @@ static int ebml_write_fixed_uint(struct ebml_buffer_dyn *b, unsigned long long v
 
 static int ebml_write_uint(struct ebml_buffer_dyn *b, unsigned long long v, int has_marker)
 {
-    size_t size = 0;
+    if (v == EBML_INDETERMINATE)
+        return ebml_write_fixed_uint(b, 0xFFu, 1);
+
+    size_t size = 1;
     while (v >> ((7 + has_marker) * size)) size++;
 
-    if (v && v < EBML_INDETERMINATE && EBML_INDETERMINATE_MARKERS[size - 1] == v)
+    if (EBML_INDETERMINATE_MARKERS[size - 1] == v)
         size++;  /* encode as a longer sequence to avoid placing an indeterminate value */
 
     return ebml_write_fixed_uint(b, has_marker ? v : v | 1ull << (7 * size), size);
