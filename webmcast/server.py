@@ -69,7 +69,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
     if req.path.startswith('/stream/') and req.path.find('/', 8) == -1:
         stream_id = req.path[8:]
 
-        if req.method == 'POST':
+        if req.method == 'POST' or req.method == 'PUT':
             if stream_id in streams:
                 stream = streams[stream_id]
                 try:
