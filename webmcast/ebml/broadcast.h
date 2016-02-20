@@ -241,12 +241,11 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         c->keyframes |= track_mask;
 
                     if (c->keyframes & track_mask) {
-                        if (tc != cast->time_sent || !c->skip_cluster)
+                        if (!c->skip_cluster || tc != cast->time_sent)
                             c->skip_cluster = !c->write(c->data, cluster, sizeof(cluster), 0);
 
-                        if (c->skip_cluster)
-                            if (c->write(c->data, buf.data, buf.size, 0))
-                                c->keyframes &= ~track_mask;
+                        if (!c->skip_cluster || c->write(c->data, buf.data, buf.size, 0))
+                            c->keyframes &= ~track_mask;
                     }
                 }
 
