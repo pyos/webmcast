@@ -6,23 +6,23 @@ An experimental video streaming service.
 
 A generic WebM file looks like this:
 
-![EBML.](https://github.com/pyos/webmcast/raw/resource-fork/README.md/1-webm.png)
+![EBML.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/1-webm.png)
 
 By setting the Segment's length to one of 7 reserved values
 (all of which mean "indeterminate"), it's possible to produce
 an infinite stream.
 
-![Infinite EBML.](https://github.com/pyos/webmcast/raw/resource-fork/README.md/2-webm-indeterminate.png)
+![Infinite EBML.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/2-webm-indeterminate.png)
 
 Let's say a client connects at some point.
 
-![Barely in time for the best part.](https://github.com/pyos/webmcast/raw/resource-fork/README.md/3-client.png)
+![Barely in time for the best part.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/3-client.png)
 
 So we give it the file header and an infinite segment with
 a description of tracks, then start forwarding clusters/blocks starting
 from the (chronologically) next keyframe!
 
-![Oops, sorry, it was dropped.](https://github.com/pyos/webmcast/raw/resource-fork/master/README.md/4-clients-data.png)
+![Oops, sorry, it was dropped.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/4-clients-data.png)
 
 Additionally, a WebM file (even an infinite one) can contain multiple segments.
 These segments will be played one after another if they contain the same tracks,
@@ -30,7 +30,7 @@ so we can spawn a copy of the original stream with a different bitrate, then
 switch the client over by starting a new segment if a slow connection is detected.
 Kind of like adaptive streaming, see?
 
-![It's not the size of a cluster, it's the contents.](https://github.com/pyos/webmcast/raw/resource-fork/README.md/5-many-segments-such-stream.png)
+![It's not the size of a cluster, it's the contents.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/5-many-segments-such-stream.png)
 
 Sounds simple, huh? So simple, in fact, someone probably already
 thought to do that. That's correct! We're
