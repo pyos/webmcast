@@ -140,40 +140,4 @@ static struct ebml_buffer ebml_tag_contents(struct ebml_buffer b, struct ebml_ta
 }
 
 
-static void ebml_write_fixed_uint_at(uint8_t *b, unsigned long long v, size_t size)
-{
-    while (size--) *b++ = v >> (8 * size);
-}
-
-
-static int ebml_write_fixed_uint(struct ebml_buffer_dyn *b, unsigned long long v, size_t s)
-{
-    uint8_t data[s];
-    ebml_write_fixed_uint_at(data, v, s);
-    return ebml_buffer_dyn_concat(b, ebml_view(data, s));
-}
-
-
-static int ebml_write_uint(struct ebml_buffer_dyn *b, unsigned long long v, int has_marker)
-{
-    if (v == EBML_INDETERMINATE)
-        return ebml_write_fixed_uint(b, 0xFFu, 1);
-
-    size_t size = 1;
-    while (v >> ((7 + has_marker) * size)) size++;
-
-    if (EBML_INDETERMINATE_MARKERS[size - 1] == v)
-        size++;  /* encode as a longer sequence to avoid placing an indeterminate value */
-
-    return ebml_write_fixed_uint(b, has_marker ? v : v | 1ull << (7 * size), size);
-}
-
-
-static int ebml_write_tag(struct ebml_buffer_dyn *b, struct ebml_tag v)
-{
-    return ebml_write_uint(b, v.id, 1) ? -1
-         : ebml_write_uint(b, v.length, 0);
-}
-
-
 #endif
