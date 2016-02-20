@@ -1,17 +1,15 @@
+// #include "api.h"
 // #include "buffer.h"
 // #include "binary.h"
 #ifndef EBML_BROADCAST_H
 #define EBML_BROADCAST_H
 
 
-enum _
+enum EBML_CONST
 {
     MAX_TRACK = sizeof(int) * 8 - 2,
     MAX_BUFFER_SIZE = 1024 * 1024,
 };
-
-
-typedef int on_chunk(void *, const uint8_t *, size_t, int force);
 
 
 struct callback
@@ -25,34 +23,13 @@ struct callback
 };
 
 
-struct callback_array
-{
-    struct callback *xs;
-    size_t size;
-    size_t reserve;
-};
-
-
 #define EACH_CALLBACK(var, array) \
     (struct callback *var = &(array).xs[0]; var < &(array).xs[(array).size]; var++)
 
 
-struct broadcast
+int broadcast_start(struct broadcast *cast)
 {
-    struct ebml_buffer_dyn buffer;
-    struct ebml_buffer_dyn header;  // [EBML .. Segment) -- once per webm
-    struct ebml_buffer_dyn tracks;  // [Segment .. Cluster) -- can occur many times
-    struct callback_array recvs;
-    unsigned long long time_shift;
-    unsigned long long time_last;
-    unsigned long long time_recv;
-    unsigned long long time_sent;
-};
-
-
-struct broadcast * broadcast_start(void)
-{
-    return (struct broadcast *) calloc(1, sizeof(struct broadcast));
+    return 0;
 }
 
 
@@ -101,7 +78,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 break;
 
             case EBML_TAG_Segment:
-                cast->time_shift = 0;
+                cast->time.shift = 0;
                 ebml_buffer_dyn_clear(&cast->tracks);
 
             case EBML_TAG_Info:
@@ -166,7 +143,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
 
             case EBML_TAG_Timecode:
                 // timecode = this value + two bytes in the block struct
-                cast->time_recv = ebml_parse_fixed_uint(ebml_tag_contents(buf, tag));
+                cast->time.recv = ebml_parse_fixed_uint(ebml_tag_contents(buf, tag));
                 break;
 
             case EBML_TAG_BlockGroup:
@@ -209,11 +186,11 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 unsigned long long track_mask = 1ull << track.value;
                 unsigned long long blockshift = block.data[track.consumed + 0] << 8
                                               | block.data[track.consumed + 1];
-                unsigned long long tc = cast->time_recv + blockshift;
+                unsigned long long tc = cast->time.recv + blockshift;
 
-                if (cast->time_shift + tc < cast->time_last)
-                    cast->time_shift += cast->time_last - tc;
-                cast->time_last = tc += cast->time_shift;
+                if (cast->time.shift + tc < cast->time.last)
+                    cast->time.shift += cast->time.last - tc;
+                cast->time.last = tc += cast->time.shift;
 
                 tc -= blockshift;  // to avoid rewriting the block itself.
                 uint8_t cluster[] = {  // manually encoded EBML
@@ -231,7 +208,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         c->keyframes |= track_mask;
 
                     if (c->keyframes & track_mask) {
-                        if (!c->skip_cluster || tc != cast->time_sent)
+                        if (!c->skip_cluster || tc != cast->time.sent)
                             c->skip_cluster = !c->write(c->data, cluster, sizeof(cluster), 0);
 
                         if (!c->skip_cluster || c->write(c->data, buf.data, buf.size, 0))
@@ -239,7 +216,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                     }
                 }
 
-                cast->time_sent = tc;
+                cast->time.sent = tc;
                 break;
             }
 
@@ -259,7 +236,6 @@ void broadcast_stop(struct broadcast *cast)
     ebml_buffer_dyn_clear(&cast->header);
     ebml_buffer_dyn_clear(&cast->tracks);
     free(cast->recvs.xs);
-    free(cast);
 }
 
 

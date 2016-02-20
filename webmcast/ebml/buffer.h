@@ -2,25 +2,10 @@
 // #include <stdint.h>
 // #include <stdlib.h>
 // #include <string.h>
+// #include "api.h"
 #ifndef EBML_BUFFER_H
 #define EBML_BUFFER_H
 #define EBML_BUFFER_INCREMENT 4096
-
-
-struct ebml_buffer
-{
-    const uint8_t * data;
-    size_t size;
-};
-
-
-struct ebml_buffer_dyn
-{
-    uint8_t *data;
-    size_t size;
-    size_t offset;
-    size_t reserve;
-};
 
 
 static const struct ebml_buffer     EBML_BUFFER_EMPTY     = {NULL, 0};

@@ -15,7 +15,8 @@ def on_chunk_cb(handle, data, size, force):
 class Broadcast (asyncio.Event):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.obj = lib.broadcast_start()
+        self.obj = ffi.new('struct broadcast *');
+        lib.broadcast_start(self.obj)
 
     def __del__(self):
         lib.broadcast_stop(self.obj)
