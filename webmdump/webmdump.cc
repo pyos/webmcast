@@ -2,14 +2,14 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "io.h"
 #include "ebml/buffer.h"
 #include "ebml/binary.h"
 
-#ifndef PORT
-#define PORT 12345
-#endif
+#include <string>
 
 
 static const char * ebml_tag_name(const struct ebml_tag t)
@@ -37,34 +37,18 @@ static const char * ebml_tag_name(const struct ebml_tag t)
 }
 
 
-static int next_protocol_id = 0;
-struct protocol : aio::protocol
+int main(void)
 {
-    const int id;
     std::string buffer;
 
-    protocol(aio::transport *t) : aio::protocol(t), id(next_protocol_id++)
-    {
-        printf("<%d> +++\n", id);
-    }
+    while (1) {
+        char data[4096];
+        auto i = fread(data, 1, 4096, stdin);
+        if (i == 0)
+            break;
 
-    virtual ~protocol()
-    {
-        if (buffer.size()) {
-            struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
-            struct ebml_tag tag = ebml_parse_tag_incomplete(buf);
-            if (!tag.consumed)
-                printf("<%d> junk at end of stream\n", id);
-            else
-                printf("<%d> incomplete %s [%zu; got %zu]\n", id,
-                    ebml_tag_name(tag), tag.length, buffer.size());
-        }
-        printf("<%d> ---\n", id);
-    }
+        buffer.append(data, i);
 
-    int data_received(const struct aio::stringview data)
-    {
-        buffer.append(data.base, data.size);
         struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
 
         while (1) {
@@ -79,40 +63,19 @@ struct protocol : aio::protocol
             }
 
             buf = ebml_buffer_shift(buf, tag.consumed);
-            printf("<%d> %s [%zu]\n", id, ebml_tag_name(tag), tag.length);
+            printf("%s [%zu]\n", ebml_tag_name(tag), tag.length);
         }
 
         buffer.erase(0, (const char *) buf.data - buffer.data());
-        return 0;
-    }
-};
-
-
-static aio::evloop loop;
-
-
-static void sigcatch(int)
-{
-    loop.stop();
-    signal(SIGINT, SIG_DFL);
-}
-
-
-int main(void)
-{
-    signal(SIGINT, &sigcatch);
-
-    fprintf(stderr, "[-] 127.0.0.1:%d\n", PORT);
-    aio::server server(&loop, [](aio::transport *t) { return new protocol(t); }, 0, PORT);
-
-    if (!server.ok) {
-        fprintf(stderr, "[%d] could not create a server: %s\n", errno, strerror(errno));
-        return 1;
     }
 
-    if (loop.run()) {
-        fprintf(stderr, "[%d] loop terminated: %s\n", errno, strerror(errno));
-        return 1;
+    if (buffer.size()) {
+        struct ebml_buffer buf = { (uint8_t *) buffer.data(), buffer.size() };
+        struct ebml_tag tag = ebml_parse_tag_incomplete(buf);
+        if (!tag.consumed)
+            printf("junk at end of stream\n");
+        else
+            printf("incomplete %s [%zu; got %zu]\n", ebml_tag_name(tag), tag.length, buffer.size());
     }
 
     return 0;
