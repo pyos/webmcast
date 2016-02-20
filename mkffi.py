@@ -9,7 +9,6 @@ with open('webmcast/ebml/ffi.h') as ebml:
             #include "ebml/ffi.h"
             #include "ebml/buffer.h"
             #include "ebml/binary.h"
-            #include "ebml/rewriting.h"
             #include "ebml/broadcast.h"
         ''', include_dirs=['./webmcast']
     )
