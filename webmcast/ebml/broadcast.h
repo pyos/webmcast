@@ -184,7 +184,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 // a timecode followed by flags, among which is a keyframe flag.
                 // a Block (there's actually only one) in a BlockGroups is
                 // almost the same, but without the keyframe flag; instead,
-                // ReferenceBlock is nonzero if this is def not a keyframe.
+                // ReferenceBlock is nonzero if this is a keyframe.
                 if (tag.id == EBML_TAG_BlockGroup) {
                     key   = 1;
                     block = EBML_BUFFER_EMPTY;
