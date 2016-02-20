@@ -1,4 +1,3 @@
-// #include "ffi.h"
 // #include "buffer.h"
 // #include "binary.h"
 #ifndef EBML_BROADCAST_H
@@ -10,6 +9,9 @@ enum _
     MAX_TRACK = sizeof(int) * 8 - 2,
     MAX_BUFFER_SIZE = 1024 * 1024,
 };
+
+
+typedef int on_chunk(void *, const uint8_t *, size_t, int force);
 
 
 struct callback
@@ -65,7 +67,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
         if (!tag.consumed)
             break;
 
-        if (tag.id == EBML_TAG_Segment || tag.id == EBML_TAG_Cluster) {
+        if (tag.id == EBML_TAG_Segment || tag.id == EBML_TAG_Cluster || tag.id == EBML_TAG_Tracks) {
             buf.size = tag.consumed;  /* forward the header, parse the contents */
 
             if (tag.length == EBML_INDETERMINATE && tag.consumed >= 7) {
@@ -124,34 +126,27 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         return -1;
                 }
 
-            case EBML_TAG_Tracks:
+            case EBML_TAG_TrackEntry:
                 // at most MAX_TRACK streams (with ids 0 to MAX_TRACK-1) are allowed.
                 // keyframes are detected for each stream separately.
-                if (tag.id == EBML_TAG_Tracks) {
-                    for (struct ebml_buffer b = ebml_tag_contents(buf, tag); b.size;) {
-                        struct ebml_tag ent = ebml_parse_tag(b);
-                        if (!ent.consumed)
+                if (tag.id == EBML_TAG_TrackEntry) {
+                    for (struct ebml_buffer ent = ebml_tag_contents(buf, tag); ent.size;) {
+                        struct ebml_tag tid = ebml_parse_tag(ent);
+                        if (!tid.consumed)
                             return -1;
 
-                        for (struct ebml_buffer b2 = ebml_tag_contents(b, ent); b2.size;) {
-                            struct ebml_tag tid = ebml_parse_tag(b2);
-                            if (!tid.consumed)
+                        if (tid.id == EBML_TAG_TrackNumber) {
+                            unsigned long long t = ebml_parse_fixed_uint(
+                                                   ebml_tag_contents(ent, tid));
+                            if (t >= MAX_TRACK)
                                 return -1;
-
-                            if (tid.id == EBML_TAG_TrackNumber) {
-                                unsigned long long t = ebml_parse_fixed_uint(
-                                                       ebml_tag_contents(b2, tid));
-                                if (t >= MAX_TRACK)
-                                    return -1;
-                            }
-
-                            b2 = ebml_buffer_shift(b2, tid.consumed + tid.length);
                         }
 
-                        b = ebml_buffer_shift(b, ent.consumed + ent.length);
+                        ent = ebml_buffer_shift(ent, tid.consumed + tid.length);
                     }
                 }
 
+            case EBML_TAG_Tracks:
                 if (ebml_buffer_dyn_concat(&cast->tracks, buf))
                     return -1;
 
@@ -190,18 +185,14 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
 
                     for (struct ebml_buffer grp = ebml_tag_contents(buf, tag); grp.size;) {
                         struct ebml_tag lv3 = ebml_parse_tag(grp);
-                        if (!lv3.consumed)
+                        if (lv3.consumed == 0)
                             return -1;
 
-                        switch (lv3.id) {
-                            case EBML_TAG_Block:
-                                block = ebml_tag_contents(grp, lv3);
-                                break;
+                        if (lv3.id == EBML_TAG_Block)
+                            block = ebml_tag_contents(grp, lv3);
 
-                            case EBML_TAG_ReferenceBlock:
-                                key = !ebml_parse_fixed_uint(ebml_tag_contents(grp, lv3));
-                                break;
-                        }
+                        if (lv3.id == EBML_TAG_ReferenceBlock)
+                            key = !ebml_parse_fixed_uint(ebml_tag_contents(grp, lv3));
 
                         grp = ebml_buffer_shift(grp, lv3.consumed + lv3.length);
                     }
@@ -210,7 +201,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         return -1;
                 }
 
-                struct ebml_uint track = ebml_parse_uint(block, 0);
+                struct ebml_uint track = ebml_parse_uint(block);
                 if (!track.consumed || track.value >= MAX_TRACK || block.size < track.consumed + 3)
                     return -1;
                 key |= block.data[track.consumed + 2] & 0x80;

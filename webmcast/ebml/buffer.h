@@ -27,32 +27,32 @@ static const struct ebml_buffer     EBML_BUFFER_EMPTY     = {NULL, 0};
 static const struct ebml_buffer_dyn EBML_BUFFER_EMPTY_DYN = {NULL, 0, 0, 0};
 
 
-static struct ebml_buffer ebml_view(const uint8_t *data, size_t size)
+static inline struct ebml_buffer ebml_view(const uint8_t *data, size_t size)
 {
     return (struct ebml_buffer) { data, size };
 }
 
 
-static struct ebml_buffer ebml_buffer_shift(struct ebml_buffer b, size_t shift)
+static inline struct ebml_buffer ebml_buffer_shift(struct ebml_buffer b, size_t shift)
 {
     return ebml_view(b.data + shift, b.size - shift);
 }
 
 
-static struct ebml_buffer ebml_buffer_static(struct ebml_buffer_dyn *b)
+static inline struct ebml_buffer ebml_buffer_static(struct ebml_buffer_dyn *b)
 {
     return ebml_view(b->data, b->size);
 }
 
 
-static void ebml_buffer_dyn_clear(struct ebml_buffer_dyn *b)
+static inline void ebml_buffer_dyn_clear(struct ebml_buffer_dyn *b)
 {
     free(b->data - b->offset);
     *b = EBML_BUFFER_EMPTY_DYN;
 }
 
 
-static void ebml_buffer_dyn_shift(struct ebml_buffer_dyn *b, size_t shift)
+static inline void ebml_buffer_dyn_shift(struct ebml_buffer_dyn *b, size_t shift)
 {
     b->data   += shift;
     b->size   -= shift;

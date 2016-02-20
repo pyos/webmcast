@@ -47,11 +47,10 @@ enum EBML_TAG_ID  // https://www.matroska.org/technical/specs/index.html
 };
 
 
-static const uint64_t EBML_INDETERMINATE = 0xFFFFFFFFFFFFFFULL;
-static const uint64_t EBML_INDETERMINATE_MARKERS[] = {
-    // shortest encodings of uints with these values have special meaning
-    0x0000000000007FULL, 0x00000000003FFFULL, 0x000000001FFFFFULL, 0x0000000FFFFFFFULL,
-    0x000007FFFFFFFFULL, 0x0003FFFFFFFFFFULL, 0x01FFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFULL,
+static const unsigned long long EBML_INDETERMINATE = 0xFFFFFFFFFFFFFFULL;
+static const unsigned long long EBML_INDETERMINATE_MARKERS[] = {
+    0xFFULL, 0x7FFFULL, 0x3FFFFFULL, 0x1FFFFFFFULL, 0x0FFFFFFFFFULL,
+    0x07FFFFFFFFFFULL, 0x03FFFFFFFFFFFFULL, 0x01FFFFFFFFFFFFFFULL,
 };
 
 
@@ -70,7 +69,7 @@ struct ebml_tag
 };
 
 
-static unsigned long long ebml_parse_fixed_uint(struct ebml_buffer buf)
+static inline unsigned long long ebml_parse_fixed_uint(struct ebml_buffer buf)
 {
     unsigned long long x = 0;
     while (buf.size--) x = x << 8 | *(buf.data)++;
@@ -78,7 +77,7 @@ static unsigned long long ebml_parse_fixed_uint(struct ebml_buffer buf)
 }
 
 
-static unsigned ebml_parse_uint_size(unsigned char first_byte)
+static inline unsigned ebml_parse_uint_size(unsigned char first_byte)
 {
     /* EBML-coded variable-size uints look like this:
          1xxxxxxx
@@ -92,32 +91,33 @@ static unsigned ebml_parse_uint_size(unsigned char first_byte)
 }
 
 
-static struct ebml_uint ebml_parse_uint(struct ebml_buffer buf, int keep_marker)
+static inline struct ebml_uint ebml_parse_tagid(struct ebml_buffer buf)
 {
-    if (buf.size < 1)
-        return (struct ebml_uint) { 0, 0 };
+    unsigned length = buf.size ? ebml_parse_uint_size(buf.data[0]) : 1;
+    return buf.size >= length
+         ? (struct ebml_uint) { length, ebml_parse_fixed_uint(ebml_view(buf.data, length)) }
+         : (struct ebml_uint) { 0, 0 };
+}
 
-    unsigned length = ebml_parse_uint_size(buf.data[0]);
 
-    if (buf.size < length)
-        return (struct ebml_uint) { 0, 0 };
-
-    unsigned long long i = ebml_parse_fixed_uint(ebml_view(buf.data, length));
-    unsigned long long k = i & ~(1ULL << (7 * length));
-    if (k == EBML_INDETERMINATE_MARKERS[length - 1])
-        return (struct ebml_uint) { length, EBML_INDETERMINATE };
-
-    return (struct ebml_uint) { length, keep_marker ? i : k };
+static inline struct ebml_uint ebml_parse_uint(struct ebml_buffer buf)
+{
+    struct ebml_uint u = ebml_parse_tagid(buf);
+    if (u.consumed) {
+        u.value = u.value == EBML_INDETERMINATE_MARKERS[u.consumed - 1] ? EBML_INDETERMINATE
+                : u.value & ~(1ULL << (7 * u.consumed));
+    }
+    return u;
 }
 
 
 static struct ebml_tag ebml_parse_tag_incomplete(struct ebml_buffer buf)
 {
-    struct ebml_uint id = ebml_parse_uint(buf, 1);
+    struct ebml_uint id = ebml_parse_tagid(buf);
     if (!id.consumed)
         return (struct ebml_tag) { 0, 0, 0 };
 
-    struct ebml_uint len = ebml_parse_uint(ebml_buffer_shift(buf, id.consumed), 0);
+    struct ebml_uint len = ebml_parse_uint(ebml_buffer_shift(buf, id.consumed));
     if (!len.consumed)
         return (struct ebml_tag) { 0, 0, 0 };
 
@@ -134,7 +134,7 @@ static struct ebml_tag ebml_parse_tag(struct ebml_buffer buf)
 }
 
 
-static struct ebml_buffer ebml_tag_contents(struct ebml_buffer b, struct ebml_tag t)
+static inline struct ebml_buffer ebml_tag_contents(struct ebml_buffer b, struct ebml_tag t)
 {
     return ebml_view(b.data + t.consumed, t.length);
 }
