@@ -63,6 +63,18 @@ ffmpeg ... -c:v vp8 -keyint_min 60 -g 60 \
            -f webm http://127.0.0.1:8000/stream/test
 ```
 
+Alternatively, use a gstreamer pipeline.
+
+```bash
+gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=http://127.0.0.1:8000/stream/test \
+           $video_source ! videoconvert ! vp8enc keyframe-max-dist=60 deadline=1 ! queue ! mux.video_0 \
+           $audio_source ! vorbisenc ! queue ! mux.audio_0
+```
+
+(`-g` (or `keyframe-max-dist`) controls the spacing between keyframes.
+Lower values allow the stream to start faster as it has to begin
+with a keyframe, while higher values provide better compression.)
+
 To view the stream, open `/stream/<name>` in a browser or a player.
 
 ### The Reality (alt. name: "Known Issues")
