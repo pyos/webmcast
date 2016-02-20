@@ -5,12 +5,19 @@
 #define EBML_BROADCAST_H
 
 
+enum _
+{
+    MAX_TRACK = sizeof(int) * 8 - 2,
+    MAX_BUFFER_SIZE = 1024 * 1024,
+};
+
+
 struct callback
 {
     int id;
-    int skip_headers;
-    int skip_cluster;
-    unsigned long long keyframes;
+    unsigned skip_headers : 1;
+    unsigned skip_cluster : 1;
+    unsigned keyframes : MAX_TRACK;
     void *data;
     on_chunk *write;
 };
@@ -38,7 +45,6 @@ struct broadcast
     unsigned long long time_last;
     unsigned long long time_recv;
     unsigned long long time_sent;
-    unsigned long long track_map;
 };
 
 
@@ -69,7 +75,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 cast->buffer.data[6] = 0x80 | (tag.consumed - 7);
             }
         } else {
-            if (tag.consumed + tag.length > 1024 * 1024)
+            if (tag.consumed + tag.length > MAX_BUFFER_SIZE)
                 // too much metadata.
                 return -1;
 
@@ -119,12 +125,9 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 }
 
             case EBML_TAG_Tracks:
-                // mark the active stream ids in `track_map`.
-                // at most 64 streams (with ids 0-63) are allowed.
+                // at most MAX_TRACK streams (with ids 0 to MAX_TRACK-1) are allowed.
                 // keyframes are detected for each stream separately.
                 if (tag.id == EBML_TAG_Tracks) {
-                    cast->track_map = 0;
-
                     for (struct ebml_buffer b = ebml_tag_contents(buf, tag); b.size;) {
                         struct ebml_tag ent = ebml_parse_tag(b);
                         if (!ent.consumed)
@@ -138,9 +141,8 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                             if (tid.id == EBML_TAG_TrackNumber) {
                                 unsigned long long t = ebml_parse_fixed_uint(
                                                        ebml_tag_contents(b2, tid));
-                                if (t >= 64)
+                                if (t >= MAX_TRACK)
                                     return -1;
-                                cast->track_map |= 1ull << t;
                             }
 
                             b2 = ebml_buffer_shift(b2, tid.consumed + tid.length);
@@ -155,19 +157,16 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
 
                 for EACH_CALLBACK(c, cast->recvs) {
                     c->write(c->data, buf.data, buf.size, 1);
-                    c->keyframes = cast->track_map;
                     c->skip_cluster = 0;
                 }
 
-            case EBML_TAG_SeekHead:
-            case EBML_TAG_Chapters:
-            case EBML_TAG_Cues:
-            case EBML_TAG_Void:
-            case EBML_TAG_Tags:  // not actually valid in webm
-                break;
-
-            case EBML_TAG_Cluster:  // ignore boundaries, we'll regroup the data anyway.
-            case EBML_TAG_PrevSize:
+            case EBML_TAG_SeekHead:  // disallow seeking
+            case EBML_TAG_Chapters:  // disallow seeking again
+            case EBML_TAG_Cues:      // disallow even more seeking
+            case EBML_TAG_Void:      // waste of space
+            case EBML_TAG_Tags:      // maybe later
+            case EBML_TAG_Cluster:   // ignore boundaries, we'll regroup the data anyway
+            case EBML_TAG_PrevSize:  // disallow backward seeking too
                 break;
 
             case EBML_TAG_Timecode:
@@ -182,7 +181,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
 
                 // a SimpleBlock is simple: there a track id followed by
                 // a timecode followed by flags, among which is a keyframe flag.
-                // a Block (there's actually only one) in a BlockGroups is
+                // a Block (there's actually only one) in a BlockGroup is
                 // almost the same, but without the keyframe flag; instead,
                 // ReferenceBlock is nonzero if this is a keyframe.
                 if (tag.id == EBML_TAG_BlockGroup) {
@@ -212,7 +211,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 }
 
                 struct ebml_uint track = ebml_parse_uint(block, 0);
-                if (!track.consumed || track.value >= 64 || block.size < track.consumed + 5)
+                if (!track.consumed || track.value >= MAX_TRACK || block.size < track.consumed + 3)
                     return -1;
                 key |= block.data[track.consumed + 2] & 0x80;
 
@@ -230,7 +229,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                     (uint8_t) (EBML_TAG_Cluster >> 24),
                     (uint8_t) (EBML_TAG_Cluster >> 16),
                     (uint8_t) (EBML_TAG_Cluster >>  8),
-                    (uint8_t)  EBML_TAG_Cluster, 0xFF,
+                    (uint8_t)  EBML_TAG_Cluster,  0xFF,
                     (uint8_t)  EBML_TAG_Timecode, 0x88,
                     tc >> 56, tc >> 48, tc >> 40, tc >> 32,
                     tc >> 24, tc >> 16, tc >>  8, tc,
