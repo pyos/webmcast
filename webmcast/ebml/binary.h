@@ -93,9 +93,9 @@ static inline unsigned ebml_parse_uint_size(unsigned char first_byte)
 
 static inline struct ebml_uint ebml_parse_tagid(struct ebml_buffer buf)
 {
-    unsigned length = buf.size ? ebml_parse_uint_size(buf.data[0]) : 1;
-    return buf.size >= length
-         ? (struct ebml_uint) { length, ebml_parse_fixed_uint(ebml_view(buf.data, length)) }
+    struct ebml_buffer view = { buf.data, buf.size ? ebml_parse_uint_size(buf.data[0]) : 1 };
+    return buf.size >= view.size
+         ? (struct ebml_uint) { view.size, ebml_parse_fixed_uint(view) }
          : (struct ebml_uint) { 0, 0 };
 }
 
@@ -136,7 +136,7 @@ static struct ebml_tag ebml_parse_tag(struct ebml_buffer buf)
 
 static inline struct ebml_buffer ebml_tag_contents(struct ebml_buffer b, struct ebml_tag t)
 {
-    return ebml_view(b.data + t.consumed, t.length);
+    return (struct ebml_buffer) { b.data + t.consumed, t.length };
 }
 
 

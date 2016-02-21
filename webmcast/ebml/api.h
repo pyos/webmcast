@@ -3,7 +3,7 @@ typedef int on_chunk(void *, const uint8_t *, size_t, int force);
 
 struct ebml_buffer
 {
-    const uint8_t * data;
+    const uint8_t *data;
     size_t size;
 };
 
@@ -18,30 +18,22 @@ struct ebml_buffer_dyn
 
 
 struct callback;
-struct callback_array
-{
-    struct callback *xs;
-    size_t size;
-    size_t reserve;
-};
-
-
-struct broadcast_timecode
-{
-    unsigned long long last;
-    unsigned long long shift;
-    unsigned long long recv;
-    unsigned long long sent;
-};
-
-
 struct broadcast
 {
     struct ebml_buffer_dyn buffer;
-    struct ebml_buffer_dyn header;  // [EBML .. Segment) -- once per webm
-    struct ebml_buffer_dyn tracks;  // [Segment .. Cluster) -- can occur many times
-    struct callback_array recvs;
-    struct broadcast_timecode time;
+    struct ebml_buffer_dyn header;  // [EBML .. Segment)
+    struct ebml_buffer_dyn tracks;  // [Segment .. Cluster)
+    struct {
+        struct callback *xs;
+        size_t size;
+        size_t reserve;
+    } recvs;
+    struct {
+        unsigned long long last;
+        unsigned long long shift;
+        unsigned long long recv;
+        unsigned long long sent;
+    } time;
 };
 
 

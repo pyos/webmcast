@@ -35,7 +35,7 @@ int broadcast_start(struct broadcast *cast)
 
 int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
 {
-    if (ebml_buffer_dyn_concat(&cast->buffer, ebml_view(data, size)))
+    if (ebml_buffer_dyn_concat(&cast->buffer, (struct ebml_buffer) { data, size }))
         return -1;
 
     while (1) {
