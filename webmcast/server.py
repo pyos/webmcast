@@ -1,3 +1,4 @@
+import time
 import asyncio
 import weakref
 
@@ -8,20 +9,28 @@ from .ebml import ffi, lib
 
 @ffi.def_extern(error=-1)
 def on_chunk_cb(handle, data, size, force):
-    ffi.from_handle(handle).put_nowait(ffi.buffer(data, size)[:])
-    return 0
+    return ffi.from_handle(handle).send(ffi.buffer(data, size)[:], force) or 0
 
 
 class Broadcast (asyncio.Event):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.obj = ffi.new('struct broadcast *');
+        self.chunks = 128 * [0]
+        self.stops  = 128 * [time.monotonic()]
+        self.stop   = 0
+        self.rate   = 0
         lib.broadcast_start(self.obj)
 
     def __del__(self):
         lib.broadcast_stop(self.obj)
 
     def send(self, chunk):
+        i = self.stop
+        self.chunks[i] = len(chunk)
+        self.stops[i] = t = time.monotonic()
+        i = self.stop = (i + 1) & 127
+        self.rate = sum(self.chunks) / (t - self.stops[i])
         return lib.broadcast_send(self.obj, ffi.new('uint8_t[]', chunk), len(chunk))
 
     async def attach(self, queue, skip_headers=False):
@@ -48,8 +57,28 @@ class Broadcast (asyncio.Event):
         self.set()
 
 
+class Client (cno.Channel):
+    def __init__(self, stream, loop=None):
+        super().__init__(loop=loop)
+        self._stream = stream
+        self._writer = asyncio.ensure_future(stream.attach(self), loop=loop)
+
+    def cancel(self):
+        self._writer.cancel()
+
+    def send(self, chunk, force):
+        self.put_nowait(chunk)
+        if not force and self.qsize() > 50:
+            while not self.empty():
+                self.get_nowait()
+            return -1
+
+
 async def root(req, streams = weakref.WeakValueDictionary(),
                     collectors = weakref.WeakKeyDictionary()):
+    # force excess blocks to stay in the channel.
+    req.conn.transport.set_write_buffer_limits(2048, 1024)
+
     if req.path == '/':
         req.push('GET', '/static/css/uikit.min.css', req.accept_headers)
         req.push('GET', '/static/css/layout.css',    req.accept_headers)
@@ -82,7 +111,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             try:
                 while True:
                     chunk = await req.payload.read(16384)
-                    if chunk == b'':
+                    if not chunk:
                         return await req.respond(204, [], b'')
                     if stream.send(chunk):
                         return await req.respond_with_error(400, [], 'Malformed EBML.')
@@ -95,13 +124,12 @@ async def root(req, streams = weakref.WeakValueDictionary(),
             except KeyError:
                 return await req.respond_with_error(404, [], None)
 
-            queue = cno.Channel(loop=req.conn.loop)
-            writer = asyncio.ensure_future(stream.attach(queue), loop=req.conn.loop)
+            queue = Client(stream, loop=req.conn.loop)
             try:
                 return await req.respond(200, [('content-type', 'video/webm'),
                                                ('cache-control', 'no-cache')], queue)
             finally:
-                writer.cancel()
+                queue.cancel()
 
         return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
 
