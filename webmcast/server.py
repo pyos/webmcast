@@ -3,12 +3,16 @@ import weakref
 
 import cno
 
+from . import config
 from .ebml import ffi, lib
 
 
 @ffi.def_extern(error=-1)
 def on_chunk_cb(handle, data, size, force):
-    ffi.from_handle(handle).put_nowait(ffi.buffer(data, size)[:])
+    queue = ffi.from_handle(handle)
+    if not force and queue.qsize() >= config.MAX_ENQUEUED_FRAMES:
+        return -1
+    queue.put_nowait(ffi.buffer(data, size)[:])
     return 0
 
 
@@ -88,7 +92,7 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                         return await req.respond_with_error(400, [], 'Malformed EBML.')
             finally:
                 collectors[stream] = asyncio.ensure_future(
-                    stream.stop_later(10, req.conn.loop), loop=req.conn.loop)
+                    stream.stop_later(config.MAX_DOWNTIME, req.conn.loop), loop=req.conn.loop)
         elif req.method in ('GET', 'HEAD'):
             try:
                 stream = streams[stream_id]
