@@ -2,8 +2,7 @@ import ssl
 import sys
 import asyncio
 
-from .server import root
-from .stdhttp import serve
+from . import retransmit, framework
 
 
 if len(sys.argv) == 1:
@@ -17,9 +16,10 @@ else:
     exit('usage: python -m webmcast [<ssl cert> <ssl key>]')
 
 loop = asyncio.get_event_loop()
-server = loop.run_until_complete(serve(loop, root, '', 8000, ssl=sctx))
+server = loop.run_until_complete(framework.http.server(loop, retransmit.root, '', 8000, ssl=sctx))
 try:
-    print('https://localhost:8000/' if sctx else 'http://localhost:8000/')
     loop.run_forever()
+except KeyboardInterrupt:
+    pass
 finally:
     loop.close()

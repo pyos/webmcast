@@ -1,10 +1,11 @@
+import os
 import time
 import asyncio
 import weakref
 
 import cno
 
-from . import config
+from . import config, static, templates
 from .ebml import ffi, lib
 
 
@@ -71,8 +72,11 @@ class Broadcast (asyncio.Event):
         self.set()
 
 
-async def root(req, streams = weakref.WeakValueDictionary(),
+async def root(req, static_root = next(iter(static.__path__)),
+                    streams = weakref.WeakValueDictionary(),
                     collectors = weakref.WeakKeyDictionary()):
+    req.template = templates.load
+
     if req.path == '/':
         req.push('GET', '/static/css/uikit.min.css', req.accept_headers)
         req.push('GET', '/static/css/layout.css',    req.accept_headers)
@@ -88,12 +92,12 @@ async def root(req, streams = weakref.WeakValueDictionary(),
         return await req.respond_with_error(code, [], None)
 
     if req.path.startswith('/static/'):
-        return await req.respond_with_static(req.path[8:])
+        return await req.respond_with_file(os.path.join(static_root, req.path[8:]))
 
     if req.path.startswith('/stream/') and req.path.find('/', 8) == -1:
         stream_id = req.path[8:]
 
-        if req.method == 'POST' or req.method == 'PUT':
+        if req.method in ('POST', 'PUT'):
             if stream_id in streams:
                 stream = streams[stream_id]
                 try:
@@ -110,22 +114,23 @@ async def root(req, streams = weakref.WeakValueDictionary(),
                     if stream.send(chunk):
                         return await req.respond_with_error(400, [], 'Malformed EBML.')
             finally:
-                collectors[stream] = asyncio.ensure_future(
-                    stream.stop_later(config.MAX_DOWNTIME, req.conn.loop), loop=req.conn.loop)
-        elif req.method in ('GET', 'HEAD'):
-            try:
-                stream = streams[stream_id]
-            except KeyError:
-                return await req.respond_with_error(404, [], None)
+                collectors[stream] = req.conn.loop.create_task(
+                    stream.stop_later(config.MAX_DOWNTIME, req.conn.loop))
 
-            queue = cno.Channel(loop=req.conn.loop)
-            writer = asyncio.ensure_future(stream.attach(queue), loop=req.conn.loop)
-            try:
-                return await req.respond(200, [('content-type', 'video/webm'),
-                                               ('cache-control', 'no-cache')], queue)
-            finally:
-                writer.cancel()
+        try:
+            stream = streams[stream_id]
+        except KeyError:
+            return await req.respond_with_error(404, [], None)
 
-        return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
+        if req.method not in ('GET', 'HEAD'):
+            return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
+
+        queue = cno.Channel(loop=req.conn.loop)
+        writer = req.conn.loop.create_task(stream.attach(queue))
+        try:
+            return await req.respond(200, [('content-type', 'video/webm'),
+                                           ('cache-control', 'no-cache')], queue)
+        finally:
+            writer.cancel()
 
     return await req.respond_with_error(404, [], None)

@@ -2,7 +2,6 @@ import os
 import time
 import zlib
 import asyncio
-import functools
 import mimetypes
 import posixpath
 
@@ -10,7 +9,7 @@ from urllib.parse import unquote
 
 import cno
 
-from . import static, templates, stdws
+from . import websocket
 
 
 async def _read_file_to_queue(fd, queue):
@@ -49,7 +48,7 @@ def _rfc1123(ts):
 
 class Request (cno.Request):
     def render(self, _name, **kwargs):
-        return templates.load(_name).render(request=self, **kwargs)
+        return self.template(_name).render(request=self, **kwargs)
 
     async def respond_with_gzip(self, code, headers, data):
         for k, v in self.accept_headers:
@@ -60,7 +59,7 @@ class Request (cno.Request):
 
         headers = headers + [('content-encoding', 'gzip')]
         ch = cno.Channel(loop=self.conn.loop)
-        writer = asyncio.ensure_future(_compress_into_queue(data, ch), loop=self.conn.loop)
+        writer = self.conn.loop.create_task(_compress_into_queue(data, ch))
         try:
             return await self.respond(code, headers, ch)
         finally:
@@ -82,8 +81,7 @@ class Request (cno.Request):
         except ConnectionError:
             self.cancel()
 
-    async def respond_with_static(self, path, headers = [], cacheable = True,
-                                  root = next(iter(static.__path__))):
+    async def respond_with_file(self, path, headers = [], cacheable = True):
         if self.method not in ('GET', 'HEAD'):
             return await self.respond_with_error(405, [], 'This resource is static.')
         # i'd serve everything as application/octet-stream, but then browsers
@@ -91,7 +89,7 @@ class Request (cno.Request):
         mime = mimetypes.guess_type(path, False)[0] or 'application/octet-stream'
         try:
             # `path` expected to be in normal form (no `.`/`..`)
-            fd = open(os.path.join(root, path), 'rb', buffering=8192)
+            fd = open(path, 'rb', buffering=8192)
             headers = headers + (
                 [('last-modified', _rfc1123(os.stat(fd.fileno()).st_mtime)),
                  ('cache-control', 'private, max-age=31536000'),
@@ -99,7 +97,7 @@ class Request (cno.Request):
         except IOError:
             return await self.respond_with_error(404, [], None)
         ch = cno.Channel(1, loop=self.conn.loop)
-        writer = asyncio.ensure_future(_read_file_to_queue(fd, ch), loop=self.conn.loop)
+        writer = self.conn.loop.create_task(_read_file_to_queue(fd, ch))
         try:
             await self.respond_with_gzip(200, headers, ch)
         finally:
@@ -107,24 +105,25 @@ class Request (cno.Request):
             fd.close()
 
     async def websocket(self):
-        if (self.conn.is_http2
-         or self.method != 'GET'
+        if (self.conn.is_http2 or self.method != 'GET'
          or self.header_map.get('upgrade').lower() != 'websocket'
          or self.header_map.get('sec-websocket-version') != '13'
          or 'sec-websocket-key' not in self.header_map):
             await self.respond_with_error(400, [], 'WebSocket handshake failed.')
-            raise stdws.ProtocolError('invalid handshake')
+            raise websocket.ProtocolError('invalid handshake')
+
         await self.respond(101,
             [('upgrade', 'websocket'),
              ('connection', 'upgrade'),
-             ('sec-websocket-accept', stdws.accept(self.header_map['sec-websocket-key']))], b'')
+             ('sec-websocket-accept', websocket.accept(self.header_map['sec-websocket-key']))], b'')
+
         reader = asyncio.StreamReader(loop=self.conn.loop)
         self.conn.data_received = reader.feed_data
         self.conn.eof_received  = reader.feed_eof
-        return stdws.Socket(self.conn.loop, reader, self.conn.transport)
+        return websocket.Socket(self.conn.loop, reader, self.conn.transport)
 
 
-async def serve(loop, root, *args, **kwargs):
+async def server(loop, root, *args, **kwargs):
     async def handle(req):
         req.__class__ = Request
         req.path, _, req.query = req.path.partition('?')
@@ -136,7 +135,7 @@ async def serve(loop, root, *args, **kwargs):
         except asyncio.CancelledError:
             raise
         except Exception as err:
-            loop.call_exception_handler({'message': 'error in request handler',
-                                         'exception': err, 'protocol': req.conn})
+            req.conn.loop.call_exception_handler({'message': 'error in request handler',
+                                                  'exception': err, 'protocol': req.conn})
             await req.respond_with_error(500, [], 'This is an error-handling message.')
     return await loop.create_server(lambda: cno.Server(loop, handle), *args, **kwargs)
