@@ -5,11 +5,12 @@ import asyncio
 import functools
 import mimetypes
 import posixpath
+
 from urllib.parse import unquote
 
 import cno
 
-from . import static, templates
+from . import static, templates, stdws
 
 
 async def _read_file_to_queue(fd, queue):
@@ -104,6 +105,23 @@ class Request (cno.Request):
         finally:
             writer.cancel()
             fd.close()
+
+    async def websocket(self):
+        if (self.conn.is_http2
+         or self.method != 'GET'
+         or self.header_map.get('upgrade').lower() != 'websocket'
+         or self.header_map.get('sec-websocket-version') != '13'
+         or 'sec-websocket-key' not in self.header_map):
+            await self.respond_with_error(400, [], 'WebSocket handshake failed.')
+            raise stdws.ProtocolError('invalid handshake')
+        await self.respond(101,
+            [('upgrade', 'websocket'),
+             ('connection', 'upgrade'),
+             ('sec-websocket-accept', stdws.accept(self.header_map['sec-websocket-key']))], b'')
+        reader = asyncio.StreamReader(loop=self.conn.loop)
+        self.conn.data_received = reader.feed_data
+        self.conn.eof_received  = reader.feed_eof
+        return stdws.Socket(self.conn.loop, reader, self.conn.transport)
 
 
 async def serve(loop, root, *args, **kwargs):
