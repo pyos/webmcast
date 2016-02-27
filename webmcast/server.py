@@ -1,3 +1,4 @@
+import time
 import asyncio
 import weakref
 
@@ -16,25 +17,43 @@ def on_chunk_cb(handle, data, size, force):
     return 0
 
 
+def _moving_time_average(window, granularity):
+    grain = window / granularity
+    array = [0] * granularity
+    times = [0] * granularity
+    start = time.monotonic()
+    index = 0
+    while True:
+        value = yield sum(array) / sum(times) if sum(times) else 0
+        stop  = time.monotonic()
+        if times[index] + (stop - start) < grain:
+            times[index] += stop - start
+            array[index] += value
+        else:
+            index = (index + 1) % granularity
+            times[index] = stop - start
+            array[index] = value
+        start = stop
+
+
 class Broadcast (asyncio.Event):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        self.obj = ffi.new('struct broadcast *');
+        self.obj = ffi.new('struct broadcast *')
+        self.rate = 0
+        self._gen_rate = _moving_time_average(8, 16)
+        self._gen_rate.send(None)
         lib.broadcast_start(self.obj)
 
     def __del__(self):
         lib.broadcast_stop(self.obj)
 
     def send(self, chunk):
+        self.rate = self._gen_rate.send(len(chunk))
         return lib.broadcast_send(self.obj, ffi.new('uint8_t[]', chunk), len(chunk))
 
     async def attach(self, queue, skip_headers=False):
         handle = ffi.new_handle(queue)
-        # XXX we can switch streams in the middle of the video
-        #     by disconnecting the queue and reconnecting it
-        #     with skip_headers=True. (that would make the server
-        #     start a new webm segment) this might be useful
-        #     for adaptive streaming.
         slot = lib.broadcast_connect(self.obj, lib.on_chunk_cb, handle, skip_headers)
         try:
             await self.wait()
