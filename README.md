@@ -45,37 +45,95 @@ pip install -r requirements.txt
 python mkffi.py
 ```
 
-To start the server:
+#### Retransmission node
 
 ```bash
 python -m webmcast
 ```
 
-To start a stream, send a WebM to `/stream/<name>` over an HTTP POST request:
+##### Broadcast mode
+
+PUT/POST a WebM to `/stream/<name>`
+
+*Not implemented: the server should require a security token for that.*
 
 ```bash
-# When streaming from a file, don't forget `-re` so that ffmpeg
-# doesn't remux the video faster than it will be played back.
-# To stream with audio, add `-c:a opus -b:a 64k` before `-f webm`.
-ffmpeg ... -c:v vp8 -keyint_min 60 -g 60 \
-           -deadline realtime -static-thresh 0 \
-           -speed 6 -max-intra-rate 300 -b:v 2000k \
-           -f webm http://127.0.0.1:8000/stream/test
+server=http://localhost:8000
+name=test
+
+ffmpeg $source \
+    -c:v vp8 -b:v 2000k -keyint_min 60 -g 60 -deadline realtime -speed 6 \
+    -c:a opus -b:a 64k \
+    -f webm $server/stream/$name
 ```
 
-Alternatively, use a gstreamer pipeline.
+Or with gstreamer:
 
 ```bash
-gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=http://127.0.0.1:8000/stream/test \
+gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=$server/stream/$name \
            $video_source ! videoconvert ! vp8enc keyframe-max-dist=60 deadline=1 ! queue ! mux.video_0 \
            $audio_source ! vorbisenc ! queue ! mux.audio_0
 ```
 
-(`-g` (or `keyframe-max-dist`) controls the spacing between keyframes.
-Lower values allow the stream to start faster as it has to begin
-with a keyframe, while higher values provide better compression.)
+Tips:
 
-To view the stream, open `/stream/<name>` in a browser or a player.
+  * `-g` [or `keyframe-max-dist`] controls the spacing between keyframes.
+    Lower values allow the stream to start faster as it has to begin
+    with a keyframe, while higher values may (but most likely will not) provide better
+    compression.
+
+  * The stream may be split arbitrarily into many requests.
+    For example, gstreamer sends each frame as a separate PUT by default.
+
+  * The stream is kept alive for some time after a payload-carrying request ends.
+    Thus, should the connection fail, it is possible to reconnect and continue
+    streaming as if nothing happened. (Duplicate WebM headers are ignored.)
+
+  * Multiple WebM streams can be concatenated (or sent as multiple requests to
+    the same stream), as long as they contain the same tracks and use the same codecs.
+    For example, you can switch bitrate mid-stream by restarting ffmpeg.
+
+  * Sending frames faster than they are played back is OK. However, the server
+    does not have a buffer, so any frames sent before a client has connected
+    will not be received by said client, regardless of the actual passage of time.
+    *ffmpeg tip: `-re` caps output speed at one frame per frame, if that makes any sense.*
+
+##### Dumb mode
+
+GET `/stream/<name>` to receive a continuous stream with default parameters.
+
+##### Not implemented: Signaled mode
+
+Upgrade to WebSocket at `/stream/<name>` to create a signaling channel.
+Each command sent over the channel has the JSON form `{'id': int, 'cmd': str, ...}`
+where `...` are any additional arguments applicable to the command. Responses
+look like `{'id': int, ...}`. If a command has failed, the response will contain
+an `error: str` field.
+
+  * `junk{size: int} -> {data: str}`
+
+    Request some junk. This can be used to measure round trip time and
+    peak download speed. Will fail if the requested chunk is too big for some
+    definition of "big".
+
+
+  * `start{rate: int} -> {url: str}`
+
+    Request an URL that can be put into a `<video>` tag to play the stream
+    controlled by this signalling channel. The bitrate of the received stream
+    is capped by the provided value (but may be lower). Will fail if there is no
+    stream with a suitable bitrate. Issuing this request invalidates any previously
+    obtained URLs.
+
+  * `refit{rate: int} -> {}`
+
+    Seamlessly switch to a stream with a bitrate of at most the provided value.
+    Will fail if there is no stream with a suitable bitrate, or if `start`
+    has not been issued yet.
+
+#### Not implemented: Authentication node
+
+Should issue security tokens and balance streams between multiple retransmission nodes.
 
 ### The Reality (alt. name: "Known Issues")
 
