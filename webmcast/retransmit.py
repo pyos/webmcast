@@ -1,5 +1,4 @@
 import os
-import time
 import asyncio
 import weakref
 
@@ -12,64 +11,56 @@ from .ebml import ffi, lib
 @ffi.def_extern(error=-1)
 def on_chunk_cb(handle, data, size, force):
     queue = ffi.from_handle(handle)
+    if isinstance(queue, Stream):
+        # this may look like a pointless copy now, but wait until you see
+        # how much more copies will be created anyway...
+        return queue.send(ffi.buffer(data, size)[:])
     if not force and queue.qsize() >= config.MAX_ENQUEUED_FRAMES:
+        # if the queue overflows, we're already screwed -- the tcp buffer
+        # is also full. it will take a while to clear.
         return -1
     queue.put_nowait(ffi.buffer(data, size)[:])
     return 0
 
 
-def _moving_time_average(window, granularity):
-    grain = window / granularity
-    array = [0] * granularity
-    times = [0] * granularity
-    start = time.monotonic()
-    index = 0
-    while True:
-        value = yield sum(array) / sum(times) if sum(times) else 0
-        stop  = time.monotonic()
-        if times[index] + (stop - start) < grain:
-            times[index] += stop - start
-            array[index] += value
-        else:
-            index = (index + 1) % granularity
-            times[index] = stop - start
-            array[index] = value
-        start = stop
+class Stream:
+    def __init__(self, loop):
+        self.loop = loop
+        self.cffi = ffi.new('struct broadcast *')
+        self.done = asyncio.Event(loop=loop)
+        self._upd_rate(0)
+        lib.broadcast_start(self.cffi)
 
-
-class Broadcast (asyncio.Event):
-    def __init__(self, *a, **k):
-        super().__init__(*a, **k)
-        self.obj = ffi.new('struct broadcast *')
-        self.rate = 0
-        self._gen_rate = _moving_time_average(8, 16)
-        self._gen_rate.send(None)
-        lib.broadcast_start(self.obj)
+    def _upd_rate(self, value=None):
+        self.rate = 0.5 * self._rate_pending + 0.5 * self.rate if value is None else value
+        self._rate_pending = 0
+        self._rate_updater = self.loop.call_later(1, self._upd_rate)
 
     def __del__(self):
-        lib.broadcast_stop(self.obj)
+        lib.broadcast_stop(self.cffi)
+        self._rate_updater.cancel()
 
     def send(self, chunk):
-        self.rate = self._gen_rate.send(len(chunk))
-        return lib.broadcast_send(self.obj, ffi.new('uint8_t[]', chunk), len(chunk))
+        self._rate_pending += len(chunk)
+        return lib.broadcast_send(self.cffi, ffi.new('uint8_t[]', chunk), len(chunk))
 
     async def attach(self, queue, skip_headers=False):
         handle = ffi.new_handle(queue)
-        slot = lib.broadcast_connect(self.obj, lib.on_chunk_cb, handle, skip_headers)
+        slot = lib.broadcast_connect(self.cffi, lib.on_chunk_cb, handle, skip_headers)
         try:
-            await self.wait()
+            await self.done.wait()
             queue.close()
         finally:
-            lib.broadcast_disconnect(self.obj, slot)
+            lib.broadcast_disconnect(self.cffi, slot)
 
-    def stop(self):
-        self.set()
+    def close(self):
+        self.done.set()
 
-    async def stop_later(self, timeout, loop=None):
-        # can't just `return loop.call_later(timeout, self.stop)` because that handle
-        # would reference the object, preventing it from being collected.
+    async def close_later(self, timeout, loop=None):
+        # can't just use `loop.call_later(timeout, self.close)` because that handle would
+        # keep this object alive until destroyed explicitly. a finished task does not.
         await asyncio.sleep(timeout, loop=loop)
-        self.set()
+        self.close()
 
 
 async def root(req, static_root = next(iter(static.__path__)),
@@ -105,7 +96,7 @@ async def root(req, static_root = next(iter(static.__path__)),
                 except KeyError:
                     return await req.respond_with_error(403, [], 'Stream ID already taken.')
             else:
-                stream = streams[stream_id] = Broadcast(loop=req.conn.loop)
+                stream = streams[stream_id] = Stream(req.conn.loop)
             try:
                 while True:
                     chunk = await req.payload.read(16384)
@@ -115,7 +106,7 @@ async def root(req, static_root = next(iter(static.__path__)),
                         return await req.respond_with_error(400, [], 'Malformed EBML.')
             finally:
                 collectors[stream] = req.conn.loop.create_task(
-                    stream.stop_later(config.MAX_DOWNTIME, req.conn.loop))
+                    stream.close_later(config.MAX_DOWNTIME, req.conn.loop))
 
         try:
             stream = streams[stream_id]
