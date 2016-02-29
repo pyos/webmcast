@@ -137,6 +137,10 @@ async def root(req, static_root = next(iter(static.__path__)),
 
         queue = cno.Channel(loop=req.conn.loop)
         writer = req.conn.loop.create_task(stream.attach(queue))
+        # force excess frames to stay in the queue instead of the transport's buffer
+        # XXX may interact badly with HTTP 2 since these limits are connection-wide.
+        # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
+        req.conn.transport.set_write_buffer_limits(512, 256)
         try:
             return await req.respond(200, [('content-type', 'video/webm'),
                                            ('cache-control', 'no-cache')], queue)
