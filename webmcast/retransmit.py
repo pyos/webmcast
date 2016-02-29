@@ -30,9 +30,20 @@ class Stream:
         self.done = asyncio.Event(loop=loop)
         self._upd_rate(0)
         lib.broadcast_start(self.cffi)
+        # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
+        #      must accept data from this one, feed it through a gstreamer pipeline
+        #      or something like that, then broadcast the resulting copy.
 
     def _upd_rate(self, value=None):
         self.rate = 0.5 * self._rate_pending + 0.5 * self.rate if value is None else value
+        # TODO if bitrate > 2 * (highest available child OR minimum bitrate)
+        #      for some ticks, spawn a new child stream connected to this one
+        #      via a bitrate-lowering gstreamer pipeline.
+        # TODO or maybe do it on demand?..
+        # TODO if bitrate < 2 * (highest available child) for some ticks,
+        #      destroy the reference to that child. keep it in a weakref dict,
+        #      however, in case someone is keeping it alive by watching it and we
+        #      decide to restore it later.
         self._rate_pending = 0
         self._rate_updater = self.loop.call_later(1, self._upd_rate)
 
@@ -54,6 +65,7 @@ class Stream:
             lib.broadcast_disconnect(self.cffi, slot)
 
     def close(self):
+        # TODO destroy all transcoded streams.
         self.done.set()
 
     async def close_later(self, timeout, loop=None):
@@ -73,6 +85,7 @@ async def root(req, static_root = next(iter(static.__path__)),
         req.push('GET', '/static/css/layout.css',    req.accept_headers)
         req.push('GET', '/static/js/jquery.min.js',  req.accept_headers)
         req.push('GET', '/static/js/uikit.min.js',   req.accept_headers)
+        # TODO UI/auth nodes
         return await req.respond_with_error(501, [], 'There is no UI yet.')
 
     if req.path.startswith('/error/'):
@@ -89,6 +102,7 @@ async def root(req, static_root = next(iter(static.__path__)),
         stream_id = req.path[8:]
 
         if req.method in ('POST', 'PUT'):
+            # TODO auth tokens
             if stream_id in streams:
                 stream = streams[stream_id]
                 try:
@@ -115,6 +129,11 @@ async def root(req, static_root = next(iter(static.__path__)),
 
         if req.method not in ('GET', 'HEAD'):
             return await req.respond_with_error(405, [], 'Streams can only be GET or POSTed.')
+
+        if req.header_map.get('upgrade', '').lower() == 'websocket':
+            with await req.websocket() as io:
+                # TODO signaled mode (see README)
+                return io.close(1003, b'signaled mode not implemented')
 
         queue = cno.Channel(loop=req.conn.loop)
         writer = req.conn.loop.create_task(stream.attach(queue))
