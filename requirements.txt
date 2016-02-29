@@ -1,2 +1,3 @@
 cffi
 git+https://github.com/pyos/libcno
+git+https://github.com/pyos/dg

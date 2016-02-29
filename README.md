@@ -42,7 +42,7 @@ This code!
 
 ```bash
 pip install -r requirements.txt
-python mkffi.py
+python -m dg mkffi.dg
 ```
 
 #### Retransmission node

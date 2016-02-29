@@ -1,0 +1,149 @@
+import '/asyncio'
+import '/base64'
+import '/random'
+import '/struct'
+import '/hashlib'
+import '/itertools'
+
+OP_CONTINUATION = 0x0
+OP_TEXT         = 0x1
+OP_DATA         = 0x2
+OP_CONTROL      = 0x8  # > all non-control codes
+OP_CLOSE        = 0x8
+OP_PING         = 0x9
+OP_PONG         = 0xA
+OP_VALID = OP_CONTINUATION, OP_TEXT, OP_DATA, OP_CLOSE, OP_PING, OP_PONG
+
+CLOSE_CODE_PRIVATE = 3000
+CLOSE_CODE_UNDEF   = 5000
+CLOSE_CODES = dict'
+    0,    ''
+    1000, 'OK'
+    1001, 'going away'
+    1002, 'protocol error'
+    1003, 'unsupported'
+    1007, 'invalid data'
+    1008, 'policy violation'
+    1009, 'data frame too large'
+    1010, 'missing extension'
+    1011, 'internal error'
+    1012, 'service restart'
+    1013, 'try again later'
+
+
+ProtocolError = subclass asyncio.CancelledError where
+    # these exceptions are subclasses of CancelledError because
+    # they're mostly noise. non-compliant clients are not our problem.
+
+
+FrameSizeError = subclass asyncio.CancelledError where ()
+
+
+UTFError = subclass asyncio.CancelledError where ()
+
+
+ConnectionClosedError = subclass asyncio.CancelledError where ()
+
+
+accept = key ->
+    # it's a standard-mandated magic constant. don't worry about it.
+    a = key.encode 'ascii' + b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11' |> hashlib.sha1
+    a.digest! |> base64.b64encode |>.decode 'ascii'
+
+
+read_frame = async $ reader max_size ->
+    a, b = await reader.readexactly 2
+    fin  = a & 0x80
+    code = a & 0x0F
+    a & 0x70 or code not in OP_VALID =>
+        raise ProtocolError 'unknown extension code'
+    code >= OP_CONTROL and (not fin or (b & 0x7E) == 0x7E) =>
+        raise ProtocolError 'multipart/oversized control frame'
+    code == OP_CLOSE and (b & 0x7F) == 1 =>
+        raise ProtocolError 'truncated CLOSE frame'
+
+    size = if (b & 0x7F) == 0x7E => int.from_bytes (await reader.readexactly 2) 'big'
+              (b & 0x7F) == 0x7F => int.from_bytes (await reader.readexactly 8) 'big'
+              otherwise => b & 0x7F
+    size > max_size =>
+        raise FrameSizeError 'frame too big'
+
+    mask = b & 0x80 => await reader.readexactly 4
+    data = await reader.readexactly size
+    mask => data = bytes $ map (^) data $ itertools.cycle mask
+    return (fin, code, data)
+
+
+read_message = async $ reader continued max_size ->
+    fin, code, *chunks = continued or await read_frame reader max_size
+    code == OP_CONTINUATION =>
+        raise ProtocolError 'unexpected CONTINUATION'
+    while not fin =>
+        max_size -= len $ last chunks
+        fin, ctrl, part = await read_frame reader max_size
+        if ctrl >= OP_CONTROL => return (ctrl, part, (False, code, b''.join chunks))
+        if ctrl != OP_CONTINUATION => raise ProtocolError 'interrupted data frame'
+        chunks.append part
+    return (code, b''.join chunks, None)
+
+
+make_frame = code data fin: True mask: False ->
+    a = 0x80 * bool fin | code
+    b = 0x80 * bool mask
+    head = if len data > 0xFFFF => struct.pack '!BBQ' a (b | 0x7F) (len data)
+              len data > 0x7D   => struct.pack '!BBH' a (b | 0x7E) (len data)
+              otherwise         => struct.pack '!BB'  a (b | len data)
+    mask =>
+        mask = random.getrandbits 32 |>.to_bytes 4 'big'
+        data = mask + bytes (map (^) data $ itertools.cycle mask)
+    return head + data
+
+
+Socket = subclass object where
+    __init__ = self loop reader transport max_message_size: (32 * 1024 * 1024) ->
+        self.loop = loop
+        self.reader = reader
+        self.transport = transport
+        self.max_message_size = max_message_size
+        self._closed = False
+        None
+
+    __enter__ = self -> self
+    __exit__  = self t v tb ->
+        not self._closed and not self.transport.is_closing! =>
+            self.close $ if t is ConnectionClosedError  => 0
+                            t is asyncio.CancelledError => 1000
+                            t is None                   => 1001
+                            t is ProtocolError          => 1002
+                            t is UTFError               => 1007
+                            otherwise                   => 1011
+        self.transport.close!
+
+    __aiter__ = async $ self -> self
+    __anext__ = async $ self -> except
+        err =>
+            contd = None
+            while True =>
+                code, data, contd = await read_message self.reader contd self.max_message_size
+                if code == OP_PING => self.transport.write $ make_frame OP_PONG data
+                   code == OP_CLOSE =>
+                      code = int.from_bytes (data !! slice 0 2) 'big'
+                      code < CLOSE_CODE_PRIVATE and not (code in CLOSE_CODES) =>
+                          raise ProtocolError 'invalid close code'
+                      raise ConnectionClosedError code $ (data !! slice 2 None).decode 'utf-8'
+                   code == OP_TEXT => return data.decode 'utf-8'
+                   code == OP_DATA => return data
+        err :: UnicodeDecodeError =>
+            raise UTFError err
+        err :: asyncio.IncompleteReadError =>
+            raise ProtocolError 'truncated message'
+
+    send = xs -> self.transport.write $ if
+        xs :: str => make_frame OP_TEXT $ xs.encode 'utf-8'
+        otherwise => make_frame OP_DATA   xs
+
+    close = self code: 1000 data: '' ->
+        self.transport.write $ make_frame OP_CLOSE $ if
+            code == 0 and not data => b''
+            otherwise => (code or 1000).to_bytes 2 'big' + data.encode 'utf-8'
+        self._closed = True

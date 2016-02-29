@@ -1,0 +1,23 @@
+import '/ssl'
+import '/sys'
+import '/asyncio'
+
+import 'retransmit'
+import 'framework'
+
+
+if len sys.argv == 1 => sctx = None
+   len sys.argv == 3 =>
+      _, cert, key = sys.argv
+      sctx = ssl.create_default_context ssl.Purpose.CLIENT_AUTH
+      sctx.load_cert_chain certfile: cert keyfile: key
+      sctx.set_alpn_protocols ['h2', 'http/1.1']
+      sctx.set_npn_protocols  ['h2', 'http/1.1']
+   otherwise =>
+      exit 'usage: python -m webmcast [<ssl cert> <ssl key>]'
+
+loop = asyncio.get_event_loop!
+server = loop.run_until_complete $ framework.http.server loop retransmit.root '' 8000 ssl: sctx
+except err => loop.run_forever!
+       err :: KeyboardInterrupt =>
+       finally => loop.close!

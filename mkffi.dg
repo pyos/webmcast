@@ -1,0 +1,14 @@
+import '/cffi'
+import '/subprocess'
+
+
+with api = open './webmcast/ebml/api.h' =>
+    ffi = cffi.FFI!
+    ffi.set_source 'webmcast.ebml' include_dirs: ['./webmcast']
+        ''' #include "ebml/api.h"
+            #include "ebml/buffer.h"
+            #include "ebml/binary.h"
+            #include "ebml/broadcast.h" '''
+    ffi.cdef $ api.read! +
+        '''extern "Python" int on_chunk_cb(void *, const uint8_t *, size_t, int);'''
+    ffi.compile!
