@@ -4,6 +4,7 @@ import '/zlib'
 import '/asyncio'
 import '/mimetypes'
 import '/posixpath'
+import '/contextlib'
 import '/urllib/parse/unquote'
 
 import '/cno'
@@ -11,23 +12,37 @@ import '/cno'
 _websocket = import 'websocket' pure
 
 
-_read_file_to_queue = async $ fd queue -> except
-    _ =>
-        while data = fd.read 8192 =>
-            await queue.put data
-    finally => queue.close!
+_SyncFileIterator = subclass object where
+    __init__  = self self.fd -> None
+    __aiter__ = async $ self -> self
+    __anext__ = async $ self -> self.fd.read 8192 or raise StopAsyncIteration
 
 
-_compress_into_queue = async $ data queue -> except
-    _ =>
+_Compressor = subclass object where
+    __init__ = self data ->
+        self.gz = zlib.compressobj wbits: 31
+        self.it = data.__aiter__!
+        self.done = False
+        None
+
+    __aiter__ = async $ self ->
+        self.it = await self.it
+        self
+
+    __anext__ = async $ self ->
+        self.done => raise StopAsyncIteration
+        except
+            err => self.gz.compress $ await self.it.__anext__!
+            err :: StopAsyncIteration =>
+                self.done = True
+                self.gz.flush!
+
+
+_compress = data -> if
+    data :: bytes =>
         gz = zlib.compressobj wbits: 31
-        if data :: bytes => await queue.put $ gz.compress data
-           data :: cno.Channel =>
-            async for chunk in data =>
-                await queue.put $ gz.compress chunk
-           otherwise => raise TypeError 'unsupported data type'
-        await queue.put gz.flush!
-    finally => queue.close!
+        gz.compress data + gz.flush!
+    otherwise => _Compressor data
 
 
 _rfc1123 = ts ->
@@ -42,18 +57,11 @@ Request = subclass cno.Request where
         self.template _name |>.render request: self **: kwargs
 
     respond_with_gzip = async $ self code headers data ->
-        found = for (k, v) in self.accept_headers =>
+        for (k, v) in self.accept_headers =>
             if k == 'accept-encoding' and 'gzip' in v =>
-                break!
-        not found =>
-            return await self.respond code headers data
-
-        headers = headers + [('content-encoding', 'gzip')]
-        ch = cno.Channel loop: self.conn.loop
-        writer = self.conn.loop.create_task $ _compress_into_queue data ch
-        except
-            _ => await self.respond code headers ch
-            finally => writer.cancel!
+                headers = headers + [('content-encoding', 'gzip')]
+                return await self.respond code headers $ _compress data
+        return await self.respond code headers data
 
     respond_with_template = async $ self code headers name **: kwargs ->
         self.render name **: kwargs |>.encode 'utf-8' |> await self.respond_with_gzip code headers
@@ -90,14 +98,7 @@ Request = subclass cno.Request where
                         'content-type', mime
             err :: IOError =>
                 return await self.respond_with_error 404 [] None
-        ch = cno.Channel 1 loop: self.conn.loop
-        writer = self.conn.loop.create_task $ _read_file_to_queue fd ch
-        except
-            _ =>
-                await self.respond_with_gzip 200 headers ch
-            finally =>
-                writer.cancel!
-                fd.close!
+        await self.respond_with_gzip 200 headers $ _SyncFileIterator fd
 
     websocket = async $ self ->
         fail = self.conn.is_http2 or self.method != 'GET' or
@@ -126,7 +127,8 @@ server = async $ loop root *: args **: kwargs ->
         req.path, _, req.query = req.path.partition '?'
         req.path = posixpath.normpath $ '///' + unquote req.path
         req.header_map = dict req.headers
-        req.accept_headers = list $ filter ((k, _) -> k.startswith 'accept') req.headers
+        req.accept_headers = list (where for (k, v) in req.headers =>
+            if k.startswith 'accept' => yield (k, v))
         except err => await root req
                err :: asyncio.CancelledError => raise err
                err :: Exception =>
