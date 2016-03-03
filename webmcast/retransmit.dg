@@ -6,9 +6,9 @@ import '/cno'
 
 import 'config'
 import 'static'
-import 'templates'
 import 'ebml/ffi'
 import 'ebml/lib'
+import 'templates'
 
 
 on_chunk_cb = (ffi.def_extern error: -1) $ handle data size force ->
@@ -80,12 +80,12 @@ Stream = subclass object where
         self.close!
 
 
-static_root = next $ iter static.__path__
-streams = weakref.WeakValueDictionary!
-collectors = weakref.WeakKeyDictionary!
+_default_state = subclass object where
+    streams    = weakref.WeakValueDictionary!
+    collectors = weakref.WeakKeyDictionary!
 
 
-root = async $ req ->
+root = async $ req state: _default_state static_root: (next $ iter static.__path__) ->
     req.template = templates.load
 
     req.path == '/' =>
@@ -113,14 +113,14 @@ root = async $ req ->
             # TODO auth tokens
             except
                 err =>
-                    stream = streams !! stream_id
+                    stream = state.streams !! stream_id
                     except
                         err =>
-                            collectors.pop stream |>.cancel!
+                            state.collectors.pop stream |>.cancel!
                         err :: KeyError =>
                             return await req.respond_with_error 403 [] 'Stream ID already taken.'
                 err :: KeyError =>
-                    stream = streams !! stream_id = Stream req.conn.loop
+                    stream = state.streams !! stream_id = Stream req.conn.loop
             except
                 err =>
                     while chunk = await req.payload.read 16384 =>
@@ -128,11 +128,11 @@ root = async $ req ->
                             return await req.respond_with_error 400 [] 'Malformed EBML.'
                     return await req.respond 204 [] b''
                 finally =>
-                    collectors !! stream = req.conn.loop.create_task $
+                    state.collectors !! stream = req.conn.loop.create_task $
                         stream.close_later config.MAX_DOWNTIME req.conn.loop
 
         stream = except
-            err => streams !! stream_id
+            err => state.streams !! stream_id
             err :: KeyError => return await req.respond_with_error 404 [] None
 
         not $ req.method in ('GET', 'HEAD') =>
@@ -150,13 +150,11 @@ root = async $ req ->
         # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
         req.conn.transport.set_write_buffer_limits 512 256
         except
-            err =>
-                return await req.respond 200
-                    list'
-                        'content-type', 'video/webm'
-                        'cache-control', 'no-cache'
-                    queue
-            finally =>
-                writer.cancel!
+            err => return await req.respond 200
+                list'
+                    'content-type', 'video/webm'
+                    'cache-control', 'no-cache'
+                queue
+            finally => writer.cancel!
 
     return await req.respond_with_error 404 [] None
