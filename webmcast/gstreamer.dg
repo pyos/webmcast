@@ -1,0 +1,69 @@
+import '/threading/Thread'
+import '/_thread'
+
+import '/gi' pure |>.require_version 'Gst' '1.0'
+import '/gi/repository/Gst'
+import '/gi/repository/GLib'
+import '/gi/repository/GObject'
+
+
+Gst.init None
+
+
+OK    = Gst.FlowReturn.OK
+ERROR = Gst.FlowReturn.ERROR
+
+
+#: Construct a buffer from a bytestring.
+buffer = Gst.Buffer.new_wrapped
+
+
+#: Obtain the contents of a `Sample` as a bytestring.
+#: (`Samples` are used, for example, in `appsink` elements.)
+Gst.Sample.data = property $ self ->
+    buffer = self.get_buffer!
+    ok, info = buffer.map Gst.MapFlags.READ
+    if not ok => raise ValueError 'could not map the buffer'
+    except _       => return info.data
+           finally => buffer.unmap info
+
+
+#: Run a glib event loop with default context in the background
+#: while a reference to the returned object is held.
+run_loop = subclass object where
+    __init__ = self ->
+        self._loop = GLib.MainLoop!
+        self._task = Thread target: self._run
+        self._task.start!
+        None
+
+    __del__ = self ->
+        self._loop.quit!
+
+    _run = self -> except
+        err => self._loop.run!
+        err :: KeyboardInterrupt => _thread.interrupt_main!
+
+
+Pipeline = subclass object where
+    __init__ = self loop ->
+        self._loop = loop
+        self._pipe = Gst.Pipeline!
+        self._started = False
+        None
+
+    start = self ->
+        self._started = True
+        self._pipe.set_state Gst.State.PLAYING
+
+    __del__ = self ->
+        self._started =>
+            self._pipe.set_state Gst.State.NULL
+
+    make = self kind ->
+        _, current, pending = self._pipe.get_state 0
+        item = Gst.ElementFactory.make kind
+        item is None => raise TypeError 'element creation failed'
+        item.set_state (pending or current)
+        self._pipe.add item
+        return item

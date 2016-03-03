@@ -1,0 +1,56 @@
+#: Transcode any video file from stdin to stdout as a vp8+vorbis webm.
+#:
+#: usage: python -m dg webmcode.dg < source > destination
+#:
+import '/sys'
+
+import '/gstreamer'
+
+
+loop = gstreamer.run_loop!
+pipe = gstreamer.Pipeline loop
+source = source where
+    sink = pipe.make 'appsink'
+    sink.set_property 'emit-signals' True
+    sink.connect 'new-sample' $ sink -> except
+        err => sink.emit 'pull-sample' |>.data |> sys.stdout.buffer.write
+        err => gstreamer.ERROR
+        otherwise => gstreamer.OK
+
+    muxer = pipe.make 'webmmux'
+    muxer.link sink
+
+    decode = pipe.make 'decodebin'
+    decode.connect 'pad-added' $ decode pad ->
+        kind = pad.get_current_caps!.get_structure 0 |>.get_name!
+        if
+            kind == 'video/x-raw' =>
+                out = pipe.make 'queue'
+                enc = pipe.make 'vp8enc'
+                inp = pipe.make 'videoconvert'
+                mux = muxer.request_pad (muxer.get_pad_template 'video_%u') 'video_0'
+                enc.set_property 'keyframe-max-dist' 60
+                enc.set_property 'deadline' 1
+                enc.set_property 'end-usage' 1  # constant bitrate
+                enc.set_property 'target-bitrate' 4096000
+            kind == 'audio/x-raw' =>
+                out = pipe.make 'queue'
+                enc = pipe.make 'vorbisenc'
+                inp = pipe.make 'audioconvert'
+                mux = muxer.request_pad (muxer.get_pad_template 'audio_%u') 'audio_0'
+            otherwise => return None
+        pad.link <| inp.get_static_pad 'sink'
+        inp.link enc
+        enc.link out
+        out.get_static_pad 'src' |>.link mux
+
+    source = pipe.make 'appsrc'
+    source.set_property 'max-bytes' 8192
+    source.link decode
+
+
+pipe.start!
+inp = sys.stdin.buffer.detach!
+while data = inp.read 8192 =>
+    source.emit 'push-buffer' $ gstreamer.buffer data
+source.emit 'end-of-stream'
