@@ -4,7 +4,6 @@ import '/zlib'
 import '/asyncio'
 import '/mimetypes'
 import '/posixpath'
-import '/contextlib'
 import '/urllib/parse/unquote'
 
 import '/cno'
@@ -12,40 +11,36 @@ import '/cno'
 _websocket = import 'websocket' pure
 
 
-_SyncFileIterator = subclass object where
+io_payload = subclass object where
     __init__  = self self.fd -> None
     __aiter__ = async $ self -> self
     __anext__ = async $ self -> self.fd.read 8192 or raise StopAsyncIteration
 
 
-_Compressor = subclass object where
-    __init__ = self data ->
-        self.gz = zlib.compressobj wbits: 31
-        self.it = data.__aiter__!
-        self.done = False
-        None
+compress = data -> if
+    data :: bytes =>
+        gz = zlib.compressobj wbits: 31
+        gz.compress data + gz.flush!
+    otherwise => _compress_iterable data.__aiter__! $ zlib.compressobj wbits: 31
+
+
+_compress_iterable = subclass object where
+    __init__ = self self.it self.gz -> None
 
     __aiter__ = async $ self ->
         self.it = await self.it
         self
 
     __anext__ = async $ self ->
-        self.done => raise StopAsyncIteration
+        if self.it is None => raise StopAsyncIteration
         except
             err => self.gz.compress $ await self.it.__anext__!
             err :: StopAsyncIteration =>
-                self.done = True
+                self.it = None
                 self.gz.flush!
 
 
-_compress = data -> if
-    data :: bytes =>
-        gz = zlib.compressobj wbits: 31
-        gz.compress data + gz.flush!
-    otherwise => _Compressor data
-
-
-_rfc1123 = ts ->
+date_header = ts ->
     Y, m, d, H, M, S, w, _, _ = time.gmtime ts
     a = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
     b = ('---', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
@@ -57,10 +52,9 @@ Request = subclass cno.Request where
         self.template _name |>.render request: self **: kwargs
 
     respond_with_gzip = async $ self code headers data ->
-        for (k, v) in self.accept_headers =>
-            if k == 'accept-encoding' and 'gzip' in v =>
-                headers = headers + [('content-encoding', 'gzip')]
-                return await self.respond code headers $ _compress data
+        if 'gzip' in self.header_map.get 'accept-encoding' '' =>
+            headers = headers + [('content-encoding', 'gzip')]
+            return await self.respond code headers $ compress data
         return await self.respond code headers data
 
     respond_with_template = async $ self code headers name **: kwargs ->
@@ -91,21 +85,22 @@ Request = subclass cno.Request where
                 fd = open path 'rb' buffering: 8192
                 headers = headers + if
                     cacheable => list'
-                        'last-modified', _rfc1123 (os.stat fd.fileno!).st_mtime
+                        'last-modified', os.stat fd.fileno! |>.st_mtime |> date_header
                         'cache-control', 'private, max-age=31536000'
                         'content-type', mime
                     otherwise => list'
                         'content-type', mime
             err :: IOError =>
                 return await self.respond_with_error 404 [] None
-        await self.respond_with_gzip 200 headers $ _SyncFileIterator fd
+        return await self.respond_with_gzip 200 headers $ io_payload fd
 
     websocket = async $ self ->
-        fail = self.conn.is_http2 or self.method != 'GET' or
-               (self.header_map.get 'upgrade').lower! != 'websocket' or
-                self.header_map.get 'sec-websocket-version' != '13' or
-                 not $ 'sec-websocket-key' in self.header_map
-        fail =>
+        if ((or) self.conn.is_http2
+                 self.method != 'GET'
+                 (self.header_map.get 'upgrade').lower! != 'websocket'
+                 self.header_map.get 'sec-websocket-version' != '13'
+                 self.header_map.get 'sec-websocket-key' is None
+        ) =>
             await self.respond_with_error 400 [] 'WebSocket handshake failed.'
             raise _websocket.ProtocolError 'invalid handshake'
 
