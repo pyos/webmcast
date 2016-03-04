@@ -1,6 +1,5 @@
 import '/os'
 import '/asyncio'
-import '/weakref'
 
 import '/cno'
 
@@ -53,7 +52,6 @@ Stream = subclass object where
 
     __del__ = self ->
         lib.broadcast_stop self.cffi
-        self._rate_updater.cancel!
 
     send = self chunk ->
         self._rate_pending += len chunk
@@ -71,18 +69,14 @@ Stream = subclass object where
 
     close = self ->
         # TODO destroy all transcoded streams.
+        self._rate_updater.cancel!
+        self._rate_updater = None
         self.done.set!
-
-    close_later = async $ self timeout loop: None ->
-        # can't just use `loop.call_later(timeout, self.close)` because that handle would
-        # keep this object alive until destroyed explicitly. a finished task does not.
-        await asyncio.sleep timeout loop: loop
-        self.close!
 
 
 _default_state = subclass object where
-    streams    = weakref.WeakValueDictionary!
-    collectors = weakref.WeakKeyDictionary!
+    streams    = {}
+    collectors = {}
 
 
 root = async $ req state: _default_state static_root: (next $ iter static.__path__) ->
@@ -122,14 +116,18 @@ root = async $ req state: _default_state static_root: (next $ iter static.__path
                 err :: KeyError =>
                     stream = state.streams !! stream_id = Stream req.conn.loop
             except
-                err =>
+                _ =>
                     while chunk = await req.payload.read 16384 =>
                         stream.send chunk =>
                             return await req.respond_with_error 400 [] 'Malformed EBML.'
                     return await req.respond 204 [] b''
                 finally =>
-                    state.collectors !! stream = req.conn.loop.create_task $
-                        stream.close_later config.MAX_DOWNTIME req.conn.loop
+                    state.collectors !! stream = req.conn.loop.create_task
+                        where
+                            await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
+                            state.collectors !!~ stream
+                            state.streams !!~ stream_id
+                            stream.close!
 
         stream = except
             err => state.streams !! stream_id
