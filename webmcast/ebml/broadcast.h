@@ -242,10 +242,10 @@ void broadcast_stop(struct broadcast *cast)
 int next_callback_id = 0;
 int broadcast_connect(struct broadcast *cast, on_chunk *cb, void *data, int skip_headers)
 {
-    if (!skip_headers)
+    if (cast->header.size && !skip_headers)
         cb(data, cast->header.data, cast->header.size, 1);
-
-    cb(data, cast->tracks.data, cast->tracks.size, 1);
+    if (cast->tracks.size)
+        cb(data, cast->tracks.data, cast->tracks.size, 1);
 
     if (!cast->recvs.reserve) {
         struct callback *m = (struct callback *)
