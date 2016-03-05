@@ -5,7 +5,7 @@ MAX_DOWNTIME = 10  # seconds
 #: How may frames can the output queue hold at once.
 #: If this limit is reached, everything until the next keyframe
 #: gets dropped.
-MAX_ENQUEUED_FRAMES = 20  # frames
+MAX_ENQUEUED_FRAMES = 60  # frames
 
 #: Maximum bitrate to accept. Going over this limit...does nothing. Yet.
 #: Maybe it'll result in automatic termination. Later. TODO, I guess.
