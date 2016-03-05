@@ -239,6 +239,21 @@ void broadcast_stop(struct broadcast *cast)
 }
 
 
+static int broadcast_reserve_cbs(struct broadcast *cast, size_t n)
+{
+    struct callback *m = (struct callback *)
+            malloc(sizeof(struct callback) * (cast->recvs.size + n));
+
+    if (m == NULL)
+        return -1;
+
+    memcpy(m, cast->recvs.xs, sizeof(struct callback) * cast->recvs.size);
+    cast->recvs.reserve = n;
+    cast->recvs.xs = m;
+    return 0;
+}
+
+
 int next_callback_id = 0;
 int broadcast_connect(struct broadcast *cast, on_chunk *cb, void *data, int skip_headers)
 {
@@ -247,17 +262,9 @@ int broadcast_connect(struct broadcast *cast, on_chunk *cb, void *data, int skip
     if (cast->tracks.size)
         cb(data, cast->tracks.data, cast->tracks.size, 1);
 
-    if (!cast->recvs.reserve) {
-        struct callback *m = (struct callback *)
-                malloc(sizeof(struct callback) * (cast->recvs.size + 5));
-
-        if (m == NULL)
+    if (!cast->recvs.reserve)
+        if (broadcast_reserve_cbs(cast, 5))
             return -1;
-
-        memcpy(m, cast->recvs.xs, sizeof(struct callback) * cast->recvs.size);
-        cast->recvs.reserve = 5;
-        cast->recvs.xs = m;
-    }
 
     int id = next_callback_id++;
     cast->recvs.xs[cast->recvs.size] = (struct callback) { id, skip_headers, 0, 0, data, cb };
@@ -278,6 +285,9 @@ void broadcast_disconnect(struct broadcast *cast, int id)
             return;
         }
     }
+
+    if (cast->recvs.reserve > cast->recvs.size * 2 + 5)
+        broadcast_reserve_cbs(cast, 5);
 }
 
 
