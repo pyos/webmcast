@@ -12,28 +12,51 @@ import 'templates'
 
 on_chunk_cb = (ffi.def_extern error: -1) $ handle data size force ->
     queue = ffi.from_handle handle
-    queue :: Stream =>
-        # this may look like a pointless copy now, but wait until you see
-        # how much more copies will be created anyway...
-        return queue.send $ bytes $ ffi.buffer data size
-    not force and queue.qsize! >= config.MAX_ENQUEUED_FRAMES =>
-        # if the queue overflows, we're already screwed -- the tcp buffer
-        # is also full. it will take a while to clear.
-        return -1
+    queue :: asyncio.Queue =>
+        not force and queue.qsize! >= config.MAX_ENQUEUED_FRAMES =>
+            # if the queue overflows, we're already screwed -- the tcp buffer
+            # is also full. it will take a while to clear.
+            return -1
     queue.put_nowait $ bytes $ ffi.buffer data size
     return 0
 
 
 Stream = subclass object where
     __init__ = self loop ->
-        self.loop = loop
         self.cffi = ffi.new 'struct broadcast *'
         self.done = asyncio.Event loop: loop
-        self._upd_rate 0
         lib.broadcast_start self.cffi
+        None
+
+    __del__ = self ->
+        lib.broadcast_stop self.cffi
+
+    send = put_nowait = self chunk ->
+        lib.broadcast_send self.cffi (ffi.new 'uint8_t[]' chunk) (len chunk)
+
+    attach = async $ self queue skip_headers: False ->
+        handle = ffi.new_handle queue
+        slot = lib.broadcast_connect self.cffi lib.on_chunk_cb handle skip_headers
+        except
+            _ =>
+                await self.done.wait!
+                queue.close!
+            finally =>
+                lib.broadcast_disconnect self.cffi slot
+        return None
+
+    close = self ->
+        self.done.set!
+
+
+Source = subclass object where
+    __init__ = self loop ->
+        self.loop = loop
+        self.live = Stream loop
         # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
         #      must accept data from this one, feed it through a gstreamer pipeline
         #      or something like that, then broadcast the resulting copy.
+        self._upd_rate 0
         None
 
     _upd_rate = self value: None ->
@@ -50,28 +73,17 @@ Stream = subclass object where
         self._rate_pending = 0
         self._rate_updater = self.loop.call_later 1 self._upd_rate
 
-    __del__ = self ->
-        lib.broadcast_stop self.cffi
-
-    send = self chunk ->
+    send = put_nowait = self chunk ->
         self._rate_pending += len chunk
-        lib.broadcast_send self.cffi (ffi.new 'uint8_t[]' chunk) (len chunk)
+        self.live.send chunk
 
-    attach = async $ self queue skip_headers: False ->
-        handle = ffi.new_handle queue
-        slot = lib.broadcast_connect self.cffi lib.on_chunk_cb handle skip_headers
-        except
-            _ =>
-                await self.done.wait!
-                queue.close!
-            finally =>
-                lib.broadcast_disconnect self.cffi slot
+    attach = self queue skip_headers: False ->
+        self.live.attach queue skip_headers
 
     close = self ->
-        # TODO destroy all transcoded streams.
         self._rate_updater.cancel!
         self._rate_updater = None
-        self.done.set!
+        self.live.close!  # all recoders will follow
 
 
 _default_state = subclass object where
@@ -91,68 +103,77 @@ root = async $ req state: _default_state static_root: (next $ iter static.__path
         return await req.respond_with_error 501 [] 'There is no UI yet.'
 
     req.path.startswith '/error/' => except
-        err => code = int $ req.path !! slice 7 None
+        err =>
+            return await req.respond_with_error (int $ req.path !! slice 7 None) [] None
         err :: ValueError =>
             return await req.respond_with_error 400 [] 'Error codes are numbers, silly.'
-        err is None =>
-            return await req.respond_with_error code [] None
 
     req.path.startswith '/static/' =>
         return await req.respond_with_file $ os.path.join static_root $ req.path !! slice 8 None
 
     req.path.startswith '/stream/' and req.path.find '/' 8 == -1 =>
         stream_id = req.path !! slice 8 None
-
-        req.method in ('POST', 'PUT') =>
-            # TODO auth tokens
-            except
-                err =>
-                    stream = state.streams !! stream_id
-                    except
-                        err =>
-                            state.collectors.pop stream |>.cancel!
-                        err :: KeyError =>
-                            return await req.respond_with_error 403 [] 'Stream ID already taken.'
-                err :: KeyError =>
-                    stream = state.streams !! stream_id = Stream req.conn.loop
-            except
-                _ =>
-                    while chunk = await req.payload.read 16384 =>
-                        stream.send chunk =>
-                            return await req.respond_with_error 400 [] 'Malformed EBML.'
-                    return await req.respond 204 [] b''
-                finally =>
-                    state.collectors !! stream = req.conn.loop.create_task
-                        where
-                            await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
-                            state.collectors !!~ stream
-                            state.streams !!~ stream_id
-                            stream.close!
-
-        stream = except
-            err => state.streams !! stream_id
-            err :: KeyError => return await req.respond_with_error 404 [] None
-
-        not $ req.method in ('GET', 'HEAD') =>
-            return await req.respond_with_error 405 [] 'Streams can only be GET or POSTed.'
-
-        (req.header_map.get 'upgrade' '').lower! == 'websocket' =>
-            with io = await req.websocket! =>
-                # TODO signaled mode (see README)
-                return io.close 1003 'signaled mode not implemented'
-
-        queue = cno.Channel loop: req.conn.loop
-        writer = req.conn.loop.create_task $ stream.attach queue
-        # force excess frames to stay in the queue instead of the transport's buffer
-        # XXX may interact badly with HTTP 2 since these limits are connection-wide.
-        # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
-        req.conn.transport.set_write_buffer_limits 512 256
-        except
-            err => return await req.respond 200
-                list'
-                    'content-type', 'video/webm'
-                    'cache-control', 'no-cache'
-                queue
-            finally => writer.cancel!
+        return await $ if
+            req.wants_websocket           => signal   req state stream_id
+            req.method in ('GET', 'HEAD') => download req state stream_id
+            req.method in ('POST', 'PUT') => upload   req state stream_id
+            otherwise => req.respond_with_error 405 [('accept', 'GET, PUT, POST')] 'Do what now?'
 
     return await req.respond_with_error 404 [] None
+
+
+upload = async $ req state stream_id ->
+    except
+        err =>
+            stream = state.streams !! stream_id
+            except
+                err =>
+                    state.collectors.pop stream |>.cancel!
+                err :: KeyError =>
+                    return await req.respond_with_error 403 [] 'Stream ID already taken.'
+        err :: KeyError =>
+            stream = state.streams !! stream_id = Source req.conn.loop
+    except
+        _ =>
+            while chunk = await req.payload.read 16384 =>
+                stream.send chunk =>
+                    return await req.respond_with_error 400 [] 'Malformed EBML.'
+            return await req.respond 204 [] b''
+        finally =>
+            state.collectors !! stream = req.conn.loop.create_task
+                where
+                    await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
+                    state.collectors !!~ stream
+                    state.streams !!~ stream_id
+                    stream.close!
+
+
+download = async $ req state stream_id ->
+    stream = except
+        err => state.streams !! stream_id
+        err :: KeyError => return await req.respond_with_error 404 [] None
+
+    # force excess frames to stay in the queue instead of the transport's buffer
+    # XXX may interact badly with HTTP 2 since these limits are connection-wide.
+    # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
+    req.conn.transport.set_write_buffer_limits 512 256
+    queue = cno.Channel loop: req.conn.loop
+    writer = req.conn.loop.create_task $ stream.attach queue
+    stream = None  # make sure reference loops do not touch the stream
+    except
+        _ => return await req.respond 200
+            list'
+                'content-type', 'video/webm'
+                'cache-control', 'no-cache'
+            queue
+        finally => writer.cancel!
+
+
+signal = async $ req state stream_id ->
+    stream = except
+        err => state.streams !! stream_id
+        err :: KeyError => return await req.respond_with_error 404 [] None
+
+    with io = await req.websocket! =>
+        # TODO signaled mode (see README)
+        return io.close 1003 'signaled mode not implemented'
