@@ -94,10 +94,13 @@ Request = subclass cno.Request where
                 return await self.respond_with_error 404 [] None
         return await self.respond_with_gzip 200 headers $ io_payload fd
 
+    wants_websocket = property $ self ->
+        (self.header_map.get 'upgrade' '').lower! == 'websocket'
+
     websocket = async $ self ->
         if ((or) self.conn.is_http2
                  self.method != 'GET'
-                 (self.header_map.get 'upgrade').lower! != 'websocket'
+                 (self.header_map.get 'upgrade' '').lower! != 'websocket'
                  self.header_map.get 'sec-websocket-version' != '13'
                  self.header_map.get 'sec-websocket-key' is None
         ) =>
