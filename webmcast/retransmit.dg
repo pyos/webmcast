@@ -7,6 +7,7 @@ import 'config'
 import 'static'
 import 'ebml/ffi'
 import 'ebml/lib'
+import 'gstreamer'
 import 'templates'
 
 
@@ -49,6 +50,64 @@ Stream = subclass object where
         self.done.set!
 
 
+Recoder = subclass object where
+    _GLIB_MAIN_LOOP = gstreamer.run_loop!
+
+    __init__ = self rate loop ->
+        self._out  = out  = Stream loop
+        self._pipe = pipe = gstreamer.Pipeline _GLIB_MAIN_LOOP
+
+        self._sink = pipe.make 'appsink'
+        self._sink.set_property 'emit-signals' True
+        self._sink_handle = self._sink.connect 'new-sample' $ sink ->
+            sink.emit 'pull-sample' |>.data |> loop.call_soon_threadsafe out.send
+            return gstreamer.OK
+
+        muxer = pipe.make 'webmmux'
+        muxer.link self._sink
+
+        self._demuxer = pipe.make 'matroskademux'
+        self._demuxer_handle = self._demuxer.connect 'pad-added' $ demuxer pad -> if
+            pad.name.startswith 'video_' =>
+                kind = pad.get_current_caps!.get_structure 0 |>.get_name!
+                mux = muxer.request_pad (muxer.get_pad_template 'video_%u') pad.name
+                out = pipe.make 'queue'
+                out.get_static_pad 'src' |>.link mux
+                enc = pipe.make 'vp8enc'
+                enc.set_property 'keyframe-max-dist' 60
+                enc.set_property 'deadline' 1
+                enc.set_property 'end-usage' 1  # constant bitrate
+                enc.set_property 'target-bitrate' $ rate * 8
+                enc.link out
+                inp = pipe.make $ if (kind == 'video/x-vp9' => 'vp9dec') (otherwise => 'vp8dec')
+                inp.link enc
+                pad.link $ inp.get_static_pad 'sink'
+            pad.name.startswith 'audio_' =>
+                # TODO recode opus -> vorbis as webmmux only accepts the latter.
+                mux = muxer.request_pad (muxer.get_pad_template 'audio_%u') pad.name
+                out = pipe.make 'queue'
+                out.get_static_pad 'src' |>.link mux
+                pad.link $ out.get_static_pad 'sink'
+
+        self._source = pipe.make 'appsrc'
+        self._source.set_property 'max-bytes' 8192
+        self._source.link self._demuxer
+        pipe.start!
+        None
+
+    send = put_nowait = self chunk ->
+        self._source.emit 'push-buffer' $ gstreamer.buffer chunk
+
+    attach = self queue skip_headers: False ->
+        self._out.attach queue skip_headers
+
+    close = self ->
+        self._source.emit 'end-of-stream'
+        self._demuxer.disconnect self._demuxer_handle
+        self._sink.disconnect self._sink_handle
+        self._out.close!
+
+
 Source = subclass object where
     __init__ = self loop ->
         self.loop = loop
@@ -56,6 +115,8 @@ Source = subclass object where
         # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
         #      must accept data from this one, feed it through a gstreamer pipeline
         #      or something like that, then broadcast the resulting copy.
+        self.smol = Recoder 16000 loop
+        self._smt = loop.create_task $ self.live.attach self.smol
         self._upd_rate 0
         None
 
