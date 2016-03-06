@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ebml/api.h"
 #include "ebml/buffer.h"
 #include "ebml/binary.h"
 
@@ -46,7 +47,7 @@ int main(void)
         if (i == 0)
             break;
 
-        if (ebml_buffer_dyn_concat(&buffer, ebml_view(data, i)))
+        if (ebml_buffer_dyn_concat(&buffer, (struct ebml_buffer) { data, i }))
             return 1;
 
         struct ebml_buffer buf = ebml_buffer_static(&buffer);
