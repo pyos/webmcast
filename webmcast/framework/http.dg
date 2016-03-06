@@ -40,11 +40,11 @@ _compress_iterable = subclass object where
                 self.gz.flush!
 
 
-date_header = ts ->
+date_header = ts ->  # RFC 1123
     Y, m, d, H, M, S, w, _, _ = time.gmtime ts
     a = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
     b = ('---', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
-    '%s, %02d %s %04d %02d:%02d:%02d GMT' % (a !! w, m, b !! m, Y, H, M, S)
+    '%s, %02d %s %04d %02d:%02d:%02d GMT' % (a !! w, d, b !! m, Y, H, M, S)
 
 
 Request = subclass cno.Request where
