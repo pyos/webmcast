@@ -1,52 +1,20 @@
-import '/os'
-import '/html'
-import '/builtins'
-import '/importlib'
-
-
-flatten = xs ->
-    for x in xs => if
-        x :: list => yield from flatten x
-        otherwise => yield str x
-
-
-Tag = subclass object where
-    VOID = frozenset $ ['area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img'] +
-                       ['input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr']
-
-    __init__ = self name classlist ->
-        self._name = name
-        self._clsl = classlist
-        None
-
-    __getattr__ = self name ->
-        return Tag self._name $ self._clsl + [name.replace '_' '-']
-
-    __call__ = self *: items **: kwargs ->
-        args = ''.join (where for (k, v) in kwargs.items! => yield if
-            v is None => ' %s'      %  k.replace '_' '-'
-            otherwise => ' %s="%s"' % (k.replace '_' '-', v))
-        self._clsl =>
-            args += ' class="%s"' % ' '.join self._clsl
-        return if
-            self._name in Tag.VOID =>
-                '<' + self._name + args + ' />'
-            otherwise =>
-                '<' + self._name + args + '>' + ''.join (flatten items) + '</' + self._name + '>'
+# TODO
+_error = subclass object where render =
+    '''
+    <!doctype html>
+    <html>
+        <head>
+            <meta charset="ascii" />
+            <title>{code}</title>
+        </head>
+        <body>
+            <h1>error {code}</h1>
+            <h3>{message}</h3>
+        </body>
+    </html>
+    '''.format
 
 
 load = name cache: {} ->
-    mod, mtime = except
-        err => cache !! name
-        err :: KeyError => importlib.import_module ('.' + name) __package__, None
-    real_mtime = os.stat mod.__file__ |>.st_mtime
-    real_mtime != mtime =>
-        importlib.reload mod
-        for maybe_tag in mod.render.__code__.co_names =>
-            not $ maybe_tag in mod.__dict__ or maybe_tag in __builtins__ =>
-                mod.__dict__ !! maybe_tag = Tag maybe_tag []
-        mod.head = Tag 'head' []
-        mod.escape = html.escape
-        mod.DOCTYPE = '<!doctype html>'
-        cache !! name = mod, real_mtime
-    return mod
+    name == 'error' => return _error
+    raise FileNotFoundError name
