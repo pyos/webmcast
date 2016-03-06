@@ -64,6 +64,7 @@ Recoder = subclass object where
             return gstreamer.OK
 
         muxer = pipe.make 'webmmux'
+        muxer.set_property 'streamable' True
         muxer.link self._sink
 
         self._demuxer = pipe.make 'matroskademux'
@@ -73,7 +74,7 @@ Recoder = subclass object where
                 mux = muxer.request_pad (muxer.get_pad_template 'video_%u') pad.name
                 out = pipe.make 'queue'
                 out.get_static_pad 'src' |>.link mux
-                enc = pipe.make 'vp8enc'
+                enc = pipe.make $ if (kind == 'video/x-vp9' => 'vp9enc') (otherwise => 'vp8enc')
                 enc.set_property 'keyframe-max-dist' 60
                 enc.set_property 'deadline' 1
                 enc.set_property 'end-usage' 1  # constant bitrate
@@ -83,7 +84,7 @@ Recoder = subclass object where
                 inp.link enc
                 pad.link $ inp.get_static_pad 'sink'
             pad.name.startswith 'audio_' =>
-                # TODO recode opus -> vorbis as webmmux only accepts the latter.
+                # NOTE gstreamer 1.8 required for opus audio in webmmux
                 mux = muxer.request_pad (muxer.get_pad_template 'audio_%u') pad.name
                 out = pipe.make 'queue'
                 out.get_static_pad 'src' |>.link mux
