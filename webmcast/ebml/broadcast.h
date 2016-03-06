@@ -137,11 +137,6 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 if (ebml_buffer_dyn_concat(&cast->tracks, buf))
                     return -1;
 
-                for EACH_CALLBACK(c, cast->recvs) {
-                    c->write(c->data, buf.data, buf.size, 1);
-                    c->skip_cluster = 0;
-                }
-
             case EBML_TAG_SeekHead:  // disallow seeking
             case EBML_TAG_Chapters:  // disallow seeking again
             case EBML_TAG_Cues:      // disallow even more seeking
@@ -218,6 +213,12 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         c->keyframes |= track_mask;
 
                     if (c->keyframes & track_mask) {
+                        if (!c->skip_headers) {
+                            if (c->write(c->data, cast->tracks.data, cast->tracks.size, 1))
+                                continue;
+                            c->skip_headers = 1;
+                            c->skip_cluster = 0;
+                        }
                         if (!c->skip_cluster || tc != cast->time.sent)
                             c->skip_cluster = !c->write(c->data, cluster, sizeof(cluster), 0);
 
@@ -269,8 +270,6 @@ int broadcast_connect(struct broadcast *cast, on_chunk *cb, void *data, int skip
 {
     if (cast->header.size && !skip_headers)
         cb(data, cast->header.data, cast->header.size, 1);
-    if (cast->tracks.size)
-        cb(data, cast->tracks.data, cast->tracks.size, 1);
 
     if (!cast->recvs.reserve)
         if (broadcast_reserve_cbs(cast, 5))
