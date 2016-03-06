@@ -93,6 +93,16 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                         if (!lv2.consumed)
                             break;
 
+                        if (lv2.id == EBML_TAG_Duration) {
+                            if (lv2.consumed + lv2.length > 0x7F)
+                                return -1;
+
+                            // live streams have none.
+                            uint8_t *writable = (uint8_t *) b.data;
+                            writable[0] = EBML_TAG_Void;
+                            writable[1] = 0x80 | (lv2.consumed + lv2.length - 2);
+                        }
+
                         if (lv2.id == EBML_TAG_TimecodeScale)
                             scale = ebml_parse_fixed_uint(ebml_tag_contents(b, lv2));
 
