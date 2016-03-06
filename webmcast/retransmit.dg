@@ -4,7 +4,6 @@ import '/asyncio'
 import '/cno'
 
 import 'config'
-import 'static'
 import 'ebml/ffi'
 import 'ebml/lib'
 import 'gstreamer'
@@ -13,37 +12,38 @@ import 'templates'
 
 on_chunk_cb = (ffi.def_extern error: -1) $ handle data size force ->
     queue = ffi.from_handle handle
-    queue :: asyncio.Queue =>
-        not force and queue.qsize! >= config.MAX_ENQUEUED_FRAMES =>
-            # if the queue overflows, we're already screwed -- the tcp buffer
-            # is also full. it will take a while to clear.
-            return -1
+    queue :: asyncio.Queue and not force and queue.qsize! >= config.MAX_ENQUEUED_FRAMES =>
+        # if the queue overflows, we're already screwed -- the tcp buffer
+        # is also full. it will take a while to clear.
+        return -1
     queue.put_nowait $ bytes $ ffi.buffer data size
     return 0
 
 
-Stream = subclass object where
+Broadcast = subclass object where
     __init__ = self loop ->
-        self.cffi = ffi.new 'struct broadcast *'
+        self.cobj = ffi.new 'struct broadcast *'
         self.done = asyncio.Event loop: loop
-        lib.broadcast_start self.cffi
+        lib.broadcast_start self.cobj
         None
 
     __del__ = self ->
-        lib.broadcast_stop self.cffi
+        lib.broadcast_stop self.cobj
 
-    send = put_nowait = self chunk ->
-        lib.broadcast_send self.cffi (ffi.new 'uint8_t[]' chunk) (len chunk)
+    put_nowait = self chunk ->
+        # (the method is named this way for api compatibility with asyncio.Queue.)
+        lib.broadcast_send self.cobj (ffi.new 'uint8_t[]' chunk) (len chunk)
 
-    attach = async $ self queue skip_headers: False ->
+    connect = async $ self queue skip_headers: False ->
         handle = ffi.new_handle queue
-        slot = lib.broadcast_connect self.cffi lib.on_chunk_cb handle skip_headers
+        slot = lib.broadcast_connect self.cobj lib.on_chunk_cb handle skip_headers
         except
             _ =>
                 await self.done.wait!
+                # not in `finally`. cancelling this coroutine and connecting the queue
+                # to another broadcast should be a valid operation.
                 queue.close!
-            finally =>
-                lib.broadcast_disconnect self.cffi slot
+            finally => lib.broadcast_disconnect self.cobj slot
         return None
 
     close = self ->
@@ -54,13 +54,13 @@ Recoder = subclass object where
     _GLIB_MAIN_LOOP = gstreamer.run_loop!
 
     __init__ = self rate loop ->
-        self._out  = out  = Stream loop
+        self._out  = out  = Broadcast loop
         self._pipe = pipe = gstreamer.Pipeline _GLIB_MAIN_LOOP
 
         self._sink = pipe.make 'appsink'
         self._sink.set_property 'emit-signals' True
         self._sink_handle = self._sink.connect 'new-sample' $ sink ->
-            sink.emit 'pull-sample' |>.data |> loop.call_soon_threadsafe out.send
+            sink.emit 'pull-sample' |>.data |> loop.call_soon_threadsafe out.put_nowait
             return gstreamer.OK
 
         muxer = pipe.make 'webmmux'
@@ -95,11 +95,11 @@ Recoder = subclass object where
         pipe.start!
         None
 
-    send = put_nowait = self chunk ->
+    put_nowait = self chunk ->
         self._source.emit 'push-buffer' $ gstreamer.buffer chunk
 
-    attach = self queue skip_headers: False ->
-        self._out.attach queue skip_headers
+    connect = self queue skip_headers: False ->
+        self._out.connect queue skip_headers
 
     close = self ->
         self._source.emit 'end-of-stream'
@@ -111,12 +111,12 @@ Recoder = subclass object where
 Source = subclass object where
     __init__ = self loop ->
         self.loop = loop
-        self.live = Stream loop
+        self.live = Broadcast loop
         # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
         #      must accept data from this one, feed it through a gstreamer pipeline
         #      or something like that, then broadcast the resulting copy.
         self.smol = Recoder 16000 loop
-        self._smt = loop.create_task $ self.live.attach self.smol
+        self._smt = loop.create_task $ self.live.connect self.smol
         self._upd_rate 0
         None
 
@@ -134,12 +134,12 @@ Source = subclass object where
         self._rate_pending = 0
         self._rate_updater = self.loop.call_later 1 self._upd_rate
 
-    send = put_nowait = self chunk ->
+    put_nowait = self chunk ->
         self._rate_pending += len chunk
-        self.live.send chunk
+        self.live.put_nowait chunk
 
-    attach = self queue skip_headers: False ->
-        self.live.attach queue skip_headers
+    connect = self queue skip_headers: False ->
+        self.live.connect queue skip_headers
 
     close = self ->
         self._rate_updater.cancel!
@@ -147,12 +147,12 @@ Source = subclass object where
         self.live.close!  # all recoders will follow
 
 
-_default_state = subclass object where
-    streams    = {}
-    collectors = {}
+_static_root = next $ iter (import 'static' pure).__path__
+_streams     = {}
+_collectors  = {}
 
 
-root = async $ req state: _default_state static_root: (next $ iter static.__path__) ->
+root = async $ req ->
     req.template = templates.load
 
     req.path == '/' =>
@@ -170,48 +170,48 @@ root = async $ req state: _default_state static_root: (next $ iter static.__path
             return await req.respond_with_error 400 [] 'Error codes are numbers, silly.'
 
     req.path.startswith '/static/' =>
-        return await req.respond_with_file $ os.path.join static_root $ req.path !! slice 8 None
+        return await req.respond_with_file $ os.path.join _static_root $ req.path !! slice 8 None
 
     req.path.startswith '/stream/' and req.path.find '/' 8 == -1 =>
         stream_id = req.path !! slice 8 None
         return await $ if
-            req.wants_websocket           => signal   req state stream_id
-            req.method in ('GET', 'HEAD') => download req state stream_id
-            req.method in ('POST', 'PUT') => upload   req state stream_id
-            otherwise => req.respond_with_error 405 [('accept', 'GET, PUT, POST')] 'Do what now?'
+            req.wants_websocket           => signal   req stream_id
+            req.method in ('GET', 'HEAD') => download req stream_id
+            req.method in ('POST', 'PUT') => upload   req stream_id
+            otherwise => req.respond_with_error 405 [('accept', 'GET, POST')] 'Do what now?'
 
     return await req.respond_with_error 404 [] None
 
 
-upload = async $ req state stream_id ->
+upload = async $ req stream_id ->
     except
         err =>
-            stream = state.streams !! stream_id
+            stream = _streams !! stream_id
             except
                 err =>
-                    state.collectors.pop stream |>.cancel!
+                    _collectors.pop stream |>.cancel!
                 err :: KeyError =>
                     return await req.respond_with_error 403 [] 'Stream ID already taken.'
         err :: KeyError =>
-            stream = state.streams !! stream_id = Source req.conn.loop
+            stream = _streams !! stream_id = Source req.conn.loop
     except
         _ =>
             while chunk = await req.payload.read 16384 =>
-                stream.send chunk =>
+                stream.put_nowait chunk =>
                     return await req.respond_with_error 400 [] 'Malformed EBML.'
             return await req.respond 204 [] b''
         finally =>
-            state.collectors !! stream = req.conn.loop.create_task
+            _collectors !! stream = req.conn.loop.create_task
                 where
                     await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
-                    state.collectors !!~ stream
-                    state.streams !!~ stream_id
+                    _collectors !!~ stream
+                    _streams !!~ stream_id
                     stream.close!
 
 
-download = async $ req state stream_id ->
+download = async $ req stream_id ->
     stream = except
-        err => state.streams !! stream_id
+        err => _streams !! stream_id
         err :: KeyError => return await req.respond_with_error 404 [] None
 
     # force excess frames to stay in the queue instead of the transport's buffer
@@ -219,7 +219,7 @@ download = async $ req state stream_id ->
     # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
     req.conn.transport.set_write_buffer_limits 512 256
     queue = cno.Channel loop: req.conn.loop
-    writer = req.conn.loop.create_task $ stream.attach queue
+    writer = req.conn.loop.create_task $ stream.connect queue
     stream = None  # make sure reference loops do not touch the stream
     except
         _ => return await req.respond 200
@@ -230,9 +230,9 @@ download = async $ req state stream_id ->
         finally => writer.cancel!
 
 
-signal = async $ req state stream_id ->
+signal = async $ req stream_id ->
     stream = except
-        err => state.streams !! stream_id
+        err => _streams !! stream_id
         err :: KeyError => return await req.respond_with_error 404 [] None
 
     with io = await req.websocket! =>
