@@ -55,7 +55,7 @@ read_frame = async $ reader max_size ->
     a, b = await reader.readexactly 2
     fin  = a & 0x80
     code = a & 0x0F
-    a & 0x70 or code not in OP_VALID =>
+    a & 0x70 or not (code in OP_VALID) =>
         raise ProtocolError 'unknown extension code'
     code >= OP_CONTROL and (not fin or (b & 0x7E) == 0x7E) =>
         raise ProtocolError 'multipart/oversized control frame'
@@ -96,7 +96,7 @@ make_frame = code data fin: True mask: False ->
     mask =>
         mask = random.getrandbits 32 |>.to_bytes 4 'big'
         data = mask + bytes (map (^) data $ itertools.cycle mask)
-    return head + data
+    return (head + data)
 
 
 Socket = subclass object where
@@ -139,7 +139,7 @@ Socket = subclass object where
         err :: asyncio.IncompleteReadError =>
             raise ProtocolError 'truncated message'
 
-    send = xs -> self.transport.write $ if
+    send = self xs -> self.transport.write $ if
         xs :: str => make_frame OP_TEXT $ xs.encode 'utf-8'
         otherwise => make_frame OP_DATA   xs
 
