@@ -109,47 +109,6 @@ Recoder = subclass object where
         self._out.close!
 
 
-Source = subclass object where
-    __init__ = self loop ->
-        self.loop = loop
-        self.live = Broadcast loop
-        # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
-        #      must accept data from this one, feed it through a gstreamer pipeline
-        #      or something like that, then broadcast the resulting copy.
-        # self.smol = Recoder 16000 loop
-        # self._smt = loop.create_task $ self.live.connect self.smol
-        self.rate = self.rvar = 0
-        self._rate_pending = 0
-        self._rate_updater = self.loop.call_later 1 self._upd_rate
-        None
-
-    _upd_rate = self ->
-        prev_rate, curr_rate, self._rate_pending = self.rate, self._rate_pending, 0
-        self.rate = 0.5 * curr_rate + 0.5 * self.rate
-        self.rvar = 0.5 * (curr_rate - self.rate) * (curr_rate - prev_rate) + 0.5 * self.rvar
-        # TODO if bitrate > 2 * (highest available child OR minimum bitrate)
-        #      for some ticks, spawn a new child stream connected to this one
-        #      via a bitrate-lowering gstreamer pipeline.
-        # TODO or maybe do it on demand?..
-        # TODO if bitrate < 2 * (highest available child) for some ticks,
-        #      destroy the reference to that child. keep it in a weakref dict,
-        #      however, in case someone is keeping it alive by watching it and we
-        #      decide to restore it later.
-        self._rate_updater = self.loop.call_later 1 self._upd_rate
-
-    put_nowait = self chunk ->
-        self._rate_pending += len chunk
-        self.live.put_nowait chunk
-
-    connect = self queue skip_headers: False ->
-        self.live.connect queue skip_headers
-
-    close = self ->
-        self._rate_updater.cancel!
-        self._rate_updater = None
-        self.live.close!  # all recoders will follow
-
-
 _static_root = head (import 'static' pure).__path__
 _streams = {}
 
@@ -198,28 +157,44 @@ upload = async $ req stream_id ->
             stream._collecting_task.cancel!
             stream._collecting_task = None
         err :: KeyError =>
-            stream = _streams !! stream_id = Source req.conn.loop
-            stream._collecting_task = None
+            stream = _streams !! stream_id = Broadcast req.conn.loop
             stream._websockets = set!
+            stream._collecting_task = None
+            # gstreamer sends each frame as a separate PUT request,
+            # so bitrate calculation must be done across calls to `upload`
+            stream.rate = 0
+            stream.rvar = 0
+            stream._rate_pending = 0
+            stream._rate_updater = req.conn.loop.create_task
+                where while True =>
+                    await asyncio.sleep 1 loop: req.conn.loop
+                    # exponentially weighted moving moments at a = 0.5
+                    #     avg[n] = a * x + (1 - a) * avg[n - 1]
+                    #     var[n] = a * (x - avg[n]) ** 2 / (1 - a) + (1 - a) * var[n - 1]
+                    stream.rate += (stream._rate_pending - stream.rate) / 2
+                    stream.rvar += (stream._rate_pending - stream.rate) ** 2 - stream.rvar / 2
+                    stream._rate_pending = 0
     except
         _ =>
             while chunk = await req.payload.read 16384 =>
+                stream._rate_pending += len chunk
                 stream.put_nowait chunk =>
                     return await req.respond_with_error 400 [] 'Malformed EBML.'
             return await req.respond 204 [] b''
         finally =>
-            stream._collecting_task = req.conn.loop.create_task
-                where
-                    await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
-                    _streams !!~ stream_id
-                    stream.close!
+            stream._collecting_task = req.conn.loop.call_later config.MAX_DOWNTIME $ ->
+                _streams !!~ stream_id
+                stream.close!
+                stream._rate_updater.cancel!
+                stream._rate_updater = None
+                stream._collecting_task = None
 
 
 download = async $ req stream_id ->
     stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
     output = cno.Channel loop: req.conn.loop
     writer = req.conn.loop.create_task $ stream.connect output
-    # FIXME there's a reference loop involving the current frame somewhere
+    # FIXME there's a reference loop involving the current frame somewhere?
     stream = None
     # force excess frames to stay in the queue, not in the write buffer
     req.conn.transport.set_write_buffer_limits 512 256
@@ -239,7 +214,7 @@ signal = async $ req stream_id ->
         _ =>
             stream._websockets.add io
             task = req.conn.loop.create_task $ signal_loop req io stream stream_id
-            await asyncio.wait [task, stream.live.done.wait!] return_when: asyncio.FIRST_COMPLETED
+            await asyncio.wait [task, stream.done.wait!] return_when: asyncio.FIRST_COMPLETED
         finally =>
             stream._websockets.discard io
             task.cancel!
