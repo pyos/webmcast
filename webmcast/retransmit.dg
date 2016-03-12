@@ -118,12 +118,15 @@ Source = subclass object where
         #      or something like that, then broadcast the resulting copy.
         self.smol = Recoder 16000 loop
         self._smt = loop.create_task $ self.live.connect self.smol
-        self._upd_rate 0
+        self.rate = 0
+        self.rvar = 0
+        self._rate_pending = 0
+        self._rate_updater = self.loop.call_later 1 self._upd_rate
         None
 
-    _upd_rate = self value: None ->
-        self.rate = if value is None => 0.5 * self._rate_pending + 0.5 * self.rate
-                       otherwise     => value
+    _upd_rate = self ->
+        self.rate = 0.5 * self._rate_pending + 0.5 * self.rate
+        self.rvar = 0.5 * (self._rate_pending - self.rate) ** 2 + 0.5 * self.rvar
         # TODO if bitrate > 2 * (highest available child OR minimum bitrate)
         #      for some ticks, spawn a new child stream connected to this one
         #      via a bitrate-lowering gstreamer pipeline.
@@ -211,30 +214,24 @@ upload = async $ req stream_id ->
 
 
 download = async $ req stream_id ->
-    stream = except
-        err => _streams !! stream_id
-        err :: KeyError => return await req.respond_with_error 404 [] None
-
-    # force excess frames to stay in the queue instead of the transport's buffer
-    # XXX may interact badly with HTTP 2 since these limits are connection-wide.
-    # XXX the tcp buffer is huge anyway. that's where the delay is. sctp anyone?
+    stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
+    output = cno.Channel loop: req.conn.loop
+    writer = req.conn.loop.create_task $ stream.connect output
+    # FIXME there's a reference loop involving the current frame somewhere
+    stream = None
+    # force excess frames to stay in the queue, not in the write buffer
     req.conn.transport.set_write_buffer_limits 512 256
-    queue = cno.Channel loop: req.conn.loop
-    writer = req.conn.loop.create_task $ stream.connect queue
-    stream = None  # make sure reference loops do not touch the stream
     except
         _ => return await req.respond 200
             list'
                 'content-type', 'video/webm'
                 'cache-control', 'no-cache'
-            queue
+            output
         finally => writer.cancel!
 
 
 signal = async $ req stream_id ->
-    stream = except
-        err => _streams !! stream_id
-        err :: KeyError => return await req.respond_with_error 404 [] None
+    stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
 
     with io = await req.websocket! =>
         # TODO signaled mode (see README)

@@ -15,3 +15,12 @@ MAX_BITRATE = 3500  # kbps (kilobits/second)
 #: Naturally, only ones equal to or lower than the original stream's bitrate
 #: will be available.
 ADAPTIVE_RATES = 600, 1200, 2400, 3300  # kbps
+
+#: (root mean square deviation / median) at which the bitrate is considered stable.
+#: If bitrates deviates more than that, the stream is assumed to be VBR and
+#: adaptive streaming is disabled.
+CBR_TOLERANCE = 0.1
+
+#: Low bitrate deviation must be maintained for this long for the stream
+#: to be considered as having constant bitrate.
+CBR_TOLERANCE_TIME = 10  # seconds
