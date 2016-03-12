@@ -75,7 +75,7 @@ Request = subclass cno.Request where
 
     respond_with_file = async $ self path headers: [] cacheable: True ->
         self.method in ('GET', 'HEAD') or
-            return await self.respond_with_error 405 [] 'This resource is static.'
+            return await self.respond_with_error 405 [('allow', 'GET')] 'This resource is static.'
         file = except
             err =>
                 open path 'rb' buffering: 8192
