@@ -42,8 +42,8 @@ _compress_iterable = subclass object where
 
 date_header = ts ->  # RFC 1123
     Y, m, d, H, M, S, w, _, _ = time.gmtime ts
-    a = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
-    b = ('---', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+    a = 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+    b = '---', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     '%s, %02d %s %04d %02d:%02d:%02d GMT' % (a !! w, d, b !! m, Y, H, M, S)
 
 
@@ -76,31 +76,30 @@ Request = subclass cno.Request where
     respond_with_file = async $ self path headers: [] cacheable: True ->
         self.method in ('GET', 'HEAD') or
             return await self.respond_with_error 405 [] 'This resource is static.'
+        file = except
+            err =>
+                open path 'rb' buffering: 8192
+            err :: IOError =>
+                return await self.respond_with_error 404 [] None
         # i'd serve everything as application/octet-stream, but then browsers
         # refuse to use these files as stylesheets/scripts.
         mime = mimetypes.guess_type path False !! 0 or 'application/octet-stream'
-        except
-            err =>
-                # `path` expected to be in normal form (no `.`/`..`)
-                fd = open path 'rb' buffering: 8192
-                headers = headers + if
-                    cacheable => list'
-                        'last-modified', os.stat fd.fileno! |>.st_mtime |> date_header
-                        'cache-control', 'private, max-age=31536000'
-                        'content-type', mime
-                    otherwise => list'
-                        'content-type', mime
-            err :: IOError =>
-                return await self.respond_with_error 404 [] None
-        return await self.respond_with_gzip 200 headers $ io_payload fd
+        headers = headers + if
+            cacheable => list'
+                'last-modified', os.stat file.fileno! |>.st_mtime |> date_header
+                'cache-control', 'private, max-age=31536000'
+                'content-type', mime
+            otherwise => list'
+                'content-type', mime
+        return await self.respond_with_gzip 200 headers $ io_payload file
 
     wants_websocket = property $ self ->
         (self.header_map.get 'upgrade' '').lower! == 'websocket'
 
     websocket = async $ self ->
-        if ((or) self.conn.is_http2
+        if ((or) not self.wants_websocket
+                 self.conn.is_http2
                  self.method != 'GET'
-                 (self.header_map.get 'upgrade' '').lower! != 'websocket'
                  self.header_map.get 'sec-websocket-version' != '13'
                  self.header_map.get 'sec-websocket-key' is None
         ) =>
