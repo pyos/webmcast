@@ -116,8 +116,8 @@ Source = subclass object where
         # TODO keep a (bitrate -> transcoded stream) mapping. the transcoded stream
         #      must accept data from this one, feed it through a gstreamer pipeline
         #      or something like that, then broadcast the resulting copy.
-        self.smol = Recoder 16000 loop
-        self._smt = loop.create_task $ self.live.connect self.smol
+        # self.smol = Recoder 16000 loop
+        # self._smt = loop.create_task $ self.live.connect self.smol
         self.rate = 0
         self.rvar = 0
         self._rate_pending = 0
