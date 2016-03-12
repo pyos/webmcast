@@ -116,6 +116,7 @@ Socket = subclass object where
                             t is None                   => 1001
                             t is ProtocolError          => 1002
                             t is UTFError               => 1007
+                            t is FrameSizeError         => 1009
                             otherwise                   => 1011
         self.transport.close!
 
