@@ -97,8 +97,8 @@ Request = subclass cno.Request where
         (self.header_map.get 'upgrade' '').lower! == 'websocket'
 
     websocket = async $ self ->
-        if ((or) not self.wants_websocket
-                 self.conn.is_http2
+        if ((or) self.conn.is_http2
+                 not self.wants_websocket
                  self.method != 'GET'
                  self.header_map.get 'sec-websocket-version' != '13'
                  self.header_map.get 'sec-websocket-key' is None
