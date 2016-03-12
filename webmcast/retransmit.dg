@@ -150,10 +150,8 @@ Source = subclass object where
         self.live.close!  # all recoders will follow
 
 
-_static_root = next $ iter (import 'static' pure).__path__
-_sockets     = {}
-_streams     = {}
-_collectors  = {}
+_static_root = head (import 'static' pure).__path__
+_streams = {}
 
 
 root = async $ req ->
@@ -195,13 +193,14 @@ upload = async $ req stream_id ->
     except
         err =>
             stream = _streams !! stream_id
-            except
-                err =>
-                    _collectors.pop stream |>.cancel!
-                err :: KeyError =>
-                    return await req.respond_with_error 403 [] 'Stream ID already taken.'
+            stream._collecting_task is None =>
+                return await req.respond_with_error 403 [] 'Stream ID already taken.'
+            stream._collecting_task.cancel!
+            stream._collecting_task = None
         err :: KeyError =>
             stream = _streams !! stream_id = Source req.conn.loop
+            stream._collecting_task = None
+            stream._websockets = set!
     except
         _ =>
             while chunk = await req.payload.read 16384 =>
@@ -209,10 +208,9 @@ upload = async $ req stream_id ->
                     return await req.respond_with_error 400 [] 'Malformed EBML.'
             return await req.respond 204 [] b''
         finally =>
-            _collectors !! stream = req.conn.loop.create_task
+            stream._collecting_task = req.conn.loop.create_task
                 where
                     await asyncio.sleep config.MAX_DOWNTIME loop: req.conn.loop
-                    _collectors !!~ stream
                     _streams !!~ stream_id
                     stream.close!
 
@@ -239,17 +237,15 @@ signal = async $ req stream_id ->
 
     with io = await req.websocket! => except
         _ =>
-            peers = _sockets.setdefault stream_id set!
-            peers.add io
-            task = req.conn.loop.create_task $ signal_loop req io peers stream stream_id
+            stream._websockets.add io
+            task = req.conn.loop.create_task $ signal_loop req io stream stream_id
             await asyncio.wait [task, stream.live.done.wait!] return_when: asyncio.FIRST_COMPLETED
         finally =>
+            stream._websockets.discard io
             task.cancel!
-            peers.discard io
-            if not peers => _sockets.pop stream_id
 
 
-signal_loop = async $ req io peers stream stream_id ->
+signal_loop = async $ req io stream stream_id ->
     async for msg in io =>
         # TODO signaled mode (see README)
-        for p in peers => p.send msg
+        for p in stream._websockets => p.send msg
