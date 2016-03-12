@@ -118,15 +118,15 @@ Source = subclass object where
         #      or something like that, then broadcast the resulting copy.
         # self.smol = Recoder 16000 loop
         # self._smt = loop.create_task $ self.live.connect self.smol
-        self.rate = 0
-        self.rvar = 0
+        self.rate = self.rvar = 0
         self._rate_pending = 0
         self._rate_updater = self.loop.call_later 1 self._upd_rate
         None
 
     _upd_rate = self ->
-        self.rate = 0.5 * self._rate_pending + 0.5 * self.rate
-        self.rvar = 0.5 * (self._rate_pending - self.rate) ** 2 + 0.5 * self.rvar
+        prev_rate, curr_rate, self._rate_pending = self.rate, self._rate_pending, 0
+        self.rate = 0.5 * curr_rate + 0.5 * self.rate
+        self.rvar = 0.5 * (curr_rate - self.rate) * (curr_rate - prev_rate) + 0.5 * self.rvar
         # TODO if bitrate > 2 * (highest available child OR minimum bitrate)
         #      for some ticks, spawn a new child stream connected to this one
         #      via a bitrate-lowering gstreamer pipeline.
@@ -135,7 +135,6 @@ Source = subclass object where
         #      destroy the reference to that child. keep it in a weakref dict,
         #      however, in case someone is keeping it alive by watching it and we
         #      decide to restore it later.
-        self._rate_pending = 0
         self._rate_updater = self.loop.call_later 1 self._upd_rate
 
     put_nowait = self chunk ->
