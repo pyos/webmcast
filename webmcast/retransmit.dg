@@ -151,6 +151,7 @@ Source = subclass object where
 
 
 _static_root = next $ iter (import 'static' pure).__path__
+_sockets     = {}
 _streams     = {}
 _collectors  = {}
 
@@ -159,10 +160,10 @@ root = async $ req ->
     req.template = templates.load
 
     req.path == '/' =>
-        req.push 'GET' '/static/css/uikit.min.css' req.accept_headers
-        req.push 'GET' '/static/css/layout.css'    req.accept_headers
-        req.push 'GET' '/static/js/jquery.min.js'  req.accept_headers
-        req.push 'GET' '/static/js/uikit.min.js'   req.accept_headers
+        req.push 'GET' '/static/css/uikit.min.css'  req.accept_headers
+        req.push 'GET' '/static/css/everything.css' req.accept_headers
+        req.push 'GET' '/static/js/jquery.min.js'   req.accept_headers
+        req.push 'GET' '/static/js/uikit.min.js'    req.accept_headers
         # TODO UI/auth nodes
         return await req.respond_with_error 501 [] 'There is no UI yet.'
 
@@ -174,6 +175,10 @@ root = async $ req ->
 
     req.path.startswith '/static/' =>
         return await req.respond_with_file $ os.path.join _static_root $ req.path !! slice 8 None
+
+    req.path.startswith '/room/' and req.path.find '/' 6 == -1 =>
+        stream_id = req.path !! slice 6 None
+        return await req.respond_with_template 200 [] 'room.html' stream_id: stream_id
 
     req.path.startswith '/stream/' and req.path.find '/' 8 == -1 =>
         stream_id = req.path !! slice 8 None
@@ -232,6 +237,19 @@ download = async $ req stream_id ->
 signal = async $ req stream_id ->
     stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
 
-    with io = await req.websocket! =>
+    with io = await req.websocket! => except
+        _ =>
+            peers = _sockets.setdefault stream_id set!
+            peers.add io
+            task = req.conn.loop.create_task $ signal_loop req io peers stream stream_id
+            await asyncio.wait [task, stream.live.done.wait!] return_when: asyncio.FIRST_COMPLETED
+        finally =>
+            task.cancel!
+            peers.discard io
+            if not peers => _sockets.pop stream_id
+
+
+signal_loop = async $ req io peers stream stream_id ->
+    async for msg in io =>
         # TODO signaled mode (see README)
-        return io.close 1003 'signaled mode not implemented'
+        for p in peers => p.send msg

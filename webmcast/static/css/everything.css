@@ -1,0 +1,24 @@
+html {
+    height: 100%;
+}
+
+body {
+    min-height: 100%;
+}
+
+.w-overflow-container-y {
+    overflow-y: auto;
+}
+
+.w-chat-container .name {
+    font-weight: bold;
+}
+
+.w-chat-container .name {
+    color: #eda987;
+}
+
+.w-chat-container .status .text {
+    font-weight: bold;
+    color: #af3612;
+}

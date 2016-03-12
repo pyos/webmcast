@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>...</title>
+        <link rel="stylesheet" href="/static/css/uikit.min.css" />
+        <link rel="stylesheet" href="/static/css/everything.css" />
+    </head>
+    <body style="height: 100%" class="uk-flex" data-stream-id="{{ stream_id }}">
+        <section class="w-view-container" style="flex: 3">
+            <video class="view uk-responsive-width"></video>
+        </section>
+
+        <section class="w-chat-container uk-flex uk-flex-column" style="flex: 1">
+            <ul class="log uk-list w-overflow-container-y" style="flex: 1">
+                <li class="message">
+                    <span class="name"></span>
+                    <span class="text"></span>
+                </li>
+            </ul>
+            <form class="input-form uk-form uk-flex" style="flex: 0 0">
+                <input class="input" type="text" style="flex: 1" />
+                <button class="uk-button" type="submit">&gt;&gt;</button>
+            </form>
+        </section>
+
+        <script src="/static/js/room.js"></script>
+    </body>
+</html>
