@@ -109,7 +109,7 @@ Recoder = subclass object where
         self._out.close!
 
 
-_static_root = head (import 'static' pure).__path__
+_static_root = head $ import 'static/__path__' pure
 _streams = {}
 
 
@@ -117,12 +117,7 @@ root = async $ req ->
     req.template = templates.load
 
     req.path == '/' =>
-        req.push 'GET' '/static/css/uikit.min.css'  req.accept_headers
-        req.push 'GET' '/static/css/everything.css' req.accept_headers
-        req.push 'GET' '/static/js/jquery.min.js'   req.accept_headers
-        req.push 'GET' '/static/js/uikit.min.js'    req.accept_headers
-        # TODO UI/auth nodes
-        return await req.respond_with_error 501 [] 'There is no UI yet.'
+        return await req.respond_with_error 501 [] 'There is no UI yet.'  # TODO
 
     req.path.startswith '/error/' => except
         err =>
@@ -133,31 +128,33 @@ root = async $ req ->
     req.path.startswith '/static/' =>
         return await req.respond_with_file $ os.path.join _static_root $ req.path !! slice 8 None
 
-    req.path.startswith '/room/' and req.path.find '/' 6 == -1 =>
-        stream_id = req.path !! slice 6 None
-        return await req.respond_with_template 200 [] 'room.html' stream_id: stream_id
-
     req.path.startswith '/stream/' and req.path.find '/' 8 == -1 =>
-        stream_id = req.path !! slice 8 None
+        id = req.path !! slice 8 None
         return await $ if
-            req.wants_websocket           => signal   req stream_id
-            req.method in ('GET', 'HEAD') => download req stream_id
-            req.method in ('POST', 'PUT') => upload   req stream_id
-            otherwise => req.respond_with_error 405 [('accept', 'GET, POST')] 'Do what now?'
+            req.wants_websocket           => signal req id
+            req.method in ('POST', 'PUT') => upload   req id
+            req.method in ('GET', 'HEAD') => download req id
+            otherwise => req.respond_with_error 405 [('accept', 'GET, POST')] None
+
+    id = req.path.lstrip '/'
+    id in _streams =>
+        not $ req.method in ('GET', 'HEAD') =>
+            return await req.respond_with_error 405 [('accept', 'GET')] None
+        return await req.respond_with_template 200 [] 'room.html' id: id
 
     return await req.respond_with_error 404 [] None
 
 
-upload = async $ req stream_id ->
+upload = async $ req id ->
     except
         err =>
-            stream = _streams !! stream_id
+            stream = _streams !! id
             stream._collecting_task is None =>
                 return await req.respond_with_error 403 [] 'Stream ID already taken.'
             stream._collecting_task.cancel!
             stream._collecting_task = None
         err :: KeyError =>
-            stream = _streams !! stream_id = Broadcast req.conn.loop
+            stream = _streams !! id = Broadcast req.conn.loop
             stream._websockets = set!
             stream._collecting_task = None
             # gstreamer sends each frame as a separate PUT request,
@@ -175,27 +172,24 @@ upload = async $ req stream_id ->
                     stream.rvar += (stream._rate_pending - stream.rate) ** 2 - stream.rvar / 2
                     stream._rate_pending = 0
     except
-        _ =>
-            while chunk = await req.payload.read 16384 =>
-                stream._rate_pending += len chunk
-                stream.put_nowait chunk =>
-                    return await req.respond_with_error 400 [] 'Malformed EBML.'
-            return await req.respond 204 [] b''
+        _ => while chunk = await req.payload.read 16384 =>
+            stream._rate_pending += len chunk
+            stream.put_nowait chunk =>
+                return await req.respond_with_error 400 [] 'Malformed EBML.'
         finally =>
             stream._collecting_task = req.conn.loop.call_later config.MAX_DOWNTIME $ ->
-                _streams !!~ stream_id
+                _streams !!~ id
                 stream.close!
                 stream._rate_updater.cancel!
                 stream._rate_updater = None
                 stream._collecting_task = None
+    return await req.respond 204 [] b''
 
 
-download = async $ req stream_id ->
-    stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
+download = async $ req id ->
+    stream = _streams.get id or return await req.respond_with_error 404 [] None
     output = cno.Channel loop: req.conn.loop
     writer = req.conn.loop.create_task $ stream.connect output
-    # FIXME there's a reference loop involving the current frame somewhere?
-    stream = None
     # force excess frames to stay in the queue, not in the write buffer
     req.conn.transport.set_write_buffer_limits 512 256
     except
@@ -204,23 +198,28 @@ download = async $ req stream_id ->
                 'content-type', 'video/webm'
                 'cache-control', 'no-cache'
             output
-        finally => writer.cancel!
+        finally =>
+            writer.cancel!
+            # FIXME holding a reference here delays garbage collection
+            #       curiously, `upload` does not have this problem.
+            stream = None
 
 
-signal = async $ req stream_id ->
-    stream = _streams.get stream_id or return await req.respond_with_error 404 [] None
+signal = async $ req id ->
+    stream = _streams.get id or return await req.respond_with_error 404 [] None
 
     with io = await req.websocket! => except
         _ =>
             stream._websockets.add io
-            task = req.conn.loop.create_task $ signal_loop req io stream stream_id
+            task = req.conn.loop.create_task $ signal_loop req io stream id
             await asyncio.wait [task, stream.done.wait!] return_when: asyncio.FIRST_COMPLETED
         finally =>
-            stream._websockets.discard io
             task.cancel!
+            stream._websockets.discard io
+            stream = None
 
 
-signal_loop = async $ req io stream stream_id ->
+signal_loop = async $ req io stream id ->
     async for msg in io =>
         # TODO signaled mode (see README)
         for p in stream._websockets => p.send msg
