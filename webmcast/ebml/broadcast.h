@@ -129,6 +129,23 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                                 return -1;
                         }
 
+                        else if (tid.id == EBML_TAG_Video) {
+                            for (struct ebml_buffer pb = ebml_tag_contents(ent, tid); pb.size;) {
+                                struct ebml_tag param = ebml_parse_tag(pb);
+                                if (!param.consumed)
+                                    return -1;
+
+                                if (param.id == EBML_TAG_PixelWidth)
+                                    cast->video.w = ebml_parse_fixed_uint(
+                                                    ebml_tag_contents(pb, param));
+                                else if (param.id == EBML_TAG_PixelHeight)
+                                    cast->video.h = ebml_parse_fixed_uint(
+                                                    ebml_tag_contents(pb, param));
+
+                                pb = ebml_buffer_shift(pb, param.consumed + param.length);
+                            }
+                        }
+
                         ent = ebml_buffer_shift(ent, tid.consumed + tid.length);
                     }
                 }

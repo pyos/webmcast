@@ -34,6 +34,10 @@ struct broadcast
         unsigned long long recv;
         unsigned long long sent;
     } time;
+    struct {
+        unsigned long w;
+        unsigned long h;
+    } video;
 };
 
 

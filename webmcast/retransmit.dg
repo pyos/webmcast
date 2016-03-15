@@ -27,6 +27,9 @@ Broadcast = subclass object where
         lib.broadcast_start self.cobj
         None
 
+    w = property $ self -> self.cobj.video.w
+    h = property $ self -> self.cobj.video.h
+
     __del__ = self ->
         lib.broadcast_stop self.cobj
 
@@ -137,12 +140,11 @@ root = async $ req ->
             otherwise => req.respond_with_error 405 [('allow', 'GET, POST')] None
 
     id = req.path.lstrip '/'
-    id in _streams =>
-        not $ req.method in ('GET', 'HEAD') =>
-            return await req.respond_with_error 405 [('allow', 'GET')] None
-        return await req.respond_with_template 200 [] 'room.html' id: id
-
-    return await req.respond_with_error 404 [] None
+    stream = _streams.get id or
+        return await req.respond_with_error 404 [] None
+    not $ req.method in ('GET', 'HEAD') =>
+        return await req.respond_with_error 405 [('allow', 'GET')] None
+    return await req.respond_with_template 200 [] 'room.html' id: id w: stream.w h: stream.h
 
 
 upload = async $ req id ->
