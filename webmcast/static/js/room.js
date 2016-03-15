@@ -4,15 +4,20 @@
 (() => {
     let stream = document.body.getAttribute('data-stream-id');
 
-    let view = document.querySelector('.w-view-container .view');
+    let view = document.querySelector('.w-view');
+    let wrap = document.querySelector('.w-view-wrap');
     let chat = document.querySelector('.w-chat-container');
+
+    view.addEventListener('loadedmetadata', () => {
+        wrap.classList.remove('w-icon-loading');
+        wrap.querySelector('.w-view-pad').remove();
+    });
 
     let chat_input = chat.querySelector('.input');
     let chat_form  = chat.querySelector('.input-form');
     let chat_log   = chat.querySelector('.log');
     let chat_msg   = chat.querySelector('.message');
 
-    chat_input.setAttribute('disabled', '');
     chat_msg.remove();
 
     let chat_entry = (name, text, add_class) => {
@@ -23,6 +28,20 @@
             elem.classList.add(add_class);
         chat_log.appendChild(elem);
     };
+
+    chat_input.setAttribute('disabled', '');
+
+    chat_input.addEventListener('keydown', (ev) => {
+        if (ev.keyCode === 13 && !ev.shiftKey) {
+            ev.preventDefault();
+        }
+    });
+
+    chat_input.addEventListener('keyup', (ev) => {
+        if (ev.keyCode === 13 && !ev.shiftKey) {
+            chat_form.dispatchEvent(new Event('submit'));
+        }
+    });
 
     chat_form.addEventListener('submit', (ev) => {
         ev.preventDefault();
@@ -45,18 +64,21 @@
     };
 
     ws.onerror = (ev) => {
-        // TODO destroy the view
-        chat_entry('', 'connection error', 'status');
+        // TODO log something
+        wrap.classList.remove('w-icon-loading');
+        wrap.classList.add('uk-icon-warning');
+        chat_input.setAttribute('disabled', '');
     };
 
     ws.onclose = (ev) => {
         // TODO
+        wrap.classList.remove('w-icon-loading');
+        wrap.classList.add('uk-icon-warning');
         chat_input.setAttribute('disabled', '');
-        chat_entry('', 'disconnected', 'status');
     };
 
     ws.onmessage = (ev) => {
         // TODO
-        chat_entry('random', ev.data);
+        chat_entry('yoba', ev.data);
     };
 })();

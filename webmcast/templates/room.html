@@ -6,22 +6,34 @@
         <link rel="stylesheet" href="/static/css/uikit.min.css" />
         <link rel="stylesheet" href="/static/css/everything.css" />
     </head>
-    <body style="height: 100%" class="uk-flex" data-stream-id="{{ id }}">
-        <section class="w-view-container" style="flex: 3; height: 100%">
-            <video class="view uk-responsive-width uk-responsive-height"></video>
-        </section>
-
-        <section class="w-chat-container uk-flex uk-flex-column" style="flex: 1">
-            <ul class="log uk-list w-overflow-container-y" style="flex: 1">
+    <body data-stream-id="{{ id }}">
+        <section class="w-chat-container uk-block uk-block-secondary uk-contrast">
+            <ul class="log uk-list">
                 <li class="message">
                     <span class="name"></span>
                     <span class="text"></span>
                 </li>
             </ul>
-            <form class="input-form uk-form uk-flex" style="flex: 0 0">
-                <input class="input" type="text" style="flex: 1" />
-                <button class="uk-button" type="submit">&gt;&gt;</button>
+            <form class="input-form uk-form">
+                <fieldset>
+                    <textarea class="input" cols="1" rows="2" placeholder="Write a message"></textarea>
+                </fieldset>
+                <fieldset>
+                    <button class="uk-button uk-button-primary" type="submit">Send</button>
+                </fieldset>
             </form>
+        </section>
+
+        <section class="w-content-container uk-block">
+            <h1><span class="uk-text-muted">///</span> {{ id }}</h1>
+
+            <section class="w-view-wrap w-icon-overlay w-icon-loading">
+                {# `video` with `height: auto` will always use the default aspect ratio.
+                   so instead we enforce the size of this element with an empty image. #}
+                <svg width="{{w}}" height="{{h}}" class="w-view-pad uk-responsive-width"></svg>{#
+  HTML sucks  #}<video class="w-view uk-responsive-width"></video>
+                {# TODO controls #}
+            </section>
         </section>
 
         <script src="/static/js/room.js"></script>

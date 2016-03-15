@@ -1,24 +1,102 @@
-html {
+*, *:before {
+    box-sizing: border-box;
+}
+
+html, body {
     height: 100%;
 }
 
-body {
-    min-height: 100%;
+.w-content-container {
+    height: 100%;
+    padding: 2em;
+    position: relative;
+    overflow: auto;
 }
 
-.w-overflow-container-y {
-    overflow-y: auto;
+.w-icon-overlay {
+    position: relative;
 }
 
-.w-chat-container .name {
-    font-weight: bold;
+.w-icon-overlay:before {
+	display: block;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 1em;
+	height: 1em;
+    margin: -0.5em;
+    z-index: 1000;
+    font-size: 4em;
+    font-family: FontAwesome;
+	color: #fff;
+    text-shadow: 0 0 0.2em #000;
+    pointer-events: none;
 }
 
-.w-chat-container .name {
-    color: #eda987;
+.w-icon-loading:before {
+    content: " ";
+	border: 0.2em solid transparent;
+	border-radius: 0.5em;
+	border-left-color: #fff;
+	border-right-color: #fff;
+	animation: uk-rotate 1.5s infinite linear;
 }
 
-.w-chat-container .status .text {
-    font-weight: bold;
-    color: #af3612;
+.w-view-wrap {
+    display: inline-block;
+    background: #000;
+}
+
+.w-view-pad + video {
+    height: 0;
+}
+
+.w-chat-container {
+    display: none;
+}
+
+@media (min-width: 45em) {
+    .w-chat-container + .w-content-container {
+        margin-right: 20em;
+    }
+
+    .w-chat-container {
+        display: block;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        padding: 0;
+        z-index: 1;
+        width: 20em;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .w-chat-container .name {
+        font-weight: bold;
+        /* TODO some variety */
+        color: #eda987;
+    }
+
+    .w-chat-container .log {
+        flex: 1;
+        margin: 0;
+        overflow-y: auto;
+        padding: 1em;
+        word-wrap: break-word;
+    }
+
+    .w-chat-container .input-form {
+        padding: 0.5em;
+    }
+
+    .w-chat-container .input-form fieldset {
+        padding: 0.5em;
+        text-align: right;
+    }
+
+    .w-chat-container .input {
+        width: 100%;
+    }
 }
