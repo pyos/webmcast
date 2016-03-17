@@ -44,6 +44,16 @@ enum EBML_TAG_ID  // https://www.matroska.org/technical/specs/index.html
       EBML_TAG_Cues           = 0x1C53BB6BL,
       EBML_TAG_Chapters       = 0x1043A770L,
       EBML_TAG_Tags           = 0x1254C367L,
+        EBML_TAG_Tag            = 0x7373L,
+          EBML_TAG_Targets        = 0x63C0L,
+            EBML_TAG_TargetType     = 0x63CAL,
+            EBML_TAG_TagTrackUID    = 0x63C5L,
+          EBML_TAG_SimpleTag      = 0x67C8L,
+            EBML_TAG_TagName        = 0x45A3L,
+            EBML_TAG_TagLanguage    = 0x447AL,
+            EBML_TAG_TagDefault     = 0x4484L,
+            EBML_TAG_TagString      = 0x4487L,
+            EBML_TAG_TagBinary      = 0x4485L,
 };
 
 
