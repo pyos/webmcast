@@ -1,11 +1,37 @@
 <!doctype html>
 <html>
     <head>
-        <meta charset="ascii" />
-        <title>{{code}}</title>
+        <meta charset="utf-8" />
+        <title>webmcast -- oh no</title>
+        <link rel="stylesheet" href="/static/css/uikit.min.css" />
+        <link rel="stylesheet" href="/static/css/everything.css" />
     </head>
-    <body>
-        <h1>error {{code}}</h1>
-        <h3>{{message}}</h3>
+    <body data-error="{{code}}">
+        <section class="w-chat-container uk-block">
+            {# an empty chat block to enforce alignment similar to normal streams #}
+        </section>
+
+        {% set w, h = 640, 480 %}
+        <section class="w-content-container uk-block">
+            <section style="max-width: 640px; margin: 0 auto">
+                <section class="w-view-wrap w-icon-overlay">
+                    <svg width="{{w}}" height="{{h}}" class="w-view-pad uk-responsive-width">
+                        <rect width="100%" height="100%" style="fill: #00f; fill-opacity: 1" />
+                        <text x="50%" y="50%" alignment-baseline="middle" text-anchor="middle"
+                              style="font-family: monospace; font-weight: bold; font-size: 2em;
+                                     fill: #fff; fill-opacity: 1">
+                            NO SIGNAL
+                        </text>
+                    </svg>
+                </section>
+                <h1><span class="uk-text-muted">{{ code }}:</span>
+                    {{ message or {
+                          403: 'FOREBODEN',
+                          404: 'A dog absorbed this page.',
+                          418: "I'm a little teapot.",
+                          500: 'The whole place fell apart.'}.get(code, 'Some kind of error.') }}
+                </h1>
+            </section>
+        </section>
     </body>
 </html>
