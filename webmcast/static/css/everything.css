@@ -8,21 +8,13 @@ html, body {
 
 .w-content-container {
     height: 100%;
-    padding: 0 2em;
+    padding: 2em;
     position: relative;
     overflow: auto;
-    margin: 0 auto;
-    /* with max-width set exactly to width of the video,
-       including padding in measurements is a bad idea. */
-    box-sizing: content-box;
 }
 
-.w-content-container > :first-child {
-    margin-top: 2em;
-}
-
-.w-content-container > :last-child {
-    margin-bottom: 2em;
+.uk-button-link {
+    background: none !important;
 }
 
 .w-icon-overlay {
@@ -74,7 +66,7 @@ html, body {
 
 @media (min-width: 45em) {
     .w-chat-container + .w-content-container {
-        padding-right: 22em;
+        margin-right: 20em;
     }
 
     .w-chat-container {
