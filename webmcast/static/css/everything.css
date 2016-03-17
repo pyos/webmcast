@@ -8,9 +8,21 @@ html, body {
 
 .w-content-container {
     height: 100%;
-    padding: 2em;
+    padding: 0 2em;
     position: relative;
     overflow: auto;
+    margin: 0 auto;
+    /* with max-width set exactly to width of the video,
+       including padding in measurements is a bad idea. */
+    box-sizing: content-box;
+}
+
+.w-content-container > :first-child {
+    margin-top: 2em;
+}
+
+.w-content-container > :last-child {
+    margin-bottom: 2em;
 }
 
 .w-icon-overlay {
@@ -47,6 +59,11 @@ html, body {
     background: #000;
 }
 
+.w-view-pad {
+    fill: #ffffff;
+    fill-opacity: 0.8;
+}
+
 .w-view-pad + video {
     height: 0;
 }
@@ -57,7 +74,7 @@ html, body {
 
 @media (min-width: 45em) {
     .w-chat-container + .w-content-container {
-        margin-right: 20em;
+        padding-right: 22em;
     }
 
     .w-chat-container {
@@ -73,30 +90,39 @@ html, body {
         flex-direction: column;
     }
 
-    .w-chat-container .name {
-        font-weight: bold;
-        /* TODO some variety */
-        color: #eda987;
-    }
-
-    .w-chat-container .log {
-        flex: 1;
-        margin: 0;
-        overflow-y: auto;
+    .w-chat-container > * {
         padding: 1em;
-        word-wrap: break-word;
     }
 
-    .w-chat-container .input-form {
+    .w-chat-container form {
         padding: 0.5em;
     }
 
-    .w-chat-container .input-form fieldset {
+    .w-chat-container fieldset {
         padding: 0.5em;
         text-align: right;
     }
 
     .w-chat-container .input {
         width: 100%;
+    }
+
+    .w-chat-container .log {
+        flex: 1;
+        margin: 0;
+        overflow-y: auto;
+        word-wrap: break-word;
+    }
+
+    .w-chat-container .name {
+        font-weight: bold;
+    }
+
+    .w-chat-container .empty-log:not(:only-child),
+    .w-chat-container.active .offline-message,
+    .w-chat-container:not(.active) form,
+    .w-chat-container .login-form + .input-form
+    {
+        display: none;
     }
 }

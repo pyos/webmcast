@@ -1,84 +1,124 @@
 'use strict';
 
 
-(() => {
-    let stream = document.body.getAttribute('data-stream-id');
+let wsc_init_view = (root) => {
+    let view = root.querySelector('.w-view');
+    let wrap = root.querySelector('.w-view-wrap');
 
-    let view = document.querySelector('.w-view');
-    let wrap = document.querySelector('.w-view-wrap');
-    let chat = document.querySelector('.w-chat-container');
+    view.addEventListener('loadstart', () => {
+        wrap.classList.remove('uk-icon-warning');
+        wrap.classList.add('w-icon-loading');
+    });
 
     view.addEventListener('loadedmetadata', () => {
+        wrap.classList.remove('uk-icon-warning');
         wrap.classList.remove('w-icon-loading');
         wrap.querySelector('.w-view-pad').remove();
     });
 
-    let chat_input = chat.querySelector('.input');
-    let chat_form  = chat.querySelector('.input-form');
-    let chat_log   = chat.querySelector('.log');
-    let chat_msg   = chat.querySelector('.message');
-
-    chat_msg.remove();
-
-    let chat_entry = (name, text, add_class) => {
-        let elem = chat_msg.cloneNode(true);
-        elem.querySelector('.name').textContent = name;
-        elem.querySelector('.text').textContent = text;
-        if (add_class)
-            elem.classList.add(add_class);
-        chat_log.appendChild(elem);
-    };
-
-    chat_input.setAttribute('disabled', '');
-
-    chat_input.addEventListener('keydown', (ev) => {
-        if (ev.keyCode === 13 && !ev.shiftKey) {
-            ev.preventDefault();
-        }
+    view.addEventListener('error', () => {
+        wrap.classList.remove('w-icon-loading');
+        wrap.classList.add('uk-icon-warning');
     });
 
-    chat_input.addEventListener('keyup', (ev) => {
-        if (ev.keyCode === 13 && !ev.shiftKey) {
-            chat_form.dispatchEvent(new Event('submit'));
-        }
+    view.addEventListener('ended', () => {
+        wrap.classList.remove('w-icon-loading');
+        wrap.classList.add('uk-icon-warning');
     });
 
-    chat_form.addEventListener('submit', (ev) => {
-        ev.preventDefault();
-
-        if (ws.readyState == 1 && chat_input.value) {
-            ws.send(chat_input.value);
-            chat_input.value = '';
-            chat_input.focus();
-        }
-    });
-
-    let ws = new WebSocket(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
-                           + `${window.location.host}/stream/${stream}`);
-
-    ws.onopen = () => {
-        // TODO measure connection speed, request a stream
-        view.src = `/stream/${stream}`;
+    let setURL = (url) => {
+        view.src = url;
         view.play();
-        chat_input.removeAttribute('disabled');
     };
 
-    ws.onerror = (ev) => {
-        // TODO log something
-        wrap.classList.remove('w-icon-loading');
-        wrap.classList.add('uk-icon-warning');
-        chat_input.setAttribute('disabled', '');
+    return { view, setURL };
+};
+
+
+let wsc_init_chat = (root) => {
+    let log = root.querySelector('.log');
+    let msg = log.querySelector('.message');
+    let rpc = null;
+    msg.remove();
+
+    let onLoad = (socket) => {
+        rpc = socket;
+        root.classList.add('active');
     };
 
-    ws.onclose = (ev) => {
-        // TODO
-        wrap.classList.remove('w-icon-loading');
-        wrap.classList.add('uk-icon-warning');
-        chat_input.setAttribute('disabled', '');
+    let onUnload = () => {
+        rpc = null;
+        root.classList.remove('active');
     };
 
-    ws.onmessage = (ev) => {
-        // TODO
-        chat_entry('yoba', ev.data);
+    let onMessage = (name, text) => {
+        let entry = msg.cloneNode(true);
+        entry.querySelector('.name').textContent = name;
+        entry.querySelector('.text').textContent = text;
+        log.appendChild(entry);
+    };
+
+    let form = root.querySelector('.input-form');
+    let text = form.querySelector('.input');
+
+    text.addEventListener('keydown', (ev) =>
+        (ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null));
+
+    text.addEventListener('keyup', (ev) =>
+        (ev.keyCode === 13 && !ev.shiftKey ? form.dispatchEvent(new Event('submit')) : null));
+
+    form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        if (rpc && text.value) {
+            // TODO a real RPC call
+            rpc.send(text.value);
+            text.value = '';
+            text.focus();
+        }
+    });
+
+    let lform = root.querySelector('.login-form');
+    let login = lform.querySelector('.input');
+
+    lform.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        if (rpc && login.value) {
+            // TODO a real RPC call
+            rpc.send(login.value);
+            lform.remove();
+            text.focus();
+        }
+    });
+
+    return { onLoad, onUnload, onMessage };
+};
+
+
+(() => {
+    let stream = document.body.getAttribute('data-stream-id');
+    let view = wsc_init_view(document.querySelector('.w-content-container'));
+    let chat = wsc_init_chat(document.querySelector('.w-chat-container'));
+    let socket = new WebSocket(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
+                               + `${window.location.host}/stream/${stream}`);
+
+    socket.onopen = () => {
+        // TODO measure connection speed, request a stream
+        view.setURL(`/stream/${stream}`);
+        chat.onLoad(socket);
+    };
+
+    socket.onerror = (ev) => {
+        // TODO something?
+    };
+
+    socket.onclose = (ev) => {
+        // TODO something else
+        chat.onUnload();
+    };
+
+    socket.onmessage = (ev) => {
+        var data = JSON.parse(ev.data);
+        // TODO parse RPC messages
+        chat.onMessage(data.name, data.message);
     };
 })();

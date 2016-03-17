@@ -1,5 +1,7 @@
 import '/os'
+import '/json'
 import '/asyncio'
+import '/collections'
 
 import '/cno'
 
@@ -158,6 +160,7 @@ upload = async $ req id ->
         err :: KeyError =>
             stream = _streams !! id = Broadcast req.conn.loop
             stream._websockets = set!
+            stream._ws_history = collections.deque maxlen: 20
             stream._collecting_task = None
             # gstreamer sends each frame as a separate PUT request,
             # so bitrate calculation must be done across calls to `upload`
@@ -221,7 +224,13 @@ signal = async $ req id ->
             stream = None
 
 
-signal_loop = async $ req io stream id ->
-    async for msg in io =>
+signal_loop = async $ req io stream id name: None ->
+    for m in stream._ws_history => io.send m
+    async for msg in io => if
         # TODO signaled mode (see README)
-        for p in stream._websockets => p.send msg
+        msg :: bytes => return io.close 1003
+        name is None => name = msg
+        otherwise    =>
+            msg = json.dumps $ dict name: name message: msg
+            for p in stream._websockets => p.send msg
+            stream._ws_history.append msg
