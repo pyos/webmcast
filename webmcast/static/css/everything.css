@@ -2,15 +2,12 @@
     box-sizing: border-box;
 }
 
-html, body {
-    height: 100%;
+body[data-error] {
+    background: #00f;
 }
 
-.w-content-container {
-    height: 100%;
-    padding: 2em;
-    position: relative;
-    overflow: auto;
+body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 {
+    font-family: monospace;
 }
 
 .uk-button-link {
@@ -40,24 +37,39 @@ html, body {
 .w-icon-loading:before {
     content: " ";
 	border: 0.2em solid transparent;
-	border-radius: 0.5em;
+	border-radius: 50%;
 	border-left-color: #fff;
 	border-right-color: #fff;
 	animation: uk-rotate 1.5s infinite linear;
 }
 
-.w-view-wrap {
-    display: inline-block;
+.w-content-container {
+    padding: 2em;
+    position: relative;
+    min-height: 100vh;
+}
+
+.w-view-container {
     background: #000;
+    overflow: hidden;
+    position: relative;
+    display: inline-block;
 }
 
-.w-view-pad {
-    fill: #ffffff;
-    fill-opacity: 0.8;
+.w-view-container .pad + video {
+    display: none;
 }
 
-.w-view-pad + video {
-    height: 0;
+.w-view-container .controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: transform 0.3s ease-out;
+}
+
+.w-view-container:not(:hover) .controls {
+    transform: translateY(100%);
 }
 
 .w-chat-container {
@@ -66,11 +78,12 @@ html, body {
 
 @media (min-width: 45em) {
     .w-chat-container + .w-content-container {
+        height: 100vh;
+        overflow: auto;
         margin-right: 20em;
     }
 
     .w-chat-container {
-        display: block;
         position: fixed;
         top: 0;
         right: 0;

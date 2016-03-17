@@ -18,7 +18,7 @@
                 </li>
             </ul>
             <div class="offline-message uk-text-muted">
-                The stream is offline.
+                [[ offline ]]
             </div>
             <form class="login-form uk-form">
                 <fieldset>
@@ -39,17 +39,17 @@
             </form>
         </section>
 
-        <section class="w-content-container uk-block">
-            <section style="max-width: {{w}}px; margin: 0 auto">
-                <section class="w-view-wrap w-icon-overlay w-icon-loading">
+        <section class="w-content-container uk-block uk-flex uk-flex-column">
+            <div class="uk-flex-item-1">
+                <div class="w-view-container w-icon-overlay w-icon-loading">
                     {# `video` with `height: auto` will always use the default aspect ratio.
                        so instead we enforce the size of this element with an empty image. #}
-                    <svg width="{{w}}" height="{{h}}" class="w-view-pad uk-responsive-width"></svg>{#
-      HTML sucks  #}<video class="w-view uk-responsive-width"></video>
-                    {# TODO controls #}
-                </section>
-                <h1>{{ id }}</h1>
-            </section>
+                    <svg width="{{w}}" height="{{h}}" class="pad uk-responsive-width">
+                    </svg><video class="uk-responsive-width"></video>
+                    <div class="controls">{# TODO #}</div>
+                </div>
+            </div>
+            <h1>{{ id }}</h1>
         </section>
 
         <script src="/static/js/room.js"></script>

@@ -7,31 +7,23 @@
         <link rel="stylesheet" href="/static/css/everything.css" />
     </head>
     <body data-error="{{code}}">
-        <section class="w-chat-container uk-block">
-            {# an empty chat block to enforce alignment similar to normal streams #}
-        </section>
-
-        {% set w, h = 640, 480 %}
-        <section class="w-content-container uk-block">
-            <section style="max-width: 640px; margin: 0 auto">
-                <section class="w-view-wrap w-icon-overlay">
-                    <svg width="{{w}}" height="{{h}}" class="w-view-pad uk-responsive-width">
-                        <rect width="100%" height="100%" style="fill: #00f; fill-opacity: 1" />
-                        <text x="50%" y="50%" alignment-baseline="middle" text-anchor="middle"
-                              style="font-family: monospace; font-weight: bold; font-size: 2em;
-                                     fill: #fff; fill-opacity: 1">
-                            NO SIGNAL
-                        </text>
-                    </svg>
-                </section>
-                <h1><span class="uk-text-muted">{{ code }}:</span>
+        <section class="w-content-container uk-block uk-block-secondary uk-contrast uk-flex uk-flex-column">
+            <div class="uk-flex-item-1 uk-flex uk-flex-column uk-flex-center uk-text-center">
+                <h2 style="font-weight: bold">NO SIGNAL // {{ code }} //
                     {{ message or {
-                          403: 'FOREBODEN',
-                          404: 'A dog absorbed this page.',
-                          418: "I'm a little teapot.",
-                          500: 'The whole place fell apart.'}.get(code, 'Some kind of error.') }}
-                </h1>
-            </section>
+                        403: 'FOREBODEN.',
+                        404: 'There is nothing here.',
+                        418: "I'm a little teapot.",
+                        500: '✋☠❄☜☼☠✌☹ 💧☜☼✞☜☼ ☜☼☼⚐☼',
+                       }.get(code, 'ERROR') }}
+                </h2>
+            </div>
+            <h3>
+                * {{ {403: "you're just a dirty hacker, aren't you?",
+                      404: '(The dog absorbs the page.)',
+                      418: 'Would you like a cup of tea?',
+                      500: 'Try submitting a bug report.'}.get(code, 'Try something else.')|safe }}
+            </h3>
         </section>
     </body>
 </html>

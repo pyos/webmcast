@@ -2,28 +2,27 @@
 
 
 let wsc_init_view = (root) => {
-    let view = root.querySelector('.w-view');
-    let wrap = root.querySelector('.w-view-wrap');
+    let view = root.querySelector('video');
 
     view.addEventListener('loadstart', () => {
-        wrap.classList.remove('uk-icon-warning');
-        wrap.classList.add('w-icon-loading');
+        root.classList.remove('uk-icon-warning');
+        root.classList.add('w-icon-loading');
     });
 
     view.addEventListener('loadedmetadata', () => {
-        wrap.classList.remove('uk-icon-warning');
-        wrap.classList.remove('w-icon-loading');
-        wrap.querySelector('.w-view-pad').remove();
+        root.classList.remove('uk-icon-warning');
+        root.classList.remove('w-icon-loading');
+        root.querySelector('.pad').remove();
     });
 
     view.addEventListener('error', () => {
-        wrap.classList.remove('w-icon-loading');
-        wrap.classList.add('uk-icon-warning');
+        root.classList.remove('w-icon-loading');
+        root.classList.add('uk-icon-warning');
     });
 
     view.addEventListener('ended', () => {
-        wrap.classList.remove('w-icon-loading');
-        wrap.classList.add('uk-icon-warning');
+        root.classList.remove('w-icon-loading');
+        root.classList.add('uk-icon-warning');
     });
 
     let setURL = (url) => {
@@ -69,12 +68,10 @@ let wsc_init_chat = (root) => {
 
     form.addEventListener('submit', (ev) => {
         ev.preventDefault();
-        if (rpc && text.value) {
-            // TODO a real RPC call
-            rpc.send(text.value);
-            text.value = '';
-            text.focus();
-        }
+        // TODO a real RPC call
+        rpc.send(text.value);
+        text.value = '';
+        text.focus();
     });
 
     let lform = root.querySelector('.login-form');
@@ -82,12 +79,10 @@ let wsc_init_chat = (root) => {
 
     lform.addEventListener('submit', (ev) => {
         ev.preventDefault();
-        if (rpc && login.value) {
-            // TODO a real RPC call
-            rpc.send(login.value);
-            lform.remove();
-            text.focus();
-        }
+        // TODO a real RPC call
+        rpc.send(login.value);
+        lform.remove();
+        text.focus();
     });
 
     return { onLoad, onUnload, onMessage };
@@ -96,7 +91,7 @@ let wsc_init_chat = (root) => {
 
 (() => {
     let stream = document.body.getAttribute('data-stream-id');
-    let view = wsc_init_view(document.querySelector('.w-content-container'));
+    let view = wsc_init_view(document.querySelector('.w-view-container'));
     let chat = wsc_init_chat(document.querySelector('.w-chat-container'));
     let socket = new WebSocket(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                                + `${window.location.host}/stream/${stream}`);
