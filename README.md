@@ -123,12 +123,13 @@ dict     = '\x08' byte{2}:length (hashable:key object:value){length}
 
 Responses have the same format with code = 0 on error and 1 on success.
 
-| Code | Arguments   | Return | Meaning                                             |
-| ---- | ----------- | ------ | --------------------------------------------------- |
-| 0    | string      | null   | Obtain a temporary nickname to send messages under. |
-| 1    | string      | null   | Send a message. Must already have a nickname.       |
-| 2    |             | null   | Receive events containing the last 20 messages.     |
-| 3+   |             | null   | Not implemented yet.                                |
+| Code | Arguments    | Return | Meaning                                             |
+| ---- | ------------ | ------ | --------------------------------------------------- |
+| 0    | string       | null   | Obtain a temporary nickname to send messages under. |
+| 1    | string       | null   | Send a message. Must already have a nickname.       |
+| 2    |              | null   | Receive events containing the last 20 messages.     |
+| 3    | 0 < int < 1M | bytes  | Fetch the specified number of zero bytes.           |
+| 4+   |              | null   | Not implemented yet.                                |
 
 The server can also emit events; those will have id = 0xFFFF.
 

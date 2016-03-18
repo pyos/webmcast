@@ -263,3 +263,9 @@ RPC_FUNCTIONS = list'
         for (name, msg) in history =>
             rpc.emit io 1 name msg
         None
+
+    1, 1, async $ io stream size ->
+        await io.drained.wait!
+        size :: int         or raise ValueError 'expected an integer'
+        0 <= size < 1000000 or raise ValueError 'payload size out of range'
+        b'\0' * size

@@ -5,6 +5,7 @@ let RPC = {
     CODE_SET_NAME:     0,
     CODE_SEND_MESSAGE: 1,
     CODE_GET_HISTORY:  2,
+    CODE_MEASURE_RATE: 3,
 
     WebSocket: function (socket) {
         let cbs_by_id   = {};
@@ -153,11 +154,11 @@ let RPC = {
             r.i += 4 + data.length;
         }
         else if (x instanceof ArrayBuffer) {
-            r = RPC.ensure(r, 5 + x.bytesLength);
+            r = RPC.ensure(r, 5 + x.byteLength);
             r.view.setUint8(r.i++, 6);
-            r.view.setUint32(r.i, x.bytesLength);
+            r.view.setUint32(r.i, x.byteLength);
             r.data.set(new Uint8Array(x), r.i + 4);
-            r.i += 4 + x.bytesLength;
+            r.i += 4 + x.byteLength;
         }
         else if (x instanceof Array) {
             r.view.setUint8(r.i++, 7);
@@ -181,6 +182,7 @@ let RPC = {
 
 let ViewNode = function (root, stream) {
     let view = root.querySelector('video');
+    let rpc  = null;
 
     view.addEventListener('loadstart', () => {
         root.classList.remove('uk-icon-warning');
@@ -203,13 +205,32 @@ let ViewNode = function (root, stream) {
         root.classList.add('uk-icon-warning');
     });
 
-    let onLoad = (rpc) => {
+    let onLoad = (socket) => {
+        rpc = socket;
         // TODO measure connection speed, request a stream
         view.src = `/stream/${stream}`;
         view.play();
     };
 
-    return { onLoad, onUnload: () => null };
+    let onUnload = () => {
+        rpc = null;
+    };
+
+    let measure = (size) => {
+        if (!rpc)
+            return new Promise((resolve, _) => resolve(Infinity));
+
+        const start = window.performance.now();
+        console.log(start);
+
+        return rpc.send(RPC.CODE_MEASURE_RATE, size).then(() => {
+            const end = window.performance.now();
+            console.log(end);
+            return (end - start) / 1000;
+        });
+    };
+
+    return { onLoad, onUnload, measure };
 };
 
 
@@ -273,25 +294,21 @@ let ChatNode = function (root) {
 };
 
 
-(() => {
-    let stream = document.body.getAttribute('data-stream-id');
-    let view = new ViewNode(document.querySelector('.w-view-container'), stream);
-    let chat = new ChatNode(document.querySelector('.w-chat-container'));
-    let socket = new WebSocket(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
-                               + `${window.location.host}/stream/${stream}`);
+let stream = document.body.getAttribute('data-stream-id');
+let view = new ViewNode(document.querySelector('.w-view-container'), stream);
+let chat = new ChatNode(document.querySelector('.w-chat-container'));
+let socket = new WebSocket(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
+                           + `${window.location.host}/stream/${stream}`);
+let rpc = new RPC.WebSocket(socket);
 
-    socket.onopen = () => {
-        let rpc = new RPC.WebSocket(socket);
-        chat.onLoad(rpc);
-        view.onLoad(rpc);
-    };
+socket.onopen = () => {
+    chat.onLoad(rpc);
+    view.onLoad(rpc);
+};
 
-    socket.onerror = (ev) => {
-        // TODO something?
-    };
+socket.onclose = (ev) => {
+    chat.onUnload();
+    view.onUnload();
+};
 
-    socket.onclose = (ev) => {
-        chat.onUnload();
-        view.onUnload();
-    };
-})();
+// TODO socket.onerror?
