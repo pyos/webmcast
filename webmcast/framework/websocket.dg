@@ -36,6 +36,9 @@ ProtocolError = subclass asyncio.CancelledError where
     # they're mostly noise. non-compliant clients are not our problem.
 
 
+ExtProtoError = subclass asyncio.CancelledError where ()
+
+
 FrameSizeError = subclass asyncio.CancelledError where ()
 
 
@@ -115,6 +118,7 @@ Socket = subclass object where
                             t is asyncio.CancelledError => 1000
                             t is None                   => 1001
                             t is ProtocolError          => 1002
+                            t is ExtProtoError          => 1003
                             t is UTFError               => 1007
                             t is FrameSizeError         => 1009
                             otherwise                   => 1011
