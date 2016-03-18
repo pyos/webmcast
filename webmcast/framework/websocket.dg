@@ -106,10 +106,15 @@ Socket = subclass object where
     __init__ = self loop reader transport max_message_size: (32 * 1024 * 1024) ->
         self.loop = loop
         self.reader = reader
+        self.drained = asyncio.Event loop: loop
+        self.drained.set!
         self.transport = transport
         self.max_message_size = max_message_size
         self._closed = False
         None
+
+    pause_writing  = self -> self.drained.clear!
+    resume_writing = self -> self.drained.set!
 
     __enter__ = self -> self
     __exit__  = self t v tb ->

@@ -113,9 +113,12 @@ Request = subclass cno.Request where
                 'sec-websocket-accept', _websocket.accept $ self.header_map !! 'sec-websocket-key'
             b''
         reader = asyncio.StreamReader loop: self.conn.loop
-        self.conn.data_received = reader.feed_data
-        self.conn.eof_received  = reader.feed_eof
-        return _websocket.Socket self.conn.loop reader self.conn.transport
+        socket = _websocket.Socket self.conn.loop reader self.conn.transport
+        self.conn.data_received  = reader.feed_data
+        self.conn.eof_received   = reader.feed_eof
+        self.conn.pause_writing  = socket.pause_writing
+        self.conn.resume_writing = socket.resume_writing
+        return socket
 
 
 server = async $ loop root *: args **: kwargs ->
