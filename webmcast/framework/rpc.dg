@@ -1,0 +1,108 @@
+import '/struct'
+
+import 'websocket/ExtProtoError'
+
+
+run = async $ loop io functions context ->
+    tasks = {}
+    task_done = task ->
+        id = tasks.pop task
+        io.send $ if
+            task.cancelled!         => encode id 0 'cancelled'
+            task.exception! is None => encode id 1 task.result!
+            otherwise               => encode id 0 $ str task.exception!
+
+    except
+        _ => async for msg in io =>
+            len msg > 65535 =>
+                raise ExtProtoError 'message too big'
+            id, func, args = decode msg
+            id & 0x8000 =>
+                raise ExtProtoError 'req id has highest bit set'
+            func >= len functions =>
+                io.send $ encode id 0 'invalid function id'
+                continue!
+            minarg, maxarg, f = functions !! func
+            minarg <= len args <= maxarg or
+                io.send $ encode id 0 'invalid argument count'
+                continue!
+            task = loop.create_task $ f io context *: args
+            task.add_done_callback task_done
+            tasks !! task = id
+        finally =>
+            for task in tasks => task.cancel!
+
+
+emit = io code *: args -> io.send $ encode 0xFFFF code *: args
+
+
+# datagram = byte{2}:id byte{2}:code object *  -- id & 0x8000 == 1 iff server -> client
+# object   = bool | null | int | double | string | bytes | array | dict
+# hashable = bool | null | int | double | string | bytes
+# bool     = '\x00' | '\x01'
+# null     = '\x02'
+# int      = '\x03' byte{4}
+# double   = '\x04' ieee754
+# string   = '\x05' byte{4}:length byte{length}  -- utf-8 coded
+# bytes    = '\x06' byte{4}:length byte{length}
+# array    = '\x07' byte{2}:length object{length}
+# dict     = '\x08' byte{2}:length (hashable:key object:value){length}
+# so it's like bson with a 4-byte prefix. and no stupid teminators/array encodings.
+decode = msg -> except
+    err =>
+        args = []
+        i = 4
+        while i < len msg =>
+            i, o = decode1 (msg !! i) msg (i + 1)
+            args.append o
+        id, func = struct.unpack_from '!HH' msg
+        id, func, args
+    err :: Exception =>
+        raise ExtProtoError 'invalid encoding'
+
+
+decode1 = k msg i -> if
+    k == 0 => i, False
+    k == 1 => i, True
+    k == 2 => i, None
+    k == 3 => i + 4, struct.unpack_from '!i' msg i !! 0
+    k == 4 => i + 8, struct.unpack_from '!d' msg i !! 0
+    k == 5 =>
+        ln, = struct.unpack_from '!I' msg i
+        ln + i + 4, (msg !! slice (i + 4) (i + ln + 4)).decode 'utf-8'
+    k == 6 =>
+        ln, = struct.unpack_from '!I' msg i
+        ln + i + 4, msg !! slice (i + 4) (i + ln + 4)
+    k == 7 =>
+        ln, = struct.unpack_from '!H' msg i
+        xs = [None] * ln
+        i += 2
+        for p in range ln =>
+            i, xs !! p = decode1 (msg !! i) msg (i + 1)
+        i, xs
+    k == 8 =>
+        ln, = struct.unpack_from '!H' msg i
+        xs = {}
+        i += 2
+        for p in range ln =>
+            i,       k = decode1 (msg !! i) msg (i + 1)
+            i, xs !! k = decode1 (msg !! i) msg (i + 1)
+        i, xs
+
+
+encode = id code *: xs ->
+    struct.pack '!HH' id code + b''.join (map encode1 xs)
+
+
+encode1 = x -> if
+    x is False => b'\x00'
+    x is True  => b'\x01'
+    x is None  => b'\x02'
+    x :: int   => struct.pack '!Bi' 3 x
+    x :: float => struct.pack '!Bd' 4 x
+    x :: str   => struct.pack '!BI' 5 (len x) + x.encode 'utf-8'
+    x :: bytes => struct.pack '!BI' 6 (len x) + x
+    x :: list  => struct.pack '!BH' 7 (len x) + b''.join (map encode1 x)
+    x :: dict  => struct.pack '!BH' 8 (len x) + b''.join
+                        where for (k, v) in x.items! => yield $ encode1 k + encode1 v
+    otherwise  => raise TypeError 'unserializable object type'

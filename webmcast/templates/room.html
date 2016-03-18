@@ -6,7 +6,7 @@
         <link rel="stylesheet" href="/static/css/uikit.min.css" />
         <link rel="stylesheet" href="/static/css/everything.css" />
     </head>
-    <body data-stream-id="{{ id }}">
+    <body data-stream-id="{{id}}">
         <section class="w-chat-container uk-block uk-block-secondary uk-contrast">
             <ul class="log uk-list">
                 <li class="empty-log">
@@ -44,12 +44,12 @@
                 <div class="w-view-container w-icon-overlay w-icon-loading">
                     {# `video` with `height: auto` will always use the default aspect ratio.
                        so instead we enforce the size of this element with an empty image. #}
-                    <svg width="{{w}}" height="{{h}}" class="pad uk-responsive-width">
+                    <svg width="{{stream.video.w}}" height="{{stream.video.h}}" class="pad uk-responsive-width">
                     </svg><video class="uk-responsive-width"></video>
                     <div class="controls">{# TODO #}</div>
                 </div>
             </div>
-            <h1>{{ id }}</h1>
+            <h1>{{id}}</h1>
         </section>
 
         <script src="/static/js/room.js"></script>
