@@ -102,34 +102,39 @@ Tips:
 
 GET `/stream/<name>` to receive a continuous stream with default parameters.
 
-##### Not implemented: Signaled mode
+##### Signaled mode
 
 Upgrade to WebSocket at `/stream/<name>` to create a signaling channel.
-Each command sent over the channel has the JSON form `{'id': int, 'cmd': str, ...}`
-where `...` are any additional arguments applicable to the command. Responses
-look like `{'id': int, ...}`. If a command has failed, the response will contain
-an `error: str` field.
+Send BSON-like binary datagrams to call remote functions:
 
-  * `junk{size: int} -> {data: str}`
+```
+datagram = byte{2}:id byte{2}:code object*  -- id & 0x8000 == 0
+object   = bool | null | int | double | string | bytes | array | dict
+hashable = bool | null | int | double | string | bytes
+bool     = '\x00' | '\x01'
+null     = '\x02'
+int      = '\x03' byte{4}
+double   = '\x04' ieee754
+string   = '\x05' byte{4}:length byte{length}  -- utf-8 coded
+bytes    = '\x06' byte{4}:length byte{length}
+array    = '\x07' byte{2}:length object{length}
+dict     = '\x08' byte{2}:length (hashable:key object:value){length}
+```
 
-    Request some junk. This can be used to measure round trip time and
-    peak download speed. Will fail if the requested chunk is too big for some
-    definition of "big".
+Responses have the same format with code = 0 on error and 1 on success.
 
+| Code | Arguments   | Return | Meaning                                             |
+| ---- | ----------- | ------ | --------------------------------------------------- |
+| 0    | string      | null   | Obtain a temporary nickname to send messages under. |
+| 1    | string      | null   | Send a message. Must already have a nickname.       |
+| 2    |             | null   | Receive events containing the last 20 messages.     |
+| 3+   |             | null   | Not implemented yet.                                |
 
-  * `start{rate: int} -> {url: str}`
+The server can also emit events; those will have id = 0xFFFF.
 
-    Request an URL that can be put into a `<video>` tag to play the stream
-    controlled by this signalling channel. The bitrate of the received stream
-    is capped by the provided value (but may be lower). Will fail if there is no
-    stream with a suitable bitrate. Issuing this request invalidates any previously
-    obtained URLs.
-
-  * `refit{rate: int} -> {}`
-
-    Seamlessly switch to a stream with a bitrate of at most the provided value.
-    Will fail if there is no stream with a suitable bitrate, or if `start`
-    has not been issued yet.
+| Code | Values                           | Meaning                                 |
+| ---- | -------------------------------- | --------------------------------------- |
+| 1    | string:name string:text          | A new chat message.                     |
 
 #### Not implemented: Authentication node
 
