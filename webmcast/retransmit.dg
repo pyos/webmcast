@@ -157,7 +157,7 @@ upload = async $ req id ->
             stream._collecting_task = None
         err :: KeyError =>
             stream = _streams !! id = Broadcast req.conn.loop
-            stream._extra_data = {}
+            stream._rpc_data = _rpc_context!
             stream._collecting_task = None
             # gstreamer sends each frame as a separate PUT request,
             # so bitrate calculation must be done across calls to `upload`
@@ -209,63 +209,61 @@ download = async $ req id ->
 
 signal = async $ req id ->
     stream = _streams.get id or return await req.respond_with_error 404 [] None
-    sockets = stream._extra_data.setdefault 'chat_clients' set!
-    stream._extra_data.setdefault 'chat_history' $ collections.deque maxlen: 20
-    stream._extra_data.setdefault 'chat_roster' {}
-    stream._extra_data.setdefault 'chat_revmap' {}
+    rpcctx = stream._rpc_data
 
-    with io = await req.websocket! => except
-        _ =>
-            sockets.add io
-            a = req.conn.loop.create_task $ rpc.run req.conn.loop io RPC_FUNCTIONS stream
-            b = req.conn.loop.create_task stream.done.wait!
-            await asyncio.wait [a, b] return_when: asyncio.FIRST_COMPLETED
-            a.cancel!
-            b.cancel!
-            await a
-        finally =>
-            sockets.discard io
-            stream = None
+    with io = rpc.Client (await req.websocket!) rpcctx req.conn.loop =>
+        a = req.conn.loop.create_task io.run!
+        b = req.conn.loop.create_task stream.done.wait!
+        await asyncio.wait [a, b] return_when: asyncio.FIRST_COMPLETED
+        a.cancel!
+        b.cancel!
+        await a
 
 
-RPC_FUNCTIONS = list'
-    1, 1, async $ io stream name ->
-        roster = stream._extra_data !! 'chat_roster'
-        revmap = stream._extra_data !! 'chat_revmap'
-
-        name :: str    or raise ValueError 'expected a string'
-        name.isalnum!  or raise ValueError 'unacceptable name'
-        name in roster => raise ValueError 'name already taken'
-        len name < 32  or raise ValueError 'unacceptable name'
-
-        roster.pop (revmap.pop io None) None
-        roster !! name = io
-        revmap !! io = name
+_rpc_context = subclass rpc.Context where
+    __init__ = self ->
+        self.chat_roster  = {}
+        self.chat_revmap  = {}
+        self.chat_clients = set!
+        self.chat_history = collections.deque maxlen: 20
         None
 
-    1, 1, async $ io stream msg ->
-        clients = stream._extra_data !! 'chat_clients'
-        history = stream._extra_data !! 'chat_history'
-        revmap  = stream._extra_data !! 'chat_revmap'
+    __connect__ = self client ->
+        self.chat_clients.add client
 
-        name = revmap.get io None
+    __disconnect__ = self client ->
+        self.chat_clients.discard client
+        self.chat_roster.pop (self.chat_revmap.pop client None) None
+
+    chat_set_name = self client name ->
+        name :: str              or raise ValueError 'expected a string'
+        name.isalnum!            or raise ValueError 'unacceptable name'
+        name in self.chat_roster => raise ValueError 'name already taken'
+        len name < 32            or raise ValueError 'unacceptable name'
+
+        self.chat_roster.pop (self.chat_revmap.pop client None) None
+        self.chat_roster !! name = client
+        self.chat_revmap !! client = name
+        None
+
+    chat_send = self client msg ->
+        name = self.chat_revmap.get client None
         name is None      => raise ValueError 'must name yourself first'
         msg :: str        or raise ValueError 'expected a string'
         msg.isspace!      => raise ValueError 'unacceptable message'
         0 < len msg < 256 or raise ValueError 'unacceptable message'
 
-        for c in clients => rpc.emit c 1 name msg
-        history.append (name, msg)
+        for c in self.chat_clients => c.emit 'chat_message' name msg
+        self.chat_history.append (name, msg)
         None
 
-    0, 0, async $ io stream ->
-        history = stream._extra_data !! 'chat_history'
-        for (name, msg) in history =>
-            rpc.emit io 1 name msg
+    chat_get_history = self client ->
+        for (name, msg) in self.chat_history =>
+            client.emit 'chat_message' name msg
         None
 
-    1, 1, async $ io stream size ->
-        await io.drained.wait!
+    get_zeros = async $ self client size ->
+        await client.io.drained.wait!
         size :: int         or raise ValueError 'expected an integer'
         0 <= size < 1000000 or raise ValueError 'payload size out of range'
-        b'\0' * size
+        '\0' * size

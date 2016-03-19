@@ -104,38 +104,19 @@ GET `/stream/<name>` to receive a continuous stream with default parameters.
 
 ##### Signaled mode
 
-Upgrade to WebSocket at `/stream/<name>` to create a signaling channel.
-Send BSON-like binary datagrams to call remote functions:
+Upgrade to WebSocket at `/stream/<name>` to create a signaling channel,
+then send JSON-RPC 2.0 messages.
 
-```
-datagram = byte{2}:id byte{2}:code object*  -- id & 0x8000 == 0
-object   = bool | null | int | double | string | bytes | array | dict
-hashable = bool | null | int | double | string | bytes
-bool     = '\x00' | '\x01'
-null     = '\x02'
-int      = '\x03' byte{4}
-double   = '\x04' ieee754
-string   = '\x05' byte{4}:length byte{length}  -- utf-8 coded
-bytes    = '\x06' byte{4}:length byte{length}
-array    = '\x07' byte{2}:length object{length}
-dict     = '\x08' byte{2}:length (hashable:key object:value){length}
-```
+**Methods**
 
-Responses have the same format with code = 0 on error and 1 on success.
+  * `chat_set_name(name: String) -> null`
+  * `chat_send(text: String) -> null`
+  * `chat_get_history() -> null` (the request is fulfilled in form of notifications)
+  * `get_zeros(n: Number) -> String`
 
-| Code | Arguments    | Return | Meaning                                             |
-| ---- | ------------ | ------ | --------------------------------------------------- |
-| 0    | string       | null   | Obtain a temporary nickname to send messages under. |
-| 1    | string       | null   | Send a message. Must already have a nickname.       |
-| 2    |              | null   | Receive events containing the last 20 messages.     |
-| 3    | 0 < int < 1M | bytes  | Fetch the specified number of zero bytes.           |
-| 4+   |              | null   | Not implemented yet.                                |
+**Notifications**
 
-The server can also emit events; those will have id = 0xFFFF.
-
-| Code | Values                           | Meaning                                 |
-| ---- | -------------------------------- | --------------------------------------- |
-| 1    | string:name string:text          | A new chat message.                     |
+  * `chat_message(name: String, text: String)`
 
 #### Not implemented: Authentication node
 
