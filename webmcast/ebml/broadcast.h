@@ -211,7 +211,7 @@ int broadcast_send(struct broadcast *cast, const uint8_t *data, size_t size)
                 unsigned long long tc = cast->time.recv + blockshift;
 
                 if (cast->time.shift + tc < cast->time.last)
-                    cast->time.shift += cast->time.last - tc;
+                    cast->time.shift = cast->time.last - tc;
                 cast->time.last = tc += cast->time.shift;
 
                 tc -= blockshift;  // to avoid rewriting the block itself.
