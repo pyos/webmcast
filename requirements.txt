@@ -1,4 +1,0 @@
-cffi
-jinja2
-git+https://github.com/pyos/libcno
-git+https://github.com/pyos/dg
