@@ -104,12 +104,12 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 	}
 }
 
-type ChatSetNameArgs struct {
-	Name string
+type RPCSingleStringArg struct {
+	First string
 }
 
-func (x *ChatSetNameArgs) UnmarshalJSON(buf []byte) error {
-	fields := []interface{}{&x.Name}
+func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
+	fields := []interface{}{&x.First}
 	expect := len(fields)
 	if err := json.Unmarshal(buf, &fields); err != nil {
 		return err
@@ -120,45 +120,30 @@ func (x *ChatSetNameArgs) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-func (ctx *chatContext) SetName(args *ChatSetNameArgs, _ *interface{}) error {
+func (ctx *chatContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
+	name := args.First
 	// TODO check that the name is alphanumeric
 	// TODO check that the name is not too long
-	if _, ok := ctx.stream.chatRoster[args.Name]; ok {
+	if _, ok := ctx.stream.chatRoster[name]; ok {
 		return errors.New("name already taken")
 	}
 
-	ctx.stream.chatRoster[args.Name] = ctx
+	ctx.stream.chatRoster[name] = ctx
 	if ctx.name != "" {
 		delete(ctx.stream.chatRoster, ctx.name)
 	}
-	ctx.name = args.Name
+	ctx.name = name
 	return nil
 }
 
-type ChatSendMessageArgs struct {
-	Text string
-}
-
-func (x *ChatSendMessageArgs) UnmarshalJSON(buf []byte) error {
-	fields := []interface{}{&x.Text}
-	expect := len(fields)
-	if err := json.Unmarshal(buf, &fields); err != nil {
-		return err
-	}
-	if len(fields) != expect {
-		return errors.New("invalid number of arguments")
-	}
-	return nil
-}
-
-func (ctx *chatContext) SendMessage(args *ChatSendMessageArgs, _ *interface{}) error {
+func (ctx *chatContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
 	// TODO check that the message is not whitespace-only
 	// TODO check that the message is not too long
 	if ctx.name == "" {
 		return errors.New("must obtain a name first")
 	}
 
-	msg := chatMessage{ctx.name, args.Text}
+	msg := chatMessage{ctx.name, args.First}
 
 	for viewer := range ctx.stream.chatViewers {
 		viewer.onMessage(msg)
@@ -182,6 +167,18 @@ func (ctx *chatContext) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return nil
 }
 
+func (ctx *chatContext) onEvent(name string, args []interface{}) error {
+	return websocket.JSON.Send(ctx.socket, map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  name,
+		"params":  args,
+	})
+}
+
+func (ctx *chatContext) onMessage(msg chatMessage) {
+	ctx.onEvent("chat_message", []interface{}{msg.name, msg.text})
+}
+
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
 	chatter := chatContext{name: "", socket: ws, stream: stream}
 
@@ -197,16 +194,4 @@ func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
 	server := rpc.NewServer()
 	server.RegisterName("Chat", &chatter)
 	server.ServeCodec(jsonrpc2.NewServerCodec(ws, server))
-}
-
-func (ctx *chatContext) onEvent(name string, args []interface{}) error {
-	return websocket.JSON.Send(ctx.socket, map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  name,
-		"params":  args,
-	})
-}
-
-func (ctx *chatContext) onMessage(msg chatMessage) {
-	ctx.onEvent("chat_message", []interface{}{msg.name, msg.text})
 }
