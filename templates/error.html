@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>webmcast -- oh no</title>
+        <link rel="stylesheet" href="/static/css/uikit.min.css" />
+        <link rel="stylesheet" href="/static/css/everything.css" />
+    </head>
+    <body data-error="{{.Code}}">
+        <section class="w-content-container uk-block uk-block-secondary uk-contrast uk-flex uk-flex-column">
+            <div class="uk-flex-item-1 uk-flex uk-flex-column uk-flex-center uk-text-center">
+                <h2 style="font-weight: bold">NO SIGNAL // {{.Code}} //
+                    {{.DisplayMessage}}
+                </h2>
+            </div>
+            <h3>
+                * {{printf "%s" .DisplayComment}}
+            </h3>
+        </section>
+    </body>
+</html>

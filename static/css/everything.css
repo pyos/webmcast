@@ -1,0 +1,133 @@
+*, *:before {
+    box-sizing: border-box;
+}
+
+body[data-error] {
+    background: #00f;
+}
+
+body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 {
+    font-family: monospace;
+}
+
+.uk-button-link {
+    background: none !important;
+}
+
+.w-icon-overlay {
+    position: relative;
+}
+
+.w-icon-overlay:before {
+	display: block;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 1em;
+	height: 1em;
+    margin: -0.5em;
+    z-index: 1000;
+    font-size: 4em;
+    font-family: FontAwesome;
+	color: #fff;
+    text-shadow: 0 0 0.2em #000;
+    pointer-events: none;
+}
+
+.w-icon-loading:before {
+    content: " ";
+	border: 0.2em solid transparent;
+	border-radius: 50%;
+	border-left-color: #fff;
+	border-right-color: #fff;
+	animation: uk-rotate 1.5s infinite linear;
+}
+
+.w-content-container {
+    padding: 2em;
+    position: relative;
+    min-height: 100vh;
+}
+
+.w-view-container {
+    background: #000;
+    overflow: hidden;
+    position: relative;
+    display: inline-block;
+}
+
+.w-view-container .pad + video {
+    display: none;
+}
+
+.w-view-container .controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: transform 0.3s ease-out;
+}
+
+.w-view-container:not(:hover) .controls {
+    transform: translateY(100%);
+}
+
+.w-chat-container {
+    display: none;
+}
+
+@media (min-width: 45em) {
+    .w-chat-container + .w-content-container {
+        height: 100vh;
+        overflow: auto;
+        margin-right: 20em;
+    }
+
+    .w-chat-container {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        padding: 0;
+        z-index: 1;
+        width: 20em;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .w-chat-container > * {
+        padding: 1em;
+    }
+
+    .w-chat-container form {
+        padding: 0.5em;
+    }
+
+    .w-chat-container fieldset {
+        padding: 0.5em;
+        text-align: right;
+    }
+
+    .w-chat-container .input {
+        width: 100%;
+    }
+
+    .w-chat-container .log {
+        flex: 1;
+        margin: 0;
+        overflow-y: auto;
+        word-wrap: break-word;
+    }
+
+    .w-chat-container .name {
+        font-weight: bold;
+    }
+
+    .w-chat-container .empty-log:not(:only-child),
+    .w-chat-container.active .offline-message,
+    .w-chat-container:not(.active) form,
+    .w-chat-container .login-form + .input-form
+    {
+        display: none;
+    }
+}

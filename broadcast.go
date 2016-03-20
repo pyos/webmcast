@@ -43,10 +43,8 @@ type Broadcast struct {
 	}
 }
 
-func NewBroadcast() *Broadcast {
-	cast := Broadcast{}
-	cast.viewers = make(map[chan<- []byte]*viewer)
-	return &cast
+func NewBroadcast() Broadcast {
+	return Broadcast{viewers: make(map[chan<- []byte]*viewer)}
 }
 
 func (cast *Broadcast) Close() {

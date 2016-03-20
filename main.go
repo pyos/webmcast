@@ -1,32 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+	"time"
 )
 
-var streams map[string]*Broadcast
+var DefaultContext = NewContext(time.Second * 10)
 
 func root(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, World!")
+	if r.URL.Path == "" {
+		RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+		return
+	}
+
+	stream, ok := DefaultContext.Get(r.URL.Path)
+	if !ok {
+		RenderError(w, http.StatusNotFound, "")
+		return
+	}
+
+	RenderHtml(w, http.StatusOK, "room.html", roomViewModel{r.URL.Path, stream})
 }
 
 func stream(w http.ResponseWriter, r *http.Request) {
-	headers := w.Header()
-
 	switch r.Method {
 	case "GET", "HEAD":
-		stream, ok := streams[r.URL.Path]
+		stream, ok := DefaultContext.Get(r.URL.Path)
 		if !ok {
-			headers["Content-Type"] = []string{"text/plain"}
-			w.WriteHeader(404)
-			fmt.Fprintf(w, "Not found\n")
+			RenderError(w, http.StatusNotFound, "")
 			return
 		}
 
-		headers["Content-Type"] = []string{"video/webm"}
-		headers["Cache-Control"] = []string{"no-cache"}
-		w.WriteHeader(200)
+		header := w.Header()
+		header["Content-Type"] = []string{"video/webm"}
+		header["Cache-Control"] = []string{"no-cache"}
+		w.WriteHeader(http.StatusOK)
 
 		ch := make(chan []byte, 60)
 		defer close(ch)
@@ -46,24 +54,13 @@ func stream(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "PUT", "POST":
-		streamID := r.URL.Path
-		stream, ok := streams[streamID]
-
-		if ok {
-			headers["Content-Type"] = []string{"text/plain"}
-			w.WriteHeader(403)
-			fmt.Fprintf(w, "ID already taken\n")
+		stream, ok := DefaultContext.Acquire(r.URL.Path)
+		if !ok {
+			RenderError(w, http.StatusForbidden, "Stream ID already taken.")
 			return
-		} else {
-			stream = NewBroadcast()
-			streams[streamID] = stream
 		}
 
-		defer func() {
-			// TODO wait a bit and abort if the broadcaster reconnects
-			delete(streams, streamID)
-			stream.Close()
-		}()
+		defer stream.Release()
 
 		buffer := [16384]byte{}
 		for {
@@ -71,15 +68,13 @@ func stream(w http.ResponseWriter, r *http.Request) {
 			if n != 0 {
 				_, err2 := stream.Write(buffer[:n])
 				if err2 != nil {
-					headers["Content-Type"] = []string{"text/plain"}
-					w.WriteHeader(400)
-					fmt.Fprintf(w, "Error: %s\n", err.Error())
+					RenderError(w, http.StatusBadRequest, err.Error())
 					return
 				}
 			}
 
 			if err != nil {
-				w.WriteHeader(204)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 		}
@@ -87,9 +82,9 @@ func stream(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	streams = make(map[string]*Broadcast)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("."))))
-	http.Handle("/stream/", http.StripPrefix("/stream/", http.HandlerFunc(stream)))
-	http.Handle("/", http.StripPrefix("/", http.HandlerFunc(root)))
-	http.ListenAndServe(":8000", nil)
+	mux := http.NewServeMux()
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	mux.Handle("/stream/", http.StripPrefix("/stream/", http.HandlerFunc(stream)))
+	mux.Handle("/", http.StripPrefix("/", http.HandlerFunc(root)))
+	http.ListenAndServe(":8000", mux)
 }
