@@ -1,8 +1,16 @@
 package main
 
 import (
+	"container/ring"
+	"errors"
+	"golang.org/x/net/websocket"
 	"time"
 )
+
+type Context struct {
+	streams map[string]*BroadcastContext
+	timeout time.Duration
+}
 
 type BroadcastContext struct {
 	Broadcast
@@ -11,11 +19,20 @@ type BroadcastContext struct {
 	// elapses, the stream is closed for good.
 	ping    chan int
 	closing bool
+
+	chatHistory  *ring.Ring
+	viewers      map[*ViewerContext]string
+	viewerRoster map[string]*ViewerContext
 }
 
-type Context struct {
-	streams map[string]*BroadcastContext
-	timeout time.Duration
+type ViewerContext struct {
+	Socket *websocket.Conn
+	Stream *BroadcastContext
+}
+
+type ChatMessage struct {
+	name string
+	text string
 }
 
 func NewContext(timeout time.Duration) Context {
@@ -31,7 +48,12 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 
 	if !ok {
 		v := BroadcastContext{
-			Broadcast: NewBroadcast(), ping: make(chan int), closing: false,
+			Broadcast:    NewBroadcast(),
+			ping:         make(chan int),
+			closing:      false,
+			chatHistory:  ring.New(20),
+			viewers:      make(map[*ViewerContext]string),
+			viewerRoster: make(map[string]*ViewerContext),
 		}
 
 		ctx.streams[id] = &v
@@ -76,4 +98,67 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 			<-stream.ping
 		}
 	}
+}
+
+func (ctx *ViewerContext) Open() {
+	ctx.Stream.viewers[ctx] = ""
+}
+
+func (ctx *ViewerContext) SetName(name string) error {
+	// TODO check that the name is alphanumeric
+	// TODO check that the name is not too long
+	if _, ok := ctx.Stream.viewerRoster[name]; ok {
+		return errors.New("name already taken")
+	}
+
+	ctx.Stream.viewerRoster[name] = ctx
+	if oldName, ok := ctx.Stream.viewers[ctx]; ok && oldName != "" {
+		delete(ctx.Stream.viewerRoster, oldName)
+	}
+	ctx.Stream.viewers[ctx] = name
+	return nil
+}
+
+func (ctx *ViewerContext) SendMessage(text string) error {
+	// TODO check that the message is not whitespace-only
+	// TODO check that the message is not too long
+	name, ok := ctx.Stream.viewers[ctx]
+	if !ok || name == "" {
+		return errors.New("must obtain a name first")
+	}
+
+	msg := ChatMessage{name, text}
+
+	for viewer := range ctx.Stream.viewers {
+		viewer.OnMessage(msg)
+	}
+
+	ctx.Stream.chatHistory.Value = msg
+	ctx.Stream.chatHistory = ctx.Stream.chatHistory.Next()
+	return nil
+}
+
+func (ctx *ViewerContext) RequestHistory() error {
+	r := ctx.Stream.chatHistory
+
+	for i := 0; i < r.Len(); i++ {
+		if r.Value != nil {
+			ctx.OnMessage(r.Value.(ChatMessage))
+		}
+		r = r.Next()
+	}
+
+	return nil
+}
+
+func (ctx *ViewerContext) Close() {
+	if name, ok := ctx.Stream.viewers[ctx]; ok {
+		if name != "" {
+			delete(ctx.Stream.viewerRoster, name)
+		}
+
+		delete(ctx.Stream.viewers, ctx)
+	}
+
+	ctx.Socket.Close()
 }

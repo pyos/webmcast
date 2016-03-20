@@ -1,6 +1,7 @@
 package main
 
 import (
+	"golang.org/x/net/websocket"
 	"net/http"
 	"time"
 )
@@ -22,12 +23,34 @@ func root(w http.ResponseWriter, r *http.Request) {
 	RenderHtml(w, http.StatusOK, "room.html", roomViewModel{r.URL.Path, stream})
 }
 
+func wantsWebsocket(r *http.Request) bool {
+	upgrade, ok := r.Header["Upgrade"]
+	if !ok {
+		return false
+	}
+
+	for i := range upgrade {
+		if upgrade[i] == "websocket" {
+			return true
+		}
+	}
+
+	// func is_a_language_that_has_no_Array_Contains_method_any_good() bool {
+	return false
+	// }
+}
+
 func stream(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET", "HEAD":
 		stream, ok := DefaultContext.Get(r.URL.Path)
 		if !ok {
 			RenderError(w, http.StatusNotFound, "")
+			return
+		}
+
+		if wantsWebsocket(r) {
+			websocket.Handler(func(ws *websocket.Conn) { RunRPC(ws, stream) }).ServeHTTP(w, r)
 			return
 		}
 
