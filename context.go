@@ -176,7 +176,7 @@ func (ctx *chatContext) onEvent(name string, args []interface{}) error {
 }
 
 func (ctx *chatContext) onMessage(msg chatMessage) {
-	ctx.onEvent("chat_message", []interface{}{msg.name, msg.text})
+	ctx.onEvent("Chat.Message", []interface{}{msg.name, msg.text})
 }
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {

@@ -106,7 +106,7 @@ let ChatNode = function (root) {
 
     let onLoad = (socket) => {
         rpc = socket;
-        rpc.callback('chat_message', (name, text) => {
+        rpc.callback('Chat.Message', (name, text) => {
             let entry = msg.cloneNode(true);
             entry.querySelector('.name').textContent = name;
             entry.querySelector('.text').textContent = text;
