@@ -50,7 +50,7 @@ func stream(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if wantsWebsocket(r) {
-			websocket.Handler(func(ws *websocket.Conn) { RunRPC(ws, stream) }).ServeHTTP(w, r)
+			websocket.Handler(stream.RunRPC).ServeHTTP(w, r)
 			return
 		}
 

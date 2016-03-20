@@ -2,8 +2,11 @@ package main
 
 import (
 	"container/ring"
+	"encoding/json"
 	"errors"
+	"github.com/powerman/rpc-codec/jsonrpc2"
 	"golang.org/x/net/websocket"
+	"net/rpc"
 	"time"
 )
 
@@ -20,17 +23,18 @@ type BroadcastContext struct {
 	ping    chan int
 	closing bool
 
-	chatHistory  *ring.Ring
-	viewers      map[*ViewerContext]string
-	viewerRoster map[string]*ViewerContext
+	chatHistory *ring.Ring
+	chatViewers map[*chatContext]interface{}
+	chatRoster  map[string]*chatContext
 }
 
-type ViewerContext struct {
-	Socket *websocket.Conn
-	Stream *BroadcastContext
+type chatContext struct {
+	name   string
+	socket *websocket.Conn
+	stream *BroadcastContext
 }
 
-type ChatMessage struct {
+type chatMessage struct {
 	name string
 	text string
 }
@@ -48,12 +52,12 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 
 	if !ok {
 		v := BroadcastContext{
-			Broadcast:    NewBroadcast(),
-			ping:         make(chan int),
-			closing:      false,
-			chatHistory:  ring.New(20),
-			viewers:      make(map[*ViewerContext]string),
-			viewerRoster: make(map[string]*ViewerContext),
+			Broadcast:   NewBroadcast(),
+			ping:        make(chan int),
+			closing:     false,
+			chatHistory: ring.New(20),
+			chatViewers: make(map[*chatContext]interface{}),
+			chatRoster:  make(map[string]*chatContext),
 		}
 
 		ctx.streams[id] = &v
@@ -100,50 +104,77 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 	}
 }
 
-func (ctx *ViewerContext) Open() {
-	ctx.Stream.viewers[ctx] = ""
+type ChatSetNameArgs struct {
+	Name string
 }
 
-func (ctx *ViewerContext) SetName(name string) error {
+func (x *ChatSetNameArgs) UnmarshalJSON(buf []byte) error {
+	fields := []interface{}{&x.Name}
+	expect := len(fields)
+	if err := json.Unmarshal(buf, &fields); err != nil {
+		return err
+	}
+	if len(fields) != expect {
+		return errors.New("invalid number of arguments")
+	}
+	return nil
+}
+
+func (ctx *chatContext) SetName(args *ChatSetNameArgs, _ *interface{}) error {
 	// TODO check that the name is alphanumeric
 	// TODO check that the name is not too long
-	if _, ok := ctx.Stream.viewerRoster[name]; ok {
+	if _, ok := ctx.stream.chatRoster[args.Name]; ok {
 		return errors.New("name already taken")
 	}
 
-	ctx.Stream.viewerRoster[name] = ctx
-	if oldName, ok := ctx.Stream.viewers[ctx]; ok && oldName != "" {
-		delete(ctx.Stream.viewerRoster, oldName)
+	ctx.stream.chatRoster[args.Name] = ctx
+	if ctx.name != "" {
+		delete(ctx.stream.chatRoster, ctx.name)
 	}
-	ctx.Stream.viewers[ctx] = name
+	ctx.name = args.Name
 	return nil
 }
 
-func (ctx *ViewerContext) SendMessage(text string) error {
+type ChatSendMessageArgs struct {
+	Text string
+}
+
+func (x *ChatSendMessageArgs) UnmarshalJSON(buf []byte) error {
+	fields := []interface{}{&x.Text}
+	expect := len(fields)
+	if err := json.Unmarshal(buf, &fields); err != nil {
+		return err
+	}
+	if len(fields) != expect {
+		return errors.New("invalid number of arguments")
+	}
+	return nil
+}
+
+func (ctx *chatContext) SendMessage(args *ChatSendMessageArgs, _ *interface{}) error {
 	// TODO check that the message is not whitespace-only
 	// TODO check that the message is not too long
-	name, ok := ctx.Stream.viewers[ctx]
-	if !ok || name == "" {
+	if ctx.name == "" {
 		return errors.New("must obtain a name first")
 	}
 
-	msg := ChatMessage{name, text}
+	msg := chatMessage{ctx.name, args.Text}
 
-	for viewer := range ctx.Stream.viewers {
-		viewer.OnMessage(msg)
+	for viewer := range ctx.stream.chatViewers {
+		viewer.onMessage(msg)
 	}
 
-	ctx.Stream.chatHistory.Value = msg
-	ctx.Stream.chatHistory = ctx.Stream.chatHistory.Next()
+	ctx.stream.chatHistory.Value = msg
+	ctx.stream.chatHistory = ctx.stream.chatHistory.Next()
 	return nil
 }
 
-func (ctx *ViewerContext) RequestHistory() error {
-	r := ctx.Stream.chatHistory
+func (ctx *chatContext) RequestHistory(_ *interface{}, _ *interface{}) error {
+	r := ctx.stream.chatHistory
 
 	for i := 0; i < r.Len(); i++ {
 		if r.Value != nil {
-			ctx.OnMessage(r.Value.(ChatMessage))
+			ctx.onMessage(r.Value.(chatMessage))
 		}
 		r = r.Next()
 	}
@@ -151,14 +182,31 @@ func (ctx *ViewerContext) RequestHistory() error {
 	return nil
 }
 
-func (ctx *ViewerContext) Close() {
-	if name, ok := ctx.Stream.viewers[ctx]; ok {
-		if name != "" {
-			delete(ctx.Stream.viewerRoster, name)
+func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
+	chatter := chatContext{name: "", socket: ws, stream: stream}
+
+	stream.chatViewers[&chatter] = nil
+	defer func() {
+		delete(stream.chatViewers, &chatter)
+
+		if chatter.name != "" {
+			delete(stream.chatRoster, chatter.name)
 		}
+	}()
 
-		delete(ctx.Stream.viewers, ctx)
-	}
+	server := rpc.NewServer()
+	server.RegisterName("Chat", &chatter)
+	server.ServeCodec(jsonrpc2.NewServerCodec(ws, server))
+}
 
-	ctx.Socket.Close()
+func (ctx *chatContext) onEvent(name string, args []interface{}) error {
+	return websocket.JSON.Send(ctx.socket, map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  name,
+		"params":  args,
+	})
+}
+
+func (ctx *chatContext) onMessage(msg chatMessage) {
+	ctx.onEvent("chat_message", []interface{}{msg.name, msg.text})
 }

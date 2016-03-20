@@ -27,7 +27,7 @@ let RPC = {
 
         let send = (method, ...params) =>
             new Promise((resolve, reject) => {
-                socket.send(JSON.stringify({ id, method, params }));
+                socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
                 cbs_by_id[id] = { resolve, reject };
                 id = (id + 1) & 0x7FFF;
             });
@@ -87,7 +87,7 @@ let ViewNode = function (root, stream) {
         const start = window.performance.now();
         console.log(start);
 
-        return rpc.send('get_zeros', size).then(() => {
+        return rpc.send('.get_zeros', size).then(() => {
             const end = window.performance.now();
             console.log(end);
             return (end - start) / 1000;
@@ -113,7 +113,7 @@ let ChatNode = function (root) {
             log.appendChild(entry);
         });
 
-        rpc.send('chat_get_history');
+        rpc.send('Chat.RequestHistory');
         root.classList.add('active');
     };
 
@@ -134,7 +134,7 @@ let ChatNode = function (root) {
     form.addEventListener('submit', (ev) => {
         ev.preventDefault();
         if (rpc && text.value) {
-            rpc.send('chat_send', text.value).then(() => {
+            rpc.send('Chat.SendMessage', text.value).then(() => {
                 text.value = '';
                 text.focus();
             });
@@ -147,7 +147,7 @@ let ChatNode = function (root) {
     lform.addEventListener('submit', (ev) => {
         ev.preventDefault();
         if (rpc && login.value) {
-            rpc.send('chat_set_name', login.value).then(() => {
+            rpc.send('Chat.SetName', login.value).then(() => {
                 lform.remove();
                 text.focus();
             });
