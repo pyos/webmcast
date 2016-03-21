@@ -106,6 +106,7 @@ then send JSON-RPC 2.0 messages.
   * `Chat.SetName(name: String) -> null`
   * `Chat.SendMessage(text: String) -> null`
   * `Chat.RequestHistory() -> null` (the request is fulfilled in form of notifications)
+  * Not implemented: the `Stream` object (connect/disconnect/measure connection rate, ...)
 
 **Notifications**
 
