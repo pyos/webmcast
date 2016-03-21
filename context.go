@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/ring"
 	"encoding/json"
 	"errors"
 	"github.com/powerman/rpc-codec/jsonrpc2"
@@ -23,16 +22,14 @@ type Context struct {
 
 type BroadcastContext struct {
 	Broadcast
-
-	closing             bool
-	closingStateChanged chan bool
-
-	chatHistory *ring.Ring // of `chatMessage`
-	chatViewers map[*chatViewer]interface{}
-	chatRoster  map[string]*chatViewer
+	closing            bool
+	closingStateChange chan bool
+	chatters           map[*chatter]int // A hash set. Values are ignored.
+	chattersNames      map[string]int   // Same.
+	chatHistory        chatMessageQueue
 }
 
-type chatViewer struct {
+type chatter struct {
 	name   string
 	socket *websocket.Conn
 	stream *BroadcastContext
@@ -41,6 +38,34 @@ type chatViewer struct {
 type chatMessage struct {
 	name string
 	text string
+}
+
+type chatMessageQueue struct {
+	data  []chatMessage
+	start int
+}
+
+func newChatMessageQueue(size int) chatMessageQueue {
+	return chatMessageQueue{make([]chatMessage, 0, size), 0}
+}
+
+func (q *chatMessageQueue) Push(x chatMessage) {
+	if len(q.data) == cap(q.data) {
+		q.data[q.start] = x
+		q.start = (q.start + 1) % len(q.data)
+	} else {
+		q.data = q.data[:len(q.data)+1]
+		q.data[len(q.data)-1] = x
+	}
+}
+
+func (q *chatMessageQueue) Iterate(f func(x chatMessage) error) error {
+	for i := 0; i < len(q.data); i++ {
+		if err := f(q.data[(i+q.start)%len(q.data)]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Acquire a stream for writing. Only one "writable" reference can be held;
@@ -53,16 +78,12 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 
 	if !ok {
 		v := BroadcastContext{
-			Broadcast: NewBroadcast(),
-
-			closing:             false,
-			closingStateChanged: make(chan bool),
-
-			chatHistory: ring.New(ctx.ChatHistory),
-			chatViewers: make(map[*chatViewer]interface{}),
-			chatRoster:  make(map[string]*chatViewer),
+			Broadcast:          NewBroadcast(),
+			closingStateChange: make(chan bool),
+			chatters:           make(map[*chatter]int),
+			chattersNames:      make(map[string]int),
+			chatHistory:        newChatMessageQueue(ctx.ChatHistory),
 		}
-
 		ctx.streams[id] = &v
 		go ctx.closeOnRelease(id, &v)
 		return &v, true
@@ -71,13 +92,12 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 	if !stream.closing {
 		return nil, false
 	}
-
-	stream.closingStateChanged <- false
+	stream.closingStateChange <- false
 	return stream, true
 }
 
 func (stream *BroadcastContext) Release() {
-	stream.closingStateChanged <- true
+	stream.closingStateChange <- true
 }
 
 // Acquire a stream for reading. There is no limit on the number of concurrent readers.
@@ -95,7 +115,7 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 			timer := time.NewTimer(ctx.Timeout)
 
 			select {
-			case stream.closing = <-stream.closingStateChanged:
+			case stream.closing = <-stream.closingStateChange:
 				timer.Stop()
 			case <-timer.C:
 				delete(ctx.streams, id)
@@ -103,7 +123,7 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 				return
 			}
 		} else {
-			stream.closing = <-stream.closingStateChanged
+			stream.closing = <-stream.closingStateChange
 		}
 	}
 }
@@ -124,23 +144,23 @@ func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-func (ctx *chatViewer) SetName(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := args.First
 	// TODO check that the name is alphanumeric
 	// TODO check that the name is not too long
-	if _, ok := ctx.stream.chatRoster[name]; ok {
+	if _, ok := ctx.stream.chattersNames[name]; ok {
 		return errors.New("name already taken")
 	}
 
-	ctx.stream.chatRoster[name] = ctx
+	ctx.stream.chattersNames[name] = 0
 	if ctx.name != "" {
-		delete(ctx.stream.chatRoster, ctx.name)
+		delete(ctx.stream.chattersNames, ctx.name)
 	}
 	ctx.name = name
 	return nil
 }
 
-func (ctx *chatViewer) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
 	// TODO check that the message is not whitespace-only
 	// TODO check that the message is not too long
 	if ctx.name == "" {
@@ -148,50 +168,36 @@ func (ctx *chatViewer) SendMessage(args *RPCSingleStringArg, _ *interface{}) err
 	}
 
 	msg := chatMessage{ctx.name, args.First}
-
-	for viewer := range ctx.stream.chatViewers {
-		viewer.onMessage(msg)
+	for viewer := range ctx.stream.chatters {
+		viewer.pushMessage(msg)
 	}
-
-	ctx.stream.chatHistory.Value = msg
-	ctx.stream.chatHistory = ctx.stream.chatHistory.Next()
+	ctx.stream.chatHistory.Push(msg)
 	return nil
 }
 
-func (ctx *chatViewer) RequestHistory(_ *interface{}, _ *interface{}) error {
-	r := ctx.stream.chatHistory
-
-	for i := 0; i < r.Len(); i++ {
-		if r.Value != nil {
-			ctx.onMessage(r.Value.(chatMessage))
-		}
-		r = r.Next()
-	}
-
-	return nil
+func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
+	return ctx.stream.chatHistory.Iterate(ctx.pushMessage)
 }
 
-func (ctx *chatViewer) onEvent(name string, args []interface{}) error {
-	return websocket.JSON.Send(ctx.socket, map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  name,
-		"params":  args,
+func (ctx *chatter) pushMessage(msg chatMessage) error {
+	return pushEvent(ctx.socket, "Chat.Message", []interface{}{msg.name, msg.text})
+}
+
+func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
+	return websocket.JSON.Send(ws, map[string]interface{}{
+		"jsonrpc": "2.0", "method": name, "params": args,
 	})
 }
 
-func (ctx *chatViewer) onMessage(msg chatMessage) {
-	ctx.onEvent("Chat.Message", []interface{}{msg.name, msg.text})
-}
-
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
-	chatter := chatViewer{name: "", socket: ws, stream: stream}
+	chatter := chatter{name: "", socket: ws, stream: stream}
 
-	stream.chatViewers[&chatter] = nil
+	stream.chatters[&chatter] = 0
 	defer func() {
-		delete(stream.chatViewers, &chatter)
+		delete(stream.chatters, &chatter)
 
 		if chatter.name != "" {
-			delete(stream.chatRoster, chatter.name)
+			delete(stream.chattersNames, chatter.name)
 		}
 	}()
 
