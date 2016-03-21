@@ -27,6 +27,12 @@ type BroadcastContext struct {
 	chatters           map[*chatter]int // A hash set. Values are ignored.
 	chattersNames      map[string]int   // Same.
 	chatHistory        chatMessageQueue
+	// These values are for the whole stream, so they include audio and muxing overhead.
+	// The latter is negligible, however, and the latter is normally about 64k,
+	// so also negligible. Or at least predicatble.
+	RateMean float64
+	RateVar  float64
+	rateUnit float64
 }
 
 type chatter struct {
@@ -85,7 +91,7 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 			chatHistory:        newChatMessageQueue(ctx.ChatHistory),
 		}
 		ctx.streams[id] = &v
-		go ctx.closeOnRelease(id, &v)
+		go v.monitor(ctx, id)
 		return &v, true
 	}
 
@@ -94,10 +100,6 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 	}
 	stream.closingStateChange <- false
 	return stream, true
-}
-
-func (stream *BroadcastContext) Release() {
-	stream.closingStateChange <- true
 }
 
 // Acquire a stream for reading. There is no limit on the number of concurrent readers.
@@ -109,23 +111,43 @@ func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
 	return stream, ok
 }
 
-func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
+func (stream *BroadcastContext) Release() {
+	stream.closingStateChange <- true
+}
+
+func (stream *BroadcastContext) monitor(ctx *Context, id string) {
+	ticker := time.NewTicker(time.Second * 1)
 	for {
 		if stream.closing {
 			timer := time.NewTimer(ctx.Timeout)
-
 			select {
 			case stream.closing = <-stream.closingStateChange:
 				timer.Stop()
 			case <-timer.C:
 				delete(ctx.streams, id)
+				ticker.Stop()
 				stream.Close()
 				return
 			}
 		} else {
-			stream.closing = <-stream.closingStateChange
+			select {
+			case stream.closing = <-stream.closingStateChange:
+			case <-ticker.C:
+				// exponentially weighted moving moments at a = 0.5
+				//     avg[n] = a * x + (1 - a) * avg[n - 1]
+				//     var[n] = a * (x - avg[n]) ** 2 / (1 - a) + (1 - a) * var[n - 1]
+				stream.RateMean += stream.rateUnit / 2
+				stream.RateVar += stream.rateUnit*stream.rateUnit - stream.RateVar/2
+				stream.rateUnit = -stream.RateMean
+			}
 		}
 	}
+}
+
+func (stream *BroadcastContext) Write(data []byte) (int, error) {
+	stream.rateUnit += float64(len(data))
+	sent, err := stream.Broadcast.Write(data)
+	return sent, err
 }
 
 type RPCSingleStringArg struct {
