@@ -1,7 +1,6 @@
 package main
 
 import (
-	"./ebml"
 	"errors"
 )
 
@@ -82,19 +81,19 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 	for {
 		buf := cast.buffer
-		tag := ebml.ParseTagIncomplete(buf)
+		tag := EBMLParseTagIncomplete(buf)
 		if tag.Consumed == 0 {
 			return len(data), nil
 		}
 
-		if tag.ID == ebml.SegmentTag || tag.ID == ebml.TracksTag || tag.ID == ebml.ClusterTag {
+		if tag.ID == EBMLSegmentTag || tag.ID == EBMLTracksTag || tag.ID == EBMLClusterTag {
 			// Parse the contents of these tags in the same loop.
 			buf = buf[:tag.Consumed]
 			// Chrome crashes if an indeterminate length is not encoded as 0xFF.
 			// If we want to recode it, we'll also need some space for a Void tag.
-			if tag.Length == ebml.Indeterminate && tag.Consumed >= 7 {
+			if tag.Length == EBMLIndeterminate && tag.Consumed >= 7 {
 				cast.buffer[4] = 0xFF
-				cast.buffer[5] = ebml.VoidTag
+				cast.buffer[5] = EBMLVoidTag
 				cast.buffer[6] = 0x80 | byte(tag.Consumed-7)
 			}
 		} else {
@@ -111,22 +110,22 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 		}
 
 		switch tag.ID {
-		case ebml.SeekHeadTag:
+		case EBMLSeekHeadTag:
 			// Disallow seeking.
-		case ebml.ChaptersTag:
+		case EBMLChaptersTag:
 			// Disallow seeking again.
-		case ebml.CuesTag:
+		case EBMLCuesTag:
 			// Disallow even more seeking.
-		case ebml.VoidTag:
+		case EBMLVoidTag:
 			// Waste of space.
-		case ebml.TagsTag:
+		case EBMLTagsTag:
 			// Maybe later.
-		case ebml.ClusterTag:
+		case EBMLClusterTag:
 			// Ignore boundaries, we'll regroup the data anyway.
-		case ebml.PrevSizeTag:
+		case EBMLPrevSizeTag:
 			// Disallow backward seeking too.
 
-		case ebml.EBMLTag:
+		case EBMLEBMLTag:
 			// The header is the same in all WebM-s.
 			if len(cast.header) == 0 {
 				cast.header = append([]byte{}, buf...)
@@ -137,25 +136,25 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				}
 			}
 
-		case ebml.SegmentTag:
+		case EBMLSegmentTag:
 			cast.tracks = append([]byte{}, buf...)
 			// Will recalculate this when the first block arrives.
 			cast.time.shift = 0
 
-		case ebml.InfoTag:
+		case EBMLInfoTag:
 			// Default timecode resolution in Matroska is 1 ms. This value is required
 			// in WebM; we'll check just in case. Obviously, our timecode rewriting
 			// logic won't work with non-millisecond resolutions.
 			var scale uint64 = 0
 
 			for buf2 := tag.Contents(buf); len(buf2) != 0; {
-				tag2 := ebml.ParseTag(buf2)
+				tag2 := EBMLParseTag(buf2)
 
 				switch tag2.ID {
 				case 0:
 					return 0, errors.New("malformed EBML")
 
-				case ebml.DurationTag:
+				case EBMLDurationTag:
 					total := tag2.Length + uint64(tag2.Consumed) - 2
 					if total > 0x7F {
 						// I'd rather avoid shifting memory. What kind of integer
@@ -163,11 +162,11 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 						return 0, errors.New("EBML Duration too large")
 					}
 					// Live streams must not have a duration.
-					buf2[0] = ebml.VoidTag
+					buf2[0] = EBMLVoidTag
 					buf2[1] = 0x80 | byte(total)
 
-				case ebml.TimecodeScaleTag:
-					scale = ebml.ParseFixedUint(tag2.Contents(buf2))
+				case EBMLTimecodeScaleTag:
+					scale = EBMLParseFixedUint(tag2.Contents(buf2))
 				}
 
 				buf2 = tag2.Skip(buf2)
@@ -179,36 +178,36 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 			cast.tracks = append(cast.tracks, buf...)
 
-		case ebml.TrackEntryTag:
+		case EBMLTrackEntryTag:
 			// Since `viewer.seenKeyframes` is a 32-bit vector,
 			// we need to check that there are at most 32 tracks.
 			for buf2 := tag.Contents(buf); len(buf2) != 0; {
-				tag2 := ebml.ParseTag(buf2)
+				tag2 := EBMLParseTag(buf2)
 
 				switch tag2.ID {
 				case 0:
 					return 0, errors.New("malformed EBML")
 
-				case ebml.TrackNumberTag:
+				case EBMLTrackNumberTag:
 					// go needs sizeof.
-					if t := ebml.ParseFixedUint(tag2.Contents(buf2)); t >= 32 {
+					if t := EBMLParseFixedUint(tag2.Contents(buf2)); t >= 32 {
 						return 0, errors.New("too many tracks?")
 					}
 
-				case ebml.VideoTag:
+				case EBMLVideoTag:
 					// While we're here, let's grab some metadata, too.
 					for buf3 := tag2.Contents(buf2); len(buf3) != 0; {
-						tag3 := ebml.ParseTag(buf3)
+						tag3 := EBMLParseTag(buf3)
 
 						switch tag3.ID {
 						case 0:
 							return 0, errors.New("malformed EBML")
 
-						case ebml.PixelWidthTag:
-							cast.Width = uint(ebml.ParseFixedUint(tag3.Contents(buf3)))
+						case EBMLPixelWidthTag:
+							cast.Width = uint(EBMLParseFixedUint(tag3.Contents(buf3)))
 
-						case ebml.PixelHeightTag:
-							cast.Height = uint(ebml.ParseFixedUint(tag3.Contents(buf3)))
+						case EBMLPixelHeightTag:
+							cast.Height = uint(EBMLParseFixedUint(tag3.Contents(buf3)))
 						}
 
 						buf3 = tag3.Skip(buf3)
@@ -220,33 +219,33 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 			cast.tracks = append(cast.tracks, buf...)
 
-		case ebml.TracksTag:
+		case EBMLTracksTag:
 			cast.tracks = append(cast.tracks, buf...)
 
-		case ebml.TimecodeTag:
+		case EBMLTimecodeTag:
 			// Will reencode it when sending a Cluster.
-			cast.time.recv = ebml.ParseFixedUint(tag.Contents(buf))
+			cast.time.recv = EBMLParseFixedUint(tag.Contents(buf))
 
-		case ebml.BlockGroupTag, ebml.SimpleBlockTag:
+		case EBMLBlockGroupTag, EBMLSimpleBlockTag:
 			key := false
 			block := tag.Contents(buf)
 
-			if tag.ID == ebml.BlockGroupTag {
+			if tag.ID == EBMLBlockGroupTag {
 				key, block = true, nil
 
 				for buf2 := tag.Contents(buf); len(buf2) != 0; {
-					tag2 := ebml.ParseTag(buf2)
+					tag2 := EBMLParseTag(buf2)
 
 					switch tag2.ID {
 					case 0:
 						return 0, errors.New("malformed EBML")
 
-					case ebml.BlockTag:
+					case EBMLBlockTag:
 						block = tag2.Contents(buf2)
 
-					case ebml.ReferenceBlockTag:
+					case EBMLReferenceBlockTag:
 						// Keyframes, by definition, have no reference frame.
-						key = ebml.ParseFixedUint(tag2.Contents(buf2)) == 0
+						key = EBMLParseFixedUint(tag2.Contents(buf2)) == 0
 					}
 
 					buf2 = tag2.Skip(buf2)
@@ -257,7 +256,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				}
 			}
 
-			track := ebml.ParseUint(block)
+			track := EBMLParseUint(block)
 			if track.Consumed == 0 || track.Value >= 32 || len(block) < track.Consumed+3 {
 				return 0, errors.New("invalid track")
 			}
@@ -278,11 +277,11 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			// Keep the block's timecode offset the same, but shift the cluster's timecode.
 			timecode = cast.time.recv + cast.time.shift
 			cluster := []byte{
-				ebml.ClusterTag >> 24 & 0xFF,
-				ebml.ClusterTag >> 16 & 0xFF,
-				ebml.ClusterTag >> 8 & 0xFF,
-				ebml.ClusterTag & 0xFF, 0xFF,
-				ebml.TimecodeTag, 0x88,
+				EBMLClusterTag >> 24 & 0xFF,
+				EBMLClusterTag >> 16 & 0xFF,
+				EBMLClusterTag >> 8 & 0xFF,
+				EBMLClusterTag & 0xFF, 0xFF,
+				EBMLTimecodeTag, 0x88,
 				byte(timecode >> 56), byte(timecode >> 48),
 				byte(timecode >> 40), byte(timecode >> 32),
 				byte(timecode >> 24), byte(timecode >> 16),
