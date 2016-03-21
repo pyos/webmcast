@@ -21,8 +21,6 @@ type viewer struct {
 }
 
 type Broadcast struct {
-	viewers map[chan<- []byte]*viewer
-
 	// Set to `true` if there will be no more data on this stream.
 	// All viewers will receive an empty bytearray and must disconnect.
 	Done bool
@@ -30,9 +28,10 @@ type Broadcast struct {
 	Width  uint // Of the last video track.
 	Height uint // It is assumed there is only one, as having more is pointless.
 
-	buffer []byte
-	header []byte // The EBML (DocType) tag.
-	tracks []byte // The beginning of the Segment (Tracks + Info).
+	viewers map[chan<- []byte]*viewer
+	buffer  []byte
+	header  []byte // The EBML (DocType) tag.
+	tracks  []byte // The beginning of the Segment (Tracks + Info).
 
 	time struct {
 		last  uint64 // Last seen block timecode.

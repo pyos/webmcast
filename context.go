@@ -11,7 +11,11 @@ import (
 )
 
 type Context struct {
-	Timeout     time.Duration
+	// There is a timeout after releasing a stream during which it is possible
+	// to reacquire the same object and continue broadcasting. Once the timeout
+	// elapses, the stream is closed for good.
+	Timeout time.Duration
+	// How many messages to transmit on a `Chat.RequestHistory` RPC call.
 	ChatHistory int
 
 	streams map[string]*BroadcastContext
@@ -19,18 +23,16 @@ type Context struct {
 
 type BroadcastContext struct {
 	Broadcast
-	// There is a timeout after releasing a stream during which it is possible
-	// to reacquire the same object and continue broadcasting. Once the timeout
-	// elapses, the stream is closed for good.
-	ping    chan int
-	closing bool
 
-	chatHistory *ring.Ring
-	chatViewers map[*chatContext]interface{}
-	chatRoster  map[string]*chatContext
+	closing             bool
+	closingStateChanged chan bool
+
+	chatHistory *ring.Ring // of `chatMessage`
+	chatViewers map[*chatViewer]interface{}
+	chatRoster  map[string]*chatViewer
 }
 
-type chatContext struct {
+type chatViewer struct {
 	name   string
 	socket *websocket.Conn
 	stream *BroadcastContext
@@ -51,12 +53,14 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 
 	if !ok {
 		v := BroadcastContext{
-			Broadcast:   NewBroadcast(),
-			ping:        make(chan int),
-			closing:     false,
+			Broadcast: NewBroadcast(),
+
+			closing:             false,
+			closingStateChanged: make(chan bool),
+
 			chatHistory: ring.New(ctx.ChatHistory),
-			chatViewers: make(map[*chatContext]interface{}),
-			chatRoster:  make(map[string]*chatContext),
+			chatViewers: make(map[*chatViewer]interface{}),
+			chatRoster:  make(map[string]*chatViewer),
 		}
 
 		ctx.streams[id] = &v
@@ -68,14 +72,12 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 		return nil, false
 	}
 
-	stream.closing = false
-	stream.ping <- 1
+	stream.closingStateChanged <- false
 	return stream, true
 }
 
 func (stream *BroadcastContext) Release() {
-	stream.closing = true
-	stream.ping <- 1
+	stream.closingStateChanged <- true
 }
 
 // Acquire a stream for reading. There is no limit on the number of concurrent readers.
@@ -93,7 +95,7 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 			timer := time.NewTimer(ctx.Timeout)
 
 			select {
-			case <-stream.ping:
+			case stream.closing = <-stream.closingStateChanged:
 				timer.Stop()
 			case <-timer.C:
 				delete(ctx.streams, id)
@@ -101,7 +103,7 @@ func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 				return
 			}
 		} else {
-			<-stream.ping
+			stream.closing = <-stream.closingStateChanged
 		}
 	}
 }
@@ -122,7 +124,7 @@ func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-func (ctx *chatContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatViewer) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := args.First
 	// TODO check that the name is alphanumeric
 	// TODO check that the name is not too long
@@ -138,7 +140,7 @@ func (ctx *chatContext) SetName(args *RPCSingleStringArg, _ *interface{}) error 
 	return nil
 }
 
-func (ctx *chatContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatViewer) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
 	// TODO check that the message is not whitespace-only
 	// TODO check that the message is not too long
 	if ctx.name == "" {
@@ -156,7 +158,7 @@ func (ctx *chatContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) er
 	return nil
 }
 
-func (ctx *chatContext) RequestHistory(_ *interface{}, _ *interface{}) error {
+func (ctx *chatViewer) RequestHistory(_ *interface{}, _ *interface{}) error {
 	r := ctx.stream.chatHistory
 
 	for i := 0; i < r.Len(); i++ {
@@ -169,7 +171,7 @@ func (ctx *chatContext) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return nil
 }
 
-func (ctx *chatContext) onEvent(name string, args []interface{}) error {
+func (ctx *chatViewer) onEvent(name string, args []interface{}) error {
 	return websocket.JSON.Send(ctx.socket, map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  name,
@@ -177,12 +179,12 @@ func (ctx *chatContext) onEvent(name string, args []interface{}) error {
 	})
 }
 
-func (ctx *chatContext) onMessage(msg chatMessage) {
+func (ctx *chatViewer) onMessage(msg chatMessage) {
 	ctx.onEvent("Chat.Message", []interface{}{msg.name, msg.text})
 }
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
-	chatter := chatContext{name: "", socket: ws, stream: stream}
+	chatter := chatViewer{name: "", socket: ws, stream: stream}
 
 	stream.chatViewers[&chatter] = nil
 	defer func() {
