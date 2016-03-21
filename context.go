@@ -11,8 +11,10 @@ import (
 )
 
 type Context struct {
+	Timeout     time.Duration
+	ChatHistory int
+
 	streams map[string]*BroadcastContext
-	timeout time.Duration
 }
 
 type BroadcastContext struct {
@@ -39,15 +41,12 @@ type chatMessage struct {
 	text string
 }
 
-func NewContext(timeout time.Duration) Context {
-	return Context{
-		timeout: timeout, streams: make(map[string]*BroadcastContext),
-	}
-}
-
 // Acquire a stream for writing. Only one "writable" reference can be held;
 // until it is released, this function will return an error.
 func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
+	if ctx.streams == nil {
+		ctx.streams = make(map[string]*BroadcastContext)
+	}
 	stream, ok := ctx.streams[id]
 
 	if !ok {
@@ -55,7 +54,7 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 			Broadcast:   NewBroadcast(),
 			ping:        make(chan int),
 			closing:     false,
-			chatHistory: ring.New(20),
+			chatHistory: ring.New(ctx.ChatHistory),
 			chatViewers: make(map[*chatContext]interface{}),
 			chatRoster:  make(map[string]*chatContext),
 		}
@@ -81,6 +80,9 @@ func (stream *BroadcastContext) Release() {
 
 // Acquire a stream for reading. There is no limit on the number of concurrent readers.
 func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
+	if ctx.streams == nil {
+		return nil, false
+	}
 	stream, ok := ctx.streams[id]
 	return stream, ok
 }
@@ -88,7 +90,7 @@ func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
 func (ctx *Context) closeOnRelease(id string, stream *BroadcastContext) {
 	for {
 		if stream.closing {
-			timer := time.NewTimer(ctx.timeout)
+			timer := time.NewTimer(ctx.Timeout)
 
 			select {
 			case <-stream.ping:
