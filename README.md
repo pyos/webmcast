@@ -41,17 +41,11 @@ thought to do that. That's correct! We're
 This code!
 
 ```bash
-pip install -r requirements.txt
-python -m dg mkffi.dg
+go build -i
+./webmcast
 ```
 
-#### Retransmission node
-
-```bash
-python -m webmcast
-```
-
-##### Broadcast mode
+#### Broadcast mode
 
 PUT/POST a WebM to `/stream/<name>`
 
@@ -98,29 +92,24 @@ Tips:
     will not be received by said client, regardless of the actual passage of time.
     *ffmpeg tip: `-re` caps output speed at one frame per frame, if that makes any sense.*
 
-##### Dumb mode
+#### Dumb mode
 
 GET `/stream/<name>` to receive a continuous stream with default parameters.
 
-##### Signaled mode
+#### Signaled mode
 
 Upgrade to WebSocket at `/stream/<name>` to create a signaling channel,
 then send JSON-RPC 2.0 messages.
 
 **Methods**
 
-  * `chat_set_name(name: String) -> null`
-  * `chat_send(text: String) -> null`
-  * `chat_get_history() -> null` (the request is fulfilled in form of notifications)
-  * `get_zeros(n: Number) -> String`
+  * `Chat.SetName(name: String) -> null`
+  * `Chat.SendMessage(text: String) -> null`
+  * `Chat.RequestHistory() -> null` (the request is fulfilled in form of notifications)
 
 **Notifications**
 
-  * `chat_message(name: String, text: String)`
-
-#### Not implemented: Authentication node
-
-Should issue security tokens and balance streams between multiple retransmission nodes.
+  * `Chat.Message(name: String, text: String)`
 
 ### The Reality (alt. name: "Known Issues")
 
