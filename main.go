@@ -3,6 +3,7 @@ package main
 import (
 	"golang.org/x/net/websocket"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -106,10 +107,25 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	RenderHtml(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
 }
 
+type noIndexFilesystem struct {
+	fs http.FileSystem
+}
+
+func (fs noIndexFilesystem) Open(name string) (http.File, error) {
+	f, err := fs.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if stat, _ := f.Stat(); stat.IsDir() {
+		return nil, os.ErrNotExist
+	}
+	return f, nil
+}
+
 func main() {
 	ctx := Context{Timeout: time.Second * 10, ChatHistory: 20}
 	mux := http.NewServeMux()
-	mux.Handle("/static/", http.FileServer(http.Dir(".")))
+	mux.Handle("/static/", http.FileServer(noIndexFilesystem{http.Dir(".")}))
 	mux.Handle("/", &ctx)
 	http.ListenAndServe(":8000", mux)
 }
