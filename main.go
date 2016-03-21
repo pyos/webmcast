@@ -1,3 +1,33 @@
+// POST /stream/<name> or PUT /stream/<name>
+//     Broadcast a WebM video/audio file.
+//
+//     Accepted input: valid WebM split into arbitrarily many requests in absolutely
+//     any way. Multiple files can be concatenated into a single stream as long as they
+//     contain exactly the same tracks (i.e. their number, codecs, and dimensions.
+//     Otherwise any connected decoders will error and have to restart. Changing,
+//     for example, bitrate or tags is fine.)
+//
+// GET /stream/<name>
+//     Receive a published WebM stream. Note that the server makes no attempt
+//     at buffering; if the stream is being broadcast faster than its native framerate,
+//     the client will have to buffer and/or drop frames.
+//
+// GET /stream/<name> with Upgrade: websocket
+//     Connect to a JSON-RPC v2.0 node.
+//
+//     Methods of `Chat`:
+//
+//        * `SetName(string)`: assign a (unique) name to this client. This is required to...
+//        * `SendMessage(string)`: broadcast a simple text message to all viewers.
+//        * `RequestHistory()`: ask the server to emit notifications containing the last
+//          few broadcasted text messages.
+//
+//     TODO Methods of `Stream`.
+//
+//     Notifications:
+//
+//        * `Chat.Message(user string, text string)`: a broadcasted text message.
+//
 package main
 
 import (
@@ -58,10 +88,9 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			defer stream.Disconnect(ch)
 
 			for chunk := range ch {
-				if stream.Done {
+				if stream.Closed {
 					break
 				}
-
 				_, err := w.Write(chunk)
 				if err != nil {
 					break

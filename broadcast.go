@@ -1,8 +1,6 @@
 package main
 
-import (
-	"errors"
-)
+import "errors"
 
 type viewer struct {
 	// If `force` is `false`, this function may return `false` to signal that it
@@ -21,12 +19,9 @@ type viewer struct {
 }
 
 type Broadcast struct {
-	// Set to `true` if there will be no more data on this stream.
-	// All viewers will receive an empty bytearray and must disconnect.
-	Done bool
-
-	Width  uint // Of the last video track.
-	Height uint // It is assumed there is only one, as having more is pointless.
+	Closed bool // When set to `true`, all viewers receive an empty bytearray as a notification.
+	Width  uint // Dimensions of the video track that came last in the `Tracks` tag.
+	Height uint // Hopefully, there's only one video track in the file.
 
 	viewers map[chan<- []byte]*viewer
 	buffer  []byte
@@ -46,8 +41,7 @@ func NewBroadcast() Broadcast {
 }
 
 func (cast *Broadcast) Close() {
-	cast.Done = true
-
+	cast.Closed = true
 	for _, cb := range cast.viewers {
 		cb.write([]byte{}, false)
 	}
