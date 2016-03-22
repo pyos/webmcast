@@ -2,7 +2,7 @@ package main
 
 import "errors"
 
-type viewer struct {
+type broadcastViewer struct {
 	// If `force` is `false`, this function may return `false` to signal that it
 	// cannot write any more data. The stream will resynchronize at next keyframe.
 	write func(data []byte, force bool) bool
@@ -23,7 +23,7 @@ type Broadcast struct {
 	Width  uint // Dimensions of the video track that came last in the `Tracks` tag.
 	Height uint // Hopefully, there's only one video track in the file.
 
-	viewers map[chan<- []byte]*viewer
+	viewers map[chan<- []byte]*broadcastViewer
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
@@ -37,7 +37,7 @@ type Broadcast struct {
 }
 
 func NewBroadcast() Broadcast {
-	return Broadcast{viewers: make(map[chan<- []byte]*viewer)}
+	return Broadcast{viewers: make(map[chan<- []byte]*broadcastViewer)}
 }
 
 func (cast *Broadcast) Close() {
@@ -59,7 +59,7 @@ func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
 		return true
 	}
 
-	cast.viewers[ch] = &viewer{write, skipHeaders, false, 0}
+	cast.viewers[ch] = &broadcastViewer{write, skipHeaders, false, 0}
 	if !skipHeaders && len(cast.header) != 0 {
 		write(cast.header, true)
 	}

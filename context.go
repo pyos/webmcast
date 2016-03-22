@@ -24,8 +24,8 @@ type BroadcastContext struct {
 	Broadcast
 	closing            bool
 	closingStateChange chan bool
-	chatters           map[*chatter]int // A hash set. Values are ignored.
-	chattersNames      map[string]int   // Same.
+	chatters           map[*chatterContext]int // A hash set. Values are ignored.
+	chattersNames      map[string]int          // Same.
 	chatHistory        chatMessageQueue
 	// These values are for the whole stream, so they include audio and muxing overhead.
 	// The latter is negligible, however, and the latter is normally about 64k,
@@ -35,7 +35,7 @@ type BroadcastContext struct {
 	rateUnit float64
 }
 
-type chatter struct {
+type chatterContext struct {
 	name   string
 	socket *websocket.Conn
 	stream *BroadcastContext
@@ -86,7 +86,7 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 		v := BroadcastContext{
 			Broadcast:          NewBroadcast(),
 			closingStateChange: make(chan bool),
-			chatters:           make(map[*chatter]int),
+			chatters:           make(map[*chatterContext]int),
 			chattersNames:      make(map[string]int),
 			chatHistory:        newChatMessageQueue(ctx.ChatHistory),
 		}
@@ -166,7 +166,7 @@ func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := args.First
 	// TODO check that the name is alphanumeric
 	// TODO check that the name is not too long
@@ -182,7 +182,7 @@ func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	return nil
 }
 
-func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
 	// TODO check that the message is not whitespace-only
 	// TODO check that the message is not too long
 	if ctx.name == "" {
@@ -197,11 +197,11 @@ func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error 
 	return nil
 }
 
-func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
+func (ctx *chatterContext) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return ctx.stream.chatHistory.Iterate(ctx.pushMessage)
 }
 
-func (ctx *chatter) pushMessage(msg chatMessage) error {
+func (ctx *chatterContext) pushMessage(msg chatMessage) error {
 	return pushEvent(ctx.socket, "Chat.Message", []interface{}{msg.name, msg.text})
 }
 
@@ -212,7 +212,7 @@ func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 }
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
-	chatter := chatter{name: "", socket: ws, stream: stream}
+	chatter := chatterContext{name: "", socket: ws, stream: stream}
 
 	stream.chatters[&chatter] = 0
 	defer func() {
