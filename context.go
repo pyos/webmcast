@@ -6,7 +6,9 @@ import (
 	"github.com/powerman/rpc-codec/jsonrpc2"
 	"golang.org/x/net/websocket"
 	"net/rpc"
+	"strings"
 	"time"
+	"unicode"
 )
 
 type Context struct {
@@ -81,7 +83,6 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 		ctx.streams = make(map[string]*BroadcastContext)
 	}
 	stream, ok := ctx.streams[id]
-
 	if !ok {
 		v := BroadcastContext{
 			Broadcast:          NewBroadcast(),
@@ -94,7 +95,6 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 		go v.monitor(ctx, id)
 		return &v, true
 	}
-
 	if !stream.closing {
 		return nil, false
 	}
@@ -167,13 +167,21 @@ func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
 }
 
 func (ctx *chatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
-	name := args.First
-	// TODO check that the name is alphanumeric
-	// TODO check that the name is not too long
+	name := strings.TrimSpace(args.First)
+	if len(name) == 0 {
+		return errors.New("name must not be empty")
+	}
+	if len(name) > 32 {
+		return errors.New("name too long")
+	}
+	for _, c := range name {
+		if !unicode.IsGraphic(c) {
+			return errors.New("name contains invalid characters")
+		}
+	}
 	if _, ok := ctx.stream.chattersNames[name]; ok {
 		return errors.New("name already taken")
 	}
-
 	ctx.stream.chattersNames[name] = 0
 	if ctx.name != "" {
 		delete(ctx.stream.chattersNames, ctx.name)
@@ -183,13 +191,13 @@ func (ctx *chatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) err
 }
 
 func (ctx *chatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
-	// TODO check that the message is not whitespace-only
-	// TODO check that the message is not too long
 	if ctx.name == "" {
 		return errors.New("must obtain a name first")
 	}
-
-	msg := chatMessage{ctx.name, args.First}
+	msg := chatMessage{ctx.name, strings.TrimSpace(args.First)}
+	if len(msg.text) == 0 || len(msg.text) > 256 {
+		return errors.New("message must have between 1 and 256 characters")
+	}
 	for viewer := range ctx.stream.chatters {
 		viewer.pushMessage(msg)
 	}
@@ -213,11 +221,9 @@ func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
 	chatter := chatterContext{name: "", socket: ws, stream: stream}
-
 	stream.chatters[&chatter] = 0
 	defer func() {
 		delete(stream.chatters, &chatter)
-
 		if chatter.name != "" {
 			delete(stream.chattersNames, chatter.name)
 		}
