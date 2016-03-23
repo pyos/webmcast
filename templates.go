@@ -1,11 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"github.com/oxtoacart/bpool"
 	"html/template"
 	"net/http"
 )
 
+var bufpool = bpool.NewBufferPool(64)
 var templates = template.Must(template.ParseFiles(
 	"templates/room.html",
 	"templates/error.html",
@@ -55,28 +57,25 @@ func (e errorViewModel) DisplayComment() string {
 	}
 }
 
-func Render(w http.ResponseWriter, name string, data interface{}) {
-	err := templates.ExecuteTemplate(w, name, data)
+func Render(name string, data interface{}) (*bytes.Buffer, error) {
+	buf := bufpool.Get()
+	err := templates.ExecuteTemplate(buf, name, data)
+	return buf, err
+}
+
+func RenderHtml(w http.ResponseWriter, code int, template string, data interface{}) error {
+	buf, err := Render(template, data)
+	defer bufpool.Put(buf)
 	if err != nil {
-		if name == "error.html" {
-			fmt.Fprintf(w, "Error while rendering error: %s", err.Error())
-		} else {
-			Render(w, "error.html", errorViewModel{500, err.Error()})
-		}
+		return err
 	}
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(code)
+	buf.WriteTo(w)
+	return nil
 }
 
-func RenderHtml(w http.ResponseWriter, code int, template string, data interface{}) {
-	header := w.Header()
-	header["Content-Type"] = []string{"text/html"}
-	w.WriteHeader(code)
-	Render(w, template, data)
-}
-
-func RenderError(w http.ResponseWriter, code int, message string) {
-	header := w.Header()
-	header["Content-Type"] = []string{"text/html"}
-	header["Cache-Control"] = []string{"no-cache"}
-	w.WriteHeader(code)
-	Render(w, "error.html", errorViewModel{code, message})
+func RenderError(w http.ResponseWriter, code int, message string) error {
+	w.Header().Set("Cache-Control", "no-cache")
+	return RenderHtml(w, code, "error.html", errorViewModel{code, message})
 }

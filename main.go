@@ -55,9 +55,18 @@ func wantsWebsocket(r *http.Request) bool {
 }
 
 func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := ctx.RootHTTP(w, r); err != nil {
+		// TODO log
+		if err = RenderError(w, http.StatusInternalServerError, ""); err != nil {
+			// TODO also log
+			http.Error(w, "Error while rendering error message.", http.StatusInternalServerError)
+		}
+	}
+}
+
+func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Path == "/" {
-		RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
-		return
+		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
 	}
 
 	if strings.HasPrefix(r.URL.Path, "/stream/") {
@@ -67,13 +76,12 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "GET", "HEAD":
 			stream, ok := ctx.Get(streamID)
 			if !ok {
-				RenderError(w, http.StatusNotFound, "")
-				return
+				return RenderError(w, http.StatusNotFound, "")
 			}
 
 			if wantsWebsocket(r) {
 				websocket.Handler(stream.RunRPC).ServeHTTP(w, r)
-				return
+				return nil
 			}
 
 			header := w.Header()
@@ -96,13 +104,12 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-			return
+			return nil
 
 		case "PUT", "POST":
 			stream, ok := ctx.Acquire(streamID)
 			if !ok {
-				RenderError(w, http.StatusForbidden, "Stream ID already taken.")
-				return
+				return RenderError(w, http.StatusForbidden, "Stream ID already taken.")
 			}
 
 			defer stream.Release()
@@ -111,16 +118,13 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			for {
 				n, err := r.Body.Read(buffer[:])
 				if n != 0 {
-					_, err2 := stream.Write(buffer[:n])
-					if err2 != nil {
-						RenderError(w, http.StatusBadRequest, err.Error())
-						return
+					if _, err2 := stream.Write(buffer[:n]); err2 != nil {
+						return RenderError(w, http.StatusBadRequest, err2.Error())
 					}
 				}
-
 				if err != nil {
 					w.WriteHeader(http.StatusNoContent)
-					return
+					return nil
 				}
 			}
 		}
@@ -129,11 +133,10 @@ func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	streamID := strings.TrimPrefix(r.URL.Path, "/")
 	stream, ok := ctx.Get(streamID)
 	if !ok {
-		RenderError(w, http.StatusNotFound, "")
-		return
+		return RenderError(w, http.StatusNotFound, "")
 	}
 
-	RenderHtml(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
+	return RenderHtml(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
 }
 
 type noIndexFilesystem struct {
