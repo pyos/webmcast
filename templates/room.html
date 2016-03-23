@@ -8,7 +8,7 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <section class="w-chat-container uk-block uk-block-secondary uk-contrast">
+        <div class="w-chat-container uk-block uk-block-secondary uk-contrast">
             <ul class="log uk-list">
                 <li class="empty-log">
                     <span class="text uk-text-muted">Nothing here.</span>
@@ -38,9 +38,9 @@
                     <button class="uk-button uk-button-primary" type="submit">Send</button>
                 </fieldset>
             </form>
-        </section>
+        </div>
 
-        <section class="w-content-container uk-block uk-flex uk-flex-column">
+        <div class="w-content-container uk-block uk-flex uk-flex-column">
             <div class="uk-flex-item-1">
                 <div class="w-view-container w-icon-overlay w-icon-loading">
                     {{/* `video` with `height: auto` will always use the default aspect ratio.
@@ -51,7 +51,7 @@
                 </div>
             </div>
             <h1>{{.ID}}</h1>
-        </section>
+        </div>
 
         <script src="/static/js/room.js"></script>
     </body>
