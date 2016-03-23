@@ -150,6 +150,13 @@ func (stream *BroadcastContext) Write(data []byte) (int, error) {
 	return sent, err
 }
 
+func (stream *BroadcastContext) Close() {
+	stream.Broadcast.Close()
+	for ctx, _ := range stream.chatters {
+		ctx.socket.Close()
+	}
+}
+
 type RPCSingleStringArg struct {
 	First string
 }
