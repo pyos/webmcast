@@ -28,8 +28,8 @@ type BroadcastContext struct {
 	chattersNames      map[string]int          // Same.
 	chatHistory        chatMessageQueue
 	// These values are for the whole stream, so they include audio and muxing overhead.
-	// The latter is negligible, however, and the latter is normally about 64k,
-	// so also negligible. Or at least predicatble.
+	// The latter is negligible, however, and the former is normally about 64k,
+	// so also negligible. Or at least predictable.
 	RateMean float64
 	RateVar  float64
 	rateUnit float64
