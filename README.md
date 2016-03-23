@@ -41,17 +41,11 @@ thought to do that. That's correct! We're
 This code!
 
 ```bash
-pip install -r requirements.txt
-python -m dg mkffi.dg
+go build -i
+./webmcast
 ```
 
-#### Retransmission node
-
-```bash
-python -m webmcast
-```
-
-##### Broadcast mode
+#### How To Broadcast Stuff
 
 PUT/POST a WebM to `/stream/<name>`
 
@@ -77,10 +71,8 @@ gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=$serve
 
 Tips:
 
-  * `-g` [or `keyframe-max-dist`] controls the spacing between keyframes.
-    Lower values allow the stream to start faster as it has to begin
-    with a keyframe, while higher values may (but most likely will not) provide better
-    compression.
+  * `-g` (or `keyframe-max-dist`) controls the spacing between keyframes.
+    Keep it low (~2 seconds) to allow the stream to start faster for new viewers.
 
   * The stream may be split arbitrarily into many requests.
     For example, gstreamer sends each frame as a separate PUT by default.
@@ -98,29 +90,10 @@ Tips:
     will not be received by said client, regardless of the actual passage of time.
     *ffmpeg tip: `-re` caps output speed at one frame per frame, if that makes any sense.*
 
-##### Dumb mode
+#### How To View Stuff
 
-GET `/stream/<name>` to receive a continuous stream with default parameters.
-
-##### Signaled mode
-
-Upgrade to WebSocket at `/stream/<name>` to create a signaling channel,
-then send JSON-RPC 2.0 messages.
-
-**Methods**
-
-  * `chat_set_name(name: String) -> null`
-  * `chat_send(text: String) -> null`
-  * `chat_get_history() -> null` (the request is fulfilled in form of notifications)
-  * `get_zeros(n: Number) -> String`
-
-**Notifications**
-
-  * `chat_message(name: String, text: String)`
-
-#### Not implemented: Authentication node
-
-Should issue security tokens and balance streams between multiple retransmission nodes.
+Visit `/<name>` in a web browser. There's a chat and everything. Alternatively, open
+`/stream/<name>` in a browser or a video player; a raw WebM will play.
 
 ### The Reality (alt. name: "Known Issues")
 
@@ -139,5 +112,8 @@ As always, what looks good on paper doesn't always work in practice.
 
   * VP8 is OK, though.
 
+  * Of course, this thing is incompatible with static CDNs. For redistibution,
+    additional instances must be run on separate servers and connected to form
+    a directed tree.
+
 Looks like all those overcomplicated standards like HLS or DASH exist for a reason, huh?
-Even if that reason is the same reason we have "transpilers" and "shims".
