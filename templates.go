@@ -3,15 +3,45 @@ package main
 import (
 	"bytes"
 	"github.com/oxtoacart/bpool"
+	"golang.org/x/exp/inotify"
 	"html/template"
+	"log"
 	"net/http"
 )
 
+func loadTemplates(dir string, watch bool) *template.Template {
+	t := template.Must(template.ParseGlob(dir + "/*"))
+	if watch {
+		watcher, err := inotify.NewWatcher()
+		if err != nil {
+			panic("inotify error: " + err.Error())
+		}
+		if err = watcher.Watch(dir); err != nil {
+			panic("inotify error: " + err.Error())
+		}
+		go func() {
+			for {
+				select {
+				case ev := <-watcher.Event:
+					if ev.Mask&(inotify.IN_MODIFY|inotify.IN_CREATE) != 0 {
+						t2, err2 := template.ParseGlob(dir + "/*")
+						if err2 != nil {
+							log.Println("could not reload templates: ", err2)
+							continue
+						}
+						*t = *t2
+					}
+				case err := <-watcher.Error:
+					log.Println("inotify error: ", err)
+				}
+			}
+		}()
+	}
+	return t
+}
+
 var bufpool = bpool.NewBufferPool(64)
-var templates = template.Must(template.ParseFiles(
-	"templates/room.html",
-	"templates/error.html",
-))
+var templates = loadTemplates("templates", true)
 
 type roomViewModel struct {
 	ID     string
