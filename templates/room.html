@@ -19,7 +19,7 @@
                 </li>
             </ul>
             <div class="offline-message uk-text-muted">
-                [[ offline ]]
+                Offline.
             </div>
             <form class="login-form uk-form">
                 <fieldset>
@@ -42,7 +42,7 @@
 
         <div class="w-content-container uk-block uk-flex uk-flex-column">
             <div class="uk-flex-item-1">
-                <div class="w-view-container w-icon-overlay w-icon-loading">
+                <div class="w-view-container w-icon-overlay w-icon-warning">
                     {{/* `video` with `height: auto` will always use the default aspect ratio.
                          so instead we enforce the size of this element with an empty image. */}}
                     <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad uk-responsive-width">
