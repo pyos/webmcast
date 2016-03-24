@@ -24,6 +24,8 @@ type Context struct {
 
 type BroadcastContext struct {
 	Broadcast
+	Created            time.Time
+	Viewers            uint
 	closing            bool
 	closingStateChange chan bool
 	chatters           map[*chatterContext]int // A hash set. Values are ignored.
@@ -86,6 +88,7 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 	if !ok {
 		v := BroadcastContext{
 			Broadcast:          NewBroadcast(),
+			Created:            time.Now().UTC(),
 			closingStateChange: make(chan bool),
 			chatters:           make(map[*chatterContext]int),
 			chattersNames:      make(map[string]int),
@@ -222,8 +225,10 @@ func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
 	chatter := chatterContext{name: "", socket: ws, stream: stream}
+	stream.Viewers += 1
 	stream.chatters[&chatter] = 0
 	defer func() {
+		stream.Viewers -= 1
 		delete(stream.chatters, &chatter)
 		if chatter.name != "" {
 			delete(stream.chattersNames, chatter.name)
