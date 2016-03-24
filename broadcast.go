@@ -21,6 +21,7 @@ type broadcastViewer struct {
 type Broadcast struct {
 	Closed   bool // When set to `true`, all viewers receive an empty bytearray as a notification.
 	HasVideo bool
+	HasAudio bool
 	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
 	Height   uint // Hopefully, there's only one video track in the file.
 
@@ -131,6 +132,10 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 		case EBMLSegmentTag:
+			cast.HasVideo = false
+			cast.HasAudio = false
+			cast.Width = 0
+			cast.Height = 0
 			cast.tracks = append([]byte{}, buf...)
 			// Will recalculate this when the first block arrives.
 			cast.time.shift = 0
@@ -187,6 +192,9 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					if t := EBMLParseFixedUint(tag2.Contents(buf2)); t >= 32 {
 						return 0, errors.New("too many tracks?")
 					}
+
+				case EBMLAudioTag:
+					cast.HasAudio = true
 
 				case EBMLVideoTag:
 					cast.HasVideo = true
