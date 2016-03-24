@@ -56,27 +56,38 @@ let RPC = function(url, ...objects) {
 
 
 let ViewNode = function (root, stream) {
-    let view = root.querySelector('video');
-    let rpc  = null;
+    let rpc    = null;
+    let view   = root.querySelector('video');
+    let status = root.querySelector('.status');
 
     view.addEventListener('loadstart', () => {
-        root.classList.remove('uk-icon-warning');
-        root.classList.add('w-icon-loading');
+        root.setAttribute('data-status', 'loading');
+        status.textContent = 'loading';
     });
 
     view.addEventListener('loadedmetadata', () => {
-        root.classList.remove('uk-icon-warning');
-        root.classList.remove('w-icon-loading');
-        root.querySelector('.pad').remove();
+        root.setAttribute('data-status', 'playing');
+        status.textContent = 'playing';
     });
 
-    let onDone = () => {
-        root.classList.remove('w-icon-loading');
-        root.classList.add('uk-icon-warning');
+    let onTimeUpdate = (t) => {
+        // let leftPad = require('left-pad');
+        status.textContent = `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`;
     };
 
+    let onDone = () => {
+        root.setAttribute('data-status', 'error');
+        status.textContent = view.error === null   ? 'stream ended'
+                           : view.error.code === 1 ? 'aborted'
+                           : view.error.code === 2 ? 'network error'
+                           : view.error.code === 3 ? 'decoding error'
+                           : 'no media';
+    };
+
+    view.addEventListener('timeupdate', () => onTimeUpdate(view.currentTime));
     view.addEventListener('error', onDone);
     view.addEventListener('ended', onDone);
+    // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
 
     return {
         onLoad: (socket) => {

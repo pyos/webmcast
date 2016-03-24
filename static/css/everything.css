@@ -14,33 +14,12 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     background: none !important;
 }
 
-.w-icon-overlay {
-    position: relative;
-}
-
-.w-icon-overlay:before {
-	display: block;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 1em;
-	height: 1em;
-    margin: -0.5em;
-    z-index: 1000;
-    font-size: 4em;
-    font-family: FontAwesome;
-	color: #fff;
-    text-shadow: 0 0 0.2em #000;
-    pointer-events: none;
-}
-
-.w-icon-loading:before {
-    content: " ";
-	border: 0.2em solid transparent;
-	border-radius: 50%;
-	border-left-color: #fff;
-	border-right-color: #fff;
-	animation: uk-rotate 1.5s infinite linear;
+.w-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .w-content-container {
@@ -56,8 +35,33 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     display: inline-block;
 }
 
-.w-view-container .pad + video {
+[data-status="playing"] .pad, [data-status="playing"] .icon, [data-status]:not([data-status="playing"]) .pad + * {
     display: none;
+}
+
+[data-status] .icon:before {
+	display: block;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 1em;
+	height: 1em;
+    margin: -0.5em;
+    z-index: 1000;
+    line-height: 1;
+    font: normal 4em FontAwesome;
+	color: #fff;
+    content: '\f071';  /* default icon -- exclamation mark */
+    pointer-events: none;
+}
+
+[data-status="loading"] .icon:before {
+    content: ' ';
+	border: 0.2em solid transparent;
+	border-radius: 50%;
+	border-left-color: #fff;
+	border-right-color: #fff;
+	animation: uk-rotate 1.5s infinite linear;
 }
 
 .w-view-container .controls {
@@ -66,10 +70,26 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     right: 0;
     bottom: 0;
     transition: transform 0.3s ease-out;
+    background: #fff;
 }
 
-.w-view-container:not(:hover) .controls {
+.w-view-container .controls > * {
+    margin: 0.5em 0;
+    padding: 0 0.5em;
+    vertical-align: middle;
+}
+
+.w-view-container .controls > :not(:first-child) {
+    border-left: 1px solid #ccc;
+}
+
+.w-view-container.has-video:not(:hover) .controls {
     transform: translateY(100%);
+}
+
+.w-view-container .controls .status {
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .w-chat-container {
