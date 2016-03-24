@@ -32,6 +32,7 @@ package main
 
 import (
 	"golang.org/x/net/websocket"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -56,9 +57,9 @@ func wantsWebsocket(r *http.Request) bool {
 
 func (ctx *Context) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := ctx.RootHTTP(w, r); err != nil {
-		// TODO log
+		log.Println("error rendering template", r.URL.Path, err.Error())
 		if err = RenderError(w, http.StatusInternalServerError, ""); err != nil {
-			// TODO also log
+			log.Println("error rendering error", err.Error())
 			http.Error(w, "Error while rendering error message.", http.StatusInternalServerError)
 		}
 	}
@@ -85,8 +86,12 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 			}
 
 			header := w.Header()
-			header["Content-Type"] = []string{"video/webm"}
-			header["Cache-Control"] = []string{"no-cache"}
+			header.Set("Cache-Control", "no-cache")
+			if stream.HasVideo {
+				header.Set("Content-Type", "video/webm")
+			} else {
+				header.Set("Content-Type", "audio/webm")
+			}
 			w.WriteHeader(http.StatusOK)
 
 			ch := make(chan []byte, 60)

@@ -19,9 +19,10 @@ type broadcastViewer struct {
 }
 
 type Broadcast struct {
-	Closed bool // When set to `true`, all viewers receive an empty bytearray as a notification.
-	Width  uint // Dimensions of the video track that came last in the `Tracks` tag.
-	Height uint // Hopefully, there's only one video track in the file.
+	Closed   bool // When set to `true`, all viewers receive an empty bytearray as a notification.
+	HasVideo bool
+	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
+	Height   uint // Hopefully, there's only one video track in the file.
 
 	viewers map[chan<- []byte]*broadcastViewer
 	buffer  []byte
@@ -188,6 +189,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					}
 
 				case EBMLVideoTag:
+					cast.HasVideo = true
 					// While we're here, let's grab some metadata, too.
 					for buf3 := tag2.Contents(buf2); len(buf3) != 0; {
 						tag3 := EBMLParseTag(buf3)
