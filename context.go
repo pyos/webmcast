@@ -77,7 +77,7 @@ func (q *chatMessageQueue) Iterate(f func(x chatMessage) error) error {
 }
 
 // Acquire a stream for writing. Only one "writable" reference can be held;
-// until it is released, this function will return an error.
+// until it is closed, this function will return an error.
 func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 	if ctx.streams == nil {
 		ctx.streams = make(map[string]*BroadcastContext)
@@ -111,35 +111,32 @@ func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
 	return stream, ok
 }
 
-func (stream *BroadcastContext) Release() {
-	stream.closingStateChange <- true
-}
-
 func (stream *BroadcastContext) monitor(ctx *Context, id string) {
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(time.Second)
+	ticksWhileOffline := 0 * time.Second
+
 	for {
-		if stream.closing {
-			timer := time.NewTimer(ctx.Timeout)
-			select {
-			case stream.closing = <-stream.closingStateChange:
-				timer.Stop()
-			case <-timer.C:
-				delete(ctx.streams, id)
-				ticker.Stop()
-				stream.Close()
-				return
+		select {
+		case stream.closing = <-stream.closingStateChange:
+			ticksWhileOffline = 0
+		case <-ticker.C:
+			if stream.closing {
+				if ticksWhileOffline += time.Second; ticksWhileOffline > ctx.Timeout {
+					delete(ctx.streams, id)
+					ticker.Stop()
+					stream.Broadcast.Close()
+					for ctx := range stream.chatters {
+						ctx.socket.Close()
+					}
+					return
+				}
 			}
-		} else {
-			select {
-			case stream.closing = <-stream.closingStateChange:
-			case <-ticker.C:
-				// exponentially weighted moving moments at a = 0.5
-				//     avg[n] = a * x + (1 - a) * avg[n - 1]
-				//     var[n] = a * (x - avg[n]) ** 2 / (1 - a) + (1 - a) * var[n - 1]
-				stream.RateMean += stream.rateUnit / 2
-				stream.RateVar += stream.rateUnit*stream.rateUnit - stream.RateVar/2
-				stream.rateUnit = -stream.RateMean
-			}
+			// exponentially weighted moving moments at a = 0.5
+			//     avg[n] = a * x + (1 - a) * avg[n - 1]
+			//     var[n] = a * (x - avg[n]) ** 2 / (1 - a) + (1 - a) * var[n - 1]
+			stream.RateMean += stream.rateUnit / 2
+			stream.RateVar += stream.rateUnit*stream.rateUnit - stream.RateVar/2
+			stream.rateUnit = -stream.RateMean
 		}
 	}
 }
@@ -151,10 +148,7 @@ func (stream *BroadcastContext) Write(data []byte) (int, error) {
 }
 
 func (stream *BroadcastContext) Close() {
-	stream.Broadcast.Close()
-	for ctx, _ := range stream.chatters {
-		ctx.socket.Close()
-	}
+	stream.closingStateChange <- true
 }
 
 type RPCSingleStringArg struct {

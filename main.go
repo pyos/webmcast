@@ -117,7 +117,7 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 				return RenderError(w, http.StatusForbidden, "Stream ID already taken.")
 			}
 
-			defer stream.Release()
+			defer stream.Close()
 
 			buffer := [16384]byte{}
 			for {
