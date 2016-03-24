@@ -136,7 +136,7 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 		return RenderError(w, http.StatusNotFound, "")
 	}
 
-	return RenderHtml(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
+	return Render(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
 }
 
 type noIndexFilesystem struct {

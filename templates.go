@@ -1,47 +1,37 @@
 package main
 
 import (
-	"bytes"
 	"github.com/oxtoacart/bpool"
-	"golang.org/x/exp/inotify"
 	"html/template"
-	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"time"
 )
 
-func loadTemplates(dir string, watch bool) *template.Template {
-	t := template.Must(template.ParseGlob(dir + "/*"))
-	if watch {
-		watcher, err := inotify.NewWatcher()
-		if err != nil {
-			panic("inotify error: " + err.Error())
-		}
-		if err = watcher.Watch(dir); err != nil {
-			panic("inotify error: " + err.Error())
-		}
-		go func() {
-			for {
-				select {
-				case ev := <-watcher.Event:
-					if ev.Mask&(inotify.IN_MODIFY|inotify.IN_CREATE) != 0 {
-						t2, err2 := template.ParseGlob(dir + "/*")
-						if err2 != nil {
-							log.Println("could not reload templates: ", err2)
-							continue
-						}
-						*t = *t2
-					}
-				case err := <-watcher.Error:
-					log.Println("inotify error: ", err)
-				}
-			}
-		}()
-	}
-	return t
+type templateItem struct {
+	parsed *template.Template
+	mtime  time.Time
 }
 
-var bufpool = bpool.NewBufferPool(64)
-var templates = loadTemplates("templates", true)
+type templateSet struct {
+	root   string
+	loaded map[string]templateItem
+}
+
+func (ts *templateSet) Get(name string) (*template.Template, error) {
+	path := filepath.Join(ts.root, name)
+	stat, err := os.Stat(path)
+	if t, ok := ts.loaded[name]; ok && !(err == nil && stat.ModTime().After(t.mtime)) {
+		return t.parsed, nil
+	}
+	t, err := template.ParseFiles(path)
+	if err != nil {
+		return nil, err
+	}
+	ts.loaded[name] = templateItem{t, stat.ModTime()}
+	return t, nil
+}
 
 type roomViewModel struct {
 	ID     string
@@ -87,19 +77,20 @@ func (e errorViewModel) DisplayComment() string {
 	}
 }
 
-func Render(name string, data interface{}) (*bytes.Buffer, error) {
-	buf := bufpool.Get()
-	err := templates.ExecuteTemplate(buf, name, data)
-	return buf, err
-}
+var bufpool = bpool.NewBufferPool(64)
+var templates = templateSet{"templates", make(map[string]templateItem)}
 
-func RenderHtml(w http.ResponseWriter, code int, template string, data interface{}) error {
-	buf, err := Render(template, data)
-	defer bufpool.Put(buf)
+func Render(w http.ResponseWriter, code int, template string, data interface{}) error {
+	tpl, err := templates.Get(template)
 	if err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "text/html")
+	buf := bufpool.Get()
+	defer bufpool.Put(buf)
+	if err = tpl.Execute(buf, data); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "text/html; encoding=utf-8")
 	w.WriteHeader(code)
 	buf.WriteTo(w)
 	return nil
@@ -107,5 +98,5 @@ func RenderHtml(w http.ResponseWriter, code int, template string, data interface
 
 func RenderError(w http.ResponseWriter, code int, message string) error {
 	w.Header().Set("Cache-Control", "no-cache")
-	return RenderHtml(w, code, "error.html", errorViewModel{code, message})
+	return Render(w, code, "error.html", errorViewModel{code, message})
 }
