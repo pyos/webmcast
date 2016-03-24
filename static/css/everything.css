@@ -2,10 +2,6 @@
     box-sizing: border-box;
 }
 
-body[data-error] {
-    background: #00f;
-}
-
 body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 {
     font-family: monospace;
 }
@@ -23,7 +19,6 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .w-content-container {
-    padding: 2em;
     position: relative;
     min-height: 100vh;
 }
@@ -70,7 +65,9 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     right: 0;
     bottom: 0;
     transition: transform 0.3s ease-out;
-    background: #fff;
+    background: #000;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
 }
 
 .w-view-container .controls > * {
@@ -79,17 +76,26 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     vertical-align: middle;
 }
 
-.w-view-container .controls > :not(:first-child) {
-    border-left: 1px solid #ccc;
-}
-
-.w-view-container.has-video:not(:hover) .controls {
+.w-view-container.has-video[data-status="playing"]:not(:hover) .controls {
     transform: translateY(100%);
 }
 
 .w-view-container .controls .status {
     font-weight: bold;
     text-transform: uppercase;
+}
+
+.w-view-info {
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.w-view-info > * {
+    margin: 0.5em 0 0.3em 0;
+}
+
+.w-view-info > *:not(:first-child) {
+    margin-left: 1em;
 }
 
 .w-chat-container {
