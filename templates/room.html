@@ -69,7 +69,7 @@
                         <span class="uk-text-muted">created on</span>
                         {{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}
                     </h3>
-                    <h3><i class="uk-icon-eye uk-text-muted"></i> <span class="viewers">{{.Stream.ViewerCount}}</span></h3>
+                    <h3><i class="uk-icon-eye uk-text-muted"></i> <span class="viewers">{{len .Stream.Chat.Users}}</span></h3>
                 </div>
             </div>
         </div>
