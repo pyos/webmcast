@@ -44,19 +44,11 @@
             <div class="uk-container uk-container-center">
                 <div class="w-view-container {{if .Stream.HasVideo}}has-video{{end}}" data-status="error">
                     <div class="w-overlay icon"></div>
-                    {{/* `video` with `height: auto` will always use the default aspect ratio.
+                    {{- /* `video` with `height: auto` will always use the default aspect ratio.
                          so instead we enforce the size of this element with an empty image. */ -}}
-                    <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad uk-responsive-width"></svg>
-                    {{- if not .Stream.HasVideo -}}
-                    <svg class="w-overlay">
-                        <rect width="100%" height="100%" style="fill:#00f"></rect>
-                        <text x="50%" y="50%" text-anchor="middle" alignment-baseline="center"
-                            style="fill: #fff; font: bold 1.5em monospace">
-                            NO VIDEO
-                        </text>
-                    </svg>
-                    {{- end -}}
-                    <video class="uk-responsive-width"></video>
+                    <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad w-responsive"></svg>
+                    {{- /* this comment erases whitespace between inline-block elements */ -}}
+                    <video class="w-responsive"></video>
                     <div class="controls uk-flex">
                         <div class="status uk-flex-item-1">not connected</div>
                         <div class="volume"><i class="uk-icon-volume-up"></i></div>
