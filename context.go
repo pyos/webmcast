@@ -25,7 +25,6 @@ type Context struct {
 type BroadcastContext struct {
 	Broadcast
 	Created            time.Time
-	Viewers            uint
 	closing            bool
 	closingStateChange chan bool
 	chatters           map[*chatterContext]int // A hash set. Values are ignored.
@@ -144,6 +143,10 @@ func (stream *BroadcastContext) monitor(ctx *Context, id string) {
 	}
 }
 
+func (stream *BroadcastContext) ViewerCount() int {
+	return len(stream.chatters)
+}
+
 func (stream *BroadcastContext) Write(data []byte) (int, error) {
 	stream.rateUnit += float64(len(data))
 	sent, err := stream.Broadcast.Write(data)
@@ -217,6 +220,10 @@ func (ctx *chatterContext) pushMessage(msg chatMessage) error {
 	return pushEvent(ctx.socket, "Chat.Message", []interface{}{msg.name, msg.text})
 }
 
+func (ctx *chatterContext) pushViewerCount() error {
+	return pushEvent(ctx.socket, "Stream.ViewerCount", []interface{}{ctx.stream.ViewerCount()})
+}
+
 func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 	return websocket.JSON.Send(ws, map[string]interface{}{
 		"jsonrpc": "2.0", "method": name, "params": args,
@@ -225,13 +232,18 @@ func pushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 
 func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
 	chatter := chatterContext{name: "", socket: ws, stream: stream}
-	stream.Viewers += 1
+	// XXX maybe send a reference into a channel from which `monitor` would read?
 	stream.chatters[&chatter] = 0
+	for c := range stream.chatters {
+		c.pushViewerCount()
+	}
 	defer func() {
-		stream.Viewers -= 1
 		delete(stream.chatters, &chatter)
 		if chatter.name != "" {
 			delete(stream.chattersNames, chatter.name)
+		}
+		for c := range stream.chatters {
+			c.pushViewerCount()
 		}
 	}()
 

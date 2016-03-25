@@ -37,9 +37,12 @@ let RPC = function(url, ...objects) {
     socket.onmessage = (ev) => {
         let msg = JSON.parse(ev.data);
 
-        if (msg.id === undefined)
+        if (msg.id === undefined) {
             if (msg.method in cbs_by_code)
                 cbs_by_code[msg.method](...msg.params);
+            else
+                console.log('unhandled notification', msg);
+        }
 
         if (msg.id in cbs_by_id) {
             let cb = cbs_by_id[msg.id];
@@ -55,7 +58,7 @@ let RPC = function(url, ...objects) {
 };
 
 
-let ViewNode = function (root, stream) {
+let ViewNode = function (root, info, stream) {
     let rpc    = null;
     let view   = root.querySelector('video');
     let status = root.querySelector('.status');
@@ -92,6 +95,9 @@ let ViewNode = function (root, stream) {
     return {
         onLoad: (socket) => {
             rpc = socket;
+            rpc.callback('Stream.ViewerCount', (n) => {
+                info.querySelector('.viewers').textContent = n;
+            });
             // TODO measure connection speed, request a stream
             view.src = `/stream/${stream}`;
             view.play();
@@ -166,7 +172,8 @@ let ChatNode = function (root) {
 
 
 let stream = document.body.getAttribute('data-stream-id');
-let view   = new ViewNode(document.querySelector('.w-view-container'), stream);
+let view   = new ViewNode(document.querySelector('.w-view-container'),
+                          document.querySelector('.w-view-info'), stream);
 let chat   = new ChatNode(document.querySelector('.w-chat-container'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${stream}`,
