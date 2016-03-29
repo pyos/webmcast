@@ -2,8 +2,12 @@
     box-sizing: border-box;
 }
 
-body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 {
+body[data-error] {
     font-family: monospace;
+}
+
+h1, h2, h3 {
+    font-family: inherit;
 }
 
 .uk-button-link {
@@ -36,6 +40,10 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     display: none;
 }
 
+[data-status] .icon {
+    pointer-events: none;
+}
+
 [data-status] .icon:before {
     display: block;
     position: absolute;
@@ -46,16 +54,14 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     margin: -0.5em;
     line-height: 1;
     font: normal 4em FontAwesome;
-    content: '\f071';  /* .uk-icon-exclamation-triangle */
-    pointer-events: none;
 }
 
-[data-status="playing"] .icon:before {
-    content: ' ';
+[data-status="error"] .icon:before {
+    content: '\f071';  /* .uk-icon-exclamation-triangle */
 }
 
 [data-status="playing"]:not(.has-video) .icon:before {
-    content: '\f028';
+    content: '\f001';
 }
 
 [data-status="loading"] .icon:before {
