@@ -87,12 +87,10 @@ let ViewNode = function (root, info, stream) {
         let r = volume.getBoundingClientRect();
         e.style.borderLeftWidth   = `${v * (r.right - r.left)}px`;
         e.style.borderBottomWidth = `${v * (r.bottom - r.top)}px`;
-        mute.classList.remove('uk-icon-volume-up');
-        mute.classList.remove('uk-icon-volume-down');
-        mute.classList.remove('uk-icon-volume-off');
-        mute.classList.add(muted ? 'uk-icon-volume-off'
-                       : v < 0.5 ? 'uk-icon-volume-down'
-                       :           'uk-icon-volume-up');
+        if (muted)
+            root.classList.add('muted');
+        else
+            root.classList.remove('muted');
     };
 
     let onTimeUpdate = (t) => {
@@ -124,9 +122,9 @@ let ViewNode = function (root, info, stream) {
         volume.removeEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseleave', () =>
         volume.removeEventListener('mousemove', onVolumeSelect));
-    onVolumeChange(view.volume, view.muted);
-
     mute.addEventListener('click', () => { view.muted = !view.muted; });
+
+    onVolumeChange(view.volume, view.muted);
 
     return {
         onLoad: (socket) => {

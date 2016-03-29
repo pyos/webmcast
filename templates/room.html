@@ -9,7 +9,7 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <div class="chat-container uk-block uk-block-secondary uk-contrast">
-            <ul class="log uk-list">
+            <ul class="log">
                 <li class="empty-log">
                     <span class="text uk-text-muted">Nothing here.</span>
                 </li>
@@ -51,9 +51,9 @@
                     <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad responsive"></svg>
                     {{- /* this comment erases whitespace between inline-block elements */ -}}
                     <video class="responsive"></video>
-                    <div class="view-controls uk-flex">
-                        <div class="status uk-flex-item-1">not connected</div>
-                        <div class="volume mute uk-icon-volume-up uk-icon-small"></div>
+                    <div class="view-controls">
+                        <div class="status">not connected</div>
+                        <div class="volume mute uk-icon-volume-up"></div>
                         <div class="volume slider">
                             <div class="bg"></div>
                             <div class="bg active"></div>
@@ -61,7 +61,7 @@
                     </div>
                 </div>
 
-                <div class="view-info uk-flex">
+                <div class="view-info">
                     <h1 class="id">{{.ID}}</h1>
                     <h3 class="created">
                         <span class="uk-text-muted">created on</span>

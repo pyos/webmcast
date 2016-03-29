@@ -16,6 +16,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1;
 }
 
 .content-container {
@@ -24,6 +25,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .view-container {
+    color: #fff;
     background: #000;
     overflow: hidden;
     position: relative;
@@ -35,18 +37,16 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 [data-status] .icon:before {
-	display: block;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 1em;
-	height: 1em;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1em;
+    height: 1em;
     margin: -0.5em;
-    z-index: 1000;
     line-height: 1;
     font: normal 4em FontAwesome;
-	color: #fff;
-    content: '\f071';  /* default icon -- exclamation mark */
+    content: '\f071';  /* .uk-icon-exclamation-triangle */
     pointer-events: none;
 }
 
@@ -75,6 +75,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .view-controls {
+    display: flex;
     position: absolute;
     left: 0;
     right: 0;
@@ -83,7 +84,6 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
     transition: transform 0.3s ease-out;
     background: #000;
     background: rgba(0,0,0,0.8);
-    color: #fff;
 }
 
 .view-controls > * {
@@ -96,6 +96,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .view-controls .status {
+    flex: 1;
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -119,8 +120,17 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .view-controls .mute {
-    /* icons are not fixed-width for some reason */
-    width: 1em;
+    width: 1em;  /* icons are not fixed-width for some reason */
+    line-height: 1;
+    font: normal 1.33em FontAwesome;
+}
+
+.view-controls .mute:before {
+    content: "\f028";  /* .uk-icon-volume-up */
+}
+
+.muted .view-controls .mute:before {
+    content: "\f026";  /* .uk-icon-volume-off */
 }
 
 .view-container:not(.has-audio) .volume {
@@ -128,6 +138,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
 }
 
 .view-info {
+    display: flex;
     flex-wrap: wrap;
     align-items: baseline;
 }
@@ -184,6 +195,7 @@ body[data-error], body[data-error] h1, body[data-error] h2, body[data-error] h3 
         flex: 1;
         margin: 0;
         overflow-y: auto;
+        list-style: none;
         word-wrap: break-word;
     }
 
