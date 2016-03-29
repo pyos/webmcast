@@ -77,7 +77,7 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 		case "GET", "HEAD":
 			stream, ok := ctx.Get(streamID)
 			if !ok {
-				return RenderError(w, http.StatusNotFound, "")
+				return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 			}
 
 			if wantsWebsocket(r) {
@@ -138,7 +138,7 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 	streamID := strings.TrimPrefix(r.URL.Path, "/")
 	stream, ok := ctx.Get(streamID)
 	if !ok {
-		return RenderError(w, http.StatusNotFound, "")
+		return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 	}
 
 	return Render(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
