@@ -178,7 +178,8 @@ let ChatNode = function (root) {
         (ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null));
 
     text.addEventListener('keyup', (ev) =>
-        (ev.keyCode === 13 && !ev.shiftKey ? form.dispatchEvent(new Event('submit')) : null));
+        (ev.keyCode === 13 && !ev.shiftKey ?
+            form.dispatchEvent(new Event('submit', {cancelable: true})) : null));
 
     form.addEventListener('submit', (ev) => {
         ev.preventDefault();
