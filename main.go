@@ -40,15 +40,12 @@ import (
 )
 
 func wantsWebsocket(r *http.Request) bool {
-	upgrade, ok := r.Header["Upgrade"]
-	if !ok {
-		return false
-	}
-
-	for i := range upgrade {
-		if upgrade[i] == "websocket" {
-			return true
-		}
+	if upgrade, ok := r.Header["Upgrade"]; ok {
+    	for i := range upgrade {
+    		if strings.ToLower(upgrade[i]) == "websocket" {
+    			return true
+    		}
+    	}
 	}
 	// func is_a_language_that_has_no_Array_Contains_method_any_good() bool {
 	return false
