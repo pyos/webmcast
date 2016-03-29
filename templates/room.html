@@ -8,7 +8,7 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <div class="w-chat-container uk-block uk-block-secondary uk-contrast">
+        <div class="chat-container uk-block uk-block-secondary uk-contrast">
             <ul class="log uk-list">
                 <li class="empty-log">
                     <span class="text uk-text-muted">Nothing here.</span>
@@ -40,22 +40,28 @@
             </form>
         </div>
 
-        <div class="w-content-container uk-block">
+        <div class="content-container uk-block">
             <div class="uk-container uk-container-center">
-                <div class="w-view-container {{if .Stream.HasVideo}}has-video{{end}}" data-status="error">
-                    <div class="w-overlay icon"></div>
+                <div class="view-container
+                {{- if .Stream.HasVideo}} has-video{{end}}
+                {{- if .Stream.HasAudio}} has-audio{{end}}" data-status="error">
+                    <div class="overlay icon"></div>
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
                          so instead we enforce the size of this element with an empty image. */ -}}
-                    <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad w-responsive"></svg>
+                    <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}" class="pad responsive"></svg>
                     {{- /* this comment erases whitespace between inline-block elements */ -}}
-                    <video class="w-responsive"></video>
-                    <div class="controls uk-flex">
+                    <video class="responsive"></video>
+                    <div class="view-controls uk-flex">
                         <div class="status uk-flex-item-1">not connected</div>
-                        <div class="volume"><i class="uk-icon-volume-up"></i></div>
+                        <div class="volume mute uk-icon-volume-up uk-icon-small"></div>
+                        <div class="volume slider">
+                            <div class="bg"></div>
+                            <div class="bg active"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="w-view-info uk-flex">
+                <div class="view-info uk-flex">
                     <h1 class="id">{{.ID}}</h1>
                     <h3 class="created">
                         <span class="uk-text-muted">created on</span>

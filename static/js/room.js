@@ -62,6 +62,8 @@ let ViewNode = function (root, info, stream) {
     let rpc    = null;
     let view   = root.querySelector('video');
     let status = root.querySelector('.status');
+    let volume = root.querySelector('.volume.slider');
+    let mute   = root.querySelector('.volume.mute');
 
     view.addEventListener('loadstart', () => {
         root.setAttribute('data-status', 'loading');
@@ -72,6 +74,26 @@ let ViewNode = function (root, info, stream) {
         root.setAttribute('data-status', 'playing');
         status.textContent = 'playing';
     });
+
+    let onVolumeSelect = (e) => {
+        e.preventDefault();
+        let r = volume.getBoundingClientRect();
+        let x = Math.min(r.right, Math.max(r.left, e.touches ? e.touches[0].clientX : e.clientX));
+        view.volume = (x - r.left) / (r.right - r.left);
+    };
+
+    let onVolumeChange = (v, muted) => {
+        let e = volume.querySelector('.bg.active');
+        let r = volume.getBoundingClientRect();
+        e.style.borderLeftWidth   = `${v * (r.right - r.left)}px`;
+        e.style.borderBottomWidth = `${v * (r.bottom - r.top)}px`;
+        mute.classList.remove('uk-icon-volume-up');
+        mute.classList.remove('uk-icon-volume-down');
+        mute.classList.remove('uk-icon-volume-off');
+        mute.classList.add(muted ? 'uk-icon-volume-off'
+                       : v < 0.5 ? 'uk-icon-volume-down'
+                       :           'uk-icon-volume-up');
+    };
 
     let onTimeUpdate = (t) => {
         // let leftPad = require('left-pad');
@@ -88,9 +110,23 @@ let ViewNode = function (root, info, stream) {
     };
 
     view.addEventListener('timeupdate', () => onTimeUpdate(view.currentTime));
+    view.addEventListener('volumechange', () => onVolumeChange(view.volume, view.muted));
     view.addEventListener('error', onDone);
     view.addEventListener('ended', onDone);
     // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
+
+    volume.addEventListener('mousedown',  onVolumeSelect);
+    volume.addEventListener('touchstart', onVolumeSelect);
+    volume.addEventListener('touchmove',  onVolumeSelect);
+    volume.addEventListener('mousedown', (e) =>
+        volume.addEventListener('mousemove', onVolumeSelect));
+    volume.addEventListener('mouseup', () =>
+        volume.removeEventListener('mousemove', onVolumeSelect));
+    volume.addEventListener('mouseleave', () =>
+        volume.removeEventListener('mousemove', onVolumeSelect));
+    onVolumeChange(view.volume, view.muted);
+
+    mute.addEventListener('click', () => { view.muted = !view.muted; });
 
     return {
         onLoad: (socket) => {
@@ -172,9 +208,9 @@ let ChatNode = function (root) {
 
 
 let stream = document.body.getAttribute('data-stream-id');
-let view   = new ViewNode(document.querySelector('.w-view-container'),
-                          document.querySelector('.w-view-info'), stream);
-let chat   = new ChatNode(document.querySelector('.w-chat-container'));
+let view   = new ViewNode(document.querySelector('.view-container'),
+                          document.querySelector('.view-info'), stream);
+let chat   = new ChatNode(document.querySelector('.chat-container'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${stream}`,
                      chat, view);
