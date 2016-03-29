@@ -36,6 +36,12 @@ h1, h2, h3 {
     display: inline-block;
 }
 
+.is-fullscreen .view-container, .is-fullscreen video {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 [data-status="playing"] .pad, [data-status]:not([data-status="playing"]) .pad + * {
     display: none;
 }
@@ -78,6 +84,10 @@ h1, h2, h3 {
     max-height: 80vh;
     width: auto;
     height: auto;
+}
+
+.is-fullscreen .responsive {
+    max-height: 100%;
 }
 
 .view-controls {
@@ -125,20 +135,31 @@ h1, h2, h3 {
     left: 0;
 }
 
-.view-controls .mute {
+.view-controls .button {
     width: 1em;  /* icons are not fixed-width for some reason */
     line-height: 1;
     font: normal 1.33em FontAwesome;
+    cursor: pointer;
 }
 
 .view-controls .mute:before {
     content: "\f028";  /* .uk-icon-volume-up */
 }
 
-.muted .view-controls .mute:before {
+.muted .view-controls .mute:before,
+.view-container:not(.has-audio) .mute:before {
     content: "\f026";  /* .uk-icon-volume-off */
 }
 
+.view-controls .fullscreen:before {
+    content: "\f065";  /* .uk-icon-expand */
+}
+
+.is-fullscreen .view-controls .fullscreen:before {
+    content: "\f066";  /* .uk-icon-compress */
+}
+
+.no-fullscreen .view-controls .fullscreen,
 .view-container:not(.has-audio) .volume {
     display: none;
 }

@@ -1,5 +1,17 @@
-'use strict';
+'use strict'; /* global screenfull */
 
+if (screenfull.enabled) {
+    document.addEventListener(screenfull.raw.fullscreenchange, () => {
+        if (screenfull.isFullscreen)
+            document.body.classList.add('is-fullscreen');
+        else
+            document.body.classList.remove('is-fullscreen');
+    });
+
+    document.addEventListener(screenfull.raw.fullscreenerror, () =>
+        document.body.classList.add('no-fullscreen'));
+} else
+    document.body.classList.add('no-fullscreen');
 
 let RPC = function(url, ...objects) {
     let cbs_by_id   = {};
@@ -62,8 +74,7 @@ let ViewNode = function (root, info, stream) {
     let rpc    = null;
     let view   = root.querySelector('video');
     let status = root.querySelector('.status');
-    let volume = root.querySelector('.volume.slider');
-    let mute   = root.querySelector('.volume.mute');
+    let volume = root.querySelector('.volume');
 
     view.addEventListener('loadstart', () => {
         root.setAttribute('data-status', 'loading');
@@ -122,9 +133,18 @@ let ViewNode = function (root, info, stream) {
         volume.removeEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseleave', () =>
         volume.removeEventListener('mousemove', onVolumeSelect));
-    mute.addEventListener('click', () => { view.muted = !view.muted; });
-
     onVolumeChange(view.volume, view.muted);
+
+    root.querySelector('.mute').addEventListener('click', () => {
+        view.muted = !view.muted;
+    });
+
+    root.querySelector('.fullscreen').addEventListener('click', () => {
+        if (screenfull.isFullscreen)
+            screenfull.exit();
+        else
+            screenfull.request(root);
+    });
 
     return {
         onLoad: (socket) => {
@@ -210,5 +230,5 @@ let view   = new ViewNode(document.querySelector('.view-container'),
                           document.querySelector('.view-info'), stream);
 let chat   = new ChatNode(document.querySelector('.chat-container'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
-                     + `${window.location.host}/stream/${stream}`,
+                     + `${window.location.host}/stream/${encodeURIComponent(stream)}`,
                      chat, view);
