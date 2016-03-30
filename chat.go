@@ -103,6 +103,7 @@ func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) err
 		delete(ctx.chat.Names, ctx.name)
 	}
 	ctx.name = name
+	ctx.pushName(name)
 	return nil
 }
 
@@ -123,6 +124,10 @@ func (ctx *ChatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{})
 
 func (ctx *ChatterContext) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return ctx.chat.History.Iterate(ctx.pushMessage)
+}
+
+func (ctx *ChatterContext) pushName(name string) error {
+	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", []interface{}{name})
 }
 
 func (ctx *ChatterContext) pushMessage(msg ChatMessage) error {

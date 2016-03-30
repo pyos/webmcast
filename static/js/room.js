@@ -197,10 +197,7 @@ let ChatNode = function (root) {
     lform.addEventListener('submit', (ev) => {
         ev.preventDefault();
         if (rpc && login.value) {
-            rpc.send('Chat.SetName', login.value).then(() => {
-                lform.remove();
-                text.focus();
-            });
+            rpc.send('Chat.SetName', login.value);
         }
     });
 
@@ -212,6 +209,11 @@ let ChatNode = function (root) {
                 entry.querySelector('.name').textContent = name;
                 entry.querySelector('.text').textContent = text;
                 log.appendChild(entry);
+            });
+
+            rpc.callback('Chat.AcquiredName', (name) => {
+                lform.remove();
+                text.focus();
             });
 
             rpc.send('Chat.RequestHistory');

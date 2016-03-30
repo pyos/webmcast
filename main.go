@@ -26,6 +26,8 @@
 //
 //     Notifications:
 //
+//        * `Chat.AcquiredName(user string)`: upon a successful `SetName`.
+//          May be emitted automatically at the start of a connection if already logged in.
 //        * `Chat.Message(user string, text string)`: a broadcasted text message.
 //
 package main
@@ -41,11 +43,11 @@ import (
 
 func wantsWebsocket(r *http.Request) bool {
 	if upgrade, ok := r.Header["Upgrade"]; ok {
-    	for i := range upgrade {
-    		if strings.ToLower(upgrade[i]) == "websocket" {
-    			return true
-    		}
-    	}
+		for i := range upgrade {
+			if strings.ToLower(upgrade[i]) == "websocket" {
+				return true
+			}
+		}
 	}
 	// func is_a_language_that_has_no_Array_Contains_method_any_good() bool {
 	return false
