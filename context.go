@@ -96,6 +96,7 @@ func (stream *BroadcastContext) Write(data []byte) (int, error) {
 	return stream.Broadcast.Write(data)
 }
 
-func (stream *BroadcastContext) Close() {
+func (stream *BroadcastContext) Close() error {
 	stream.closingStateChange <- true
+	return nil
 }

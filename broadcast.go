@@ -42,11 +42,12 @@ func NewBroadcast() Broadcast {
 	return Broadcast{viewers: make(map[chan<- []byte]*broadcastViewer)}
 }
 
-func (cast *Broadcast) Close() {
+func (cast *Broadcast) Close() error {
 	cast.Closed = true
 	for _, cb := range cast.viewers {
 		cb.write([]byte{}, false)
 	}
+	return nil
 }
 
 func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
@@ -56,7 +57,7 @@ func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
 		if !force && len(ch) == cap(ch) {
 			return false
 		}
-
+		// FIXME will block if len(ch) == cap(ch) and force is true.
 		ch <- data
 		return true
 	}
