@@ -31,10 +31,10 @@ type Broadcast struct {
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
 
 	time struct {
-		last  uint64 // Last seen block timecode.
-		shift uint64 // Difference between sent and received timecodes.
-		recv  uint64 // Last received cluster timecode.
-		sent  uint64 // Last sent cluster timecode. (All viewers receive same timecodes.)
+		last  uint64 // Last seen block timecode. The next timecode must be no less than that.
+		recv  uint64 // Last received cluster timecode, shifted to ensure monotonicity.
+		sent  uint64 // Last sent cluster timecode. (All viewers receive same clusters.)
+		shift uint64 // By how much the cluster timecode has been shifted.
 	}
 }
 
@@ -223,7 +223,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 		case EBMLTimecodeTag:
 			// Will reencode it when sending a Cluster.
-			cast.time.recv = EBMLParseFixedUint(tag.Contents(buf))
+			cast.time.recv = EBMLParseFixedUint(tag.Contents(buf)) + cast.time.shift
 
 		case EBMLBlockGroupTag, EBMLSimpleBlockTag:
 			key := false
@@ -259,32 +259,25 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			if track.Consumed == 0 || track.Value >= 32 || len(block) < track.Consumed+3 {
 				return 0, errors.New("invalid track")
 			}
-
-			// Always 0 in a Block, 1 in a keyframe SimpleBlock.
+			// This bit is always 0 in a Block, but 1 in a keyframe SimpleBlock.
 			key = key || block[track.Consumed+2]&0x80 != 0
-
+			// Block timecodes are relative to cluster ones.
 			timecode := uint64(block[track.Consumed+0])<<8 | uint64(block[track.Consumed+1])
-
-			// Adding the shift here instead of accounting for it in `cast.time.recv`
-			// allows the broadcaster to insert discontinuities between clusters.
-			if cast.time.recv+cast.time.shift+timecode < cast.time.last {
-				cast.time.shift = cast.time.last - cast.time.recv - timecode
+			if cast.time.recv+timecode < cast.time.last {
+				cast.time.shift += cast.time.last - (cast.time.recv + timecode)
+				cast.time.recv = cast.time.last - timecode
 			}
+			cast.time.last = cast.time.recv + timecode
 
-			cast.time.last = cast.time.recv + cast.time.shift + timecode
-
-			// Keep the block's timecode offset the same, but shift the cluster's timecode.
-			timecode = cast.time.recv + cast.time.shift
+			ctc := cast.time.recv
 			cluster := []byte{
 				EBMLClusterTag >> 24 & 0xFF,
 				EBMLClusterTag >> 16 & 0xFF,
 				EBMLClusterTag >> 8 & 0xFF,
 				EBMLClusterTag & 0xFF, 0xFF,
 				EBMLTimecodeTag, 0x88,
-				byte(timecode >> 56), byte(timecode >> 48),
-				byte(timecode >> 40), byte(timecode >> 32),
-				byte(timecode >> 24), byte(timecode >> 16),
-				byte(timecode >> 8), byte(timecode),
+				byte(ctc >> 56), byte(ctc >> 48), byte(ctc >> 40), byte(ctc >> 32),
+				byte(ctc >> 24), byte(ctc >> 16), byte(ctc >> 8), byte(ctc),
 			}
 
 			trackMask := uint32(1) << track.Value
