@@ -3,9 +3,9 @@ package main
 import "errors"
 
 type broadcastViewer struct {
-	// If `force` is `false`, this function may return `false` to signal that it
-	// cannot write any more data. The stream will resynchronize at next keyframe.
-	write func(data []byte, force bool) bool
+	// This function may return `false` to signal that it cannot write any more data.
+	// The stream will resynchronize at next keyframe.
+	write func(data []byte) bool
 	// Viewers may hop between streams, but should only receive headers once.
 	// This includes track info, as codecs must stay the same between segments.
 	skipHeaders bool
@@ -45,27 +45,23 @@ func NewBroadcast() Broadcast {
 func (cast *Broadcast) Close() error {
 	cast.Closed = true
 	for _, cb := range cast.viewers {
-		cb.write([]byte{}, false)
+		cb.write([]byte{})
 	}
 	return nil
 }
 
 func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
-	write := func(data []byte, force bool) bool {
+	write := func(data []byte) bool {
 		// `Broadcast.Write` emits data in block-sized chunks.
 		// Thus the buffer size is measured in frames, not bytes.
-		if !force && len(ch) == cap(ch) {
+		if len(ch) == cap(ch) {
 			return false
 		}
-		// FIXME will block if len(ch) == cap(ch) and force is true.
 		ch <- data
 		return true
 	}
 
 	cast.viewers[ch] = &broadcastViewer{write, skipHeaders, false, 0}
-	if !skipHeaders && len(cast.header) != 0 {
-		write(cast.header, true)
-	}
 }
 
 func (cast *Broadcast) Disconnect(ch chan<- []byte) {
@@ -129,11 +125,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			// The header is the same in all WebM-s.
 			if len(cast.header) == 0 {
 				cast.header = append([]byte{}, buf...)
-				for _, cb := range cast.viewers {
-					if !cb.skipHeaders {
-						cb.write(cast.header, true)
-					}
-				}
 			}
 
 		case EBMLSegmentTag:
@@ -298,25 +289,24 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 			trackMask := uint32(1) << track.Value
 			for _, cb := range cast.viewers {
+				if !cb.skipHeaders {
+					if !cb.write(cast.header) || !cb.write(cast.tracks) {
+						continue
+					}
+
+					cb.skipHeaders = true
+					cb.skipCluster = false
+				}
+
 				if key {
 					cb.seenKeyframes |= trackMask
 				}
 
 				if cb.seenKeyframes&trackMask != 0 {
-					if !cb.skipHeaders {
-						if !cb.write(cast.tracks, true) {
-							continue
-						}
-
-						cb.skipHeaders = true
-						cb.skipCluster = false
-					}
-
 					if !cb.skipCluster || timecode != cast.time.sent {
-						cb.skipCluster = cb.write(cluster, false)
+						cb.skipCluster = cb.write(cluster)
 					}
-
-					if !cb.skipCluster || !cb.write(buf, false) {
+					if !cb.skipCluster || !cb.write(buf) {
 						cb.seenKeyframes &= ^trackMask
 					}
 				}
