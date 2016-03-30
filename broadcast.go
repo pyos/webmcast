@@ -71,6 +71,10 @@ func (cast *Broadcast) Disconnect(ch chan<- []byte) {
 	delete(cast.viewers, ch)
 }
 
+func (cast *Broadcast) Reset() {
+	cast.buffer = nil
+}
+
 func (cast *Broadcast) Write(data []byte) (int, error) {
 	cast.buffer = append(cast.buffer, data...)
 

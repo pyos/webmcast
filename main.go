@@ -123,6 +123,7 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 				n, err := r.Body.Read(buffer[:])
 				if n != 0 {
 					if _, err2 := stream.Write(buffer[:n]); err2 != nil {
+						stream.Reset()
 						return RenderError(w, http.StatusBadRequest, err2.Error())
 					}
 				}
