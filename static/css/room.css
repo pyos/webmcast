@@ -1,0 +1,272 @@
+/* -- layout -- */
+
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+
+.scrollable {
+    height: 100vh;
+    overflow: auto;
+    padding: 2em;
+}
+
+.player {
+    display: inline-block;
+    overflow: hidden;
+    position: relative;
+    max-width: 100%;
+}
+
+.player.fullscreen,
+.player.fullscreen video {
+    display: block;
+    height: 100%;
+    width: 100%;
+}
+
+.player svg,
+.player video {
+    height: auto;
+    width: auto;
+    max-height: 100vh;
+    max-width: 100%;
+}
+
+.player[data-status="playing"] svg,
+.player:not([data-status="playing"]) video {
+    display: none;
+}
+
+.player:before /* overlayed status icon */ {
+    position: absolute;
+    top: calc(50% - 0.5em);
+    left: calc(50% - 0.5em);
+    width: 1em;
+    height: 1em;
+    display: block;
+    z-index: 1;
+}
+
+.player .controls {
+    cursor: default;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s ease-out;
+}
+
+.player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
+    transform: translateY(100%);
+}
+
+.player .controls > * {
+    margin: 0.33em;
+}
+
+.player .controls > *:before {
+    vertical-align: middle;
+}
+
+.player .status {
+    flex: 1;
+}
+
+.player .volume {
+    position: relative;
+    cursor: ew-resize;
+}
+
+.player .volume:before,
+.player .volume .slider {
+    content: ' ';
+    display: block;
+    border-left: 5em solid transparent;
+    border-bottom: 1.5em /* = line-height */ solid transparent;
+}
+
+.player .volume .slider {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+
+.player .button {
+    width: 1.5em;
+    cursor: pointer;
+}
+
+.player:not(.has-audio) .mute,
+.player:not(.has-audio) .volume,
+.player:not(.has-video) .fullscreen,
+.no-fullscreen .player .fullscreen {
+    display: none;
+}
+
+.view-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.view-info > * {
+    margin: 0.5em 0 0.3em 0;
+}
+
+.view-info > *:not(:first-child) {
+    margin-left: 1em;
+}
+
+.chat {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 20em;
+    display: none;
+    flex-direction: column;
+}
+
+@media (min-width: 45em) {
+    body {
+        margin-right: 20em;
+    }
+
+    .chat {
+        display: flex;
+    }
+}
+
+.chat > * {
+    padding: 1em;
+}
+
+.chat h1 {
+    text-align: center;
+}
+
+.chat fieldset:not(:first-child) {
+    margin-top: 1em;
+    text-align: right;
+}
+
+.chat .input {
+    width: 100%;
+}
+
+.chat .log {
+    flex: 1;
+    margin: 0;
+    overflow-y: auto;
+    list-style: none;
+    word-wrap: break-word;
+}
+
+.chat .empty-message:not(:only-child),
+.chat.online .offline-message,
+.chat.logged-in .login-form,
+.chat:not(.online) form,
+.chat:not(.logged-in) .input-form
+{
+    display: none;
+}
+
+/* -- typography -- */
+
+.player:before {
+    font: normal 4em FontAwesome;
+}
+
+.player[data-status="loading"]:before {
+    content: ' ';
+	border: 0.1em solid transparent;
+	border-radius: 50%;
+	animation: uk-rotate 0.66s infinite linear;
+}
+
+.player[data-status="error"]:before {
+    content: '\f071';  /* .uk-icon-exclamation-triangle */
+}
+
+.player:not(.has-video)[data-status="playing"]:before {
+    content: '\f001';  /* .uk-icon-music */
+}
+
+.player .controls {
+    line-height: 1.5em;
+}
+
+.player .status {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.player .button:before {
+    font: normal 1.5em /* = width */ FontAwesome;
+    line-height: 1;
+}
+
+.player .mute:before {
+    content: "\f028";  /* .uk-icon-volume-up */
+}
+
+.player.muted .mute:before {
+    content: "\f026";  /* .uk-icon-volume-off */
+}
+
+.player .fullscreen:before {
+    content: "\f065";  /* .uk-icon-expand */
+}
+
+.player.fullscreen .fullscreen:before {
+    content: "\f066";  /* .uk-icon-compress */
+}
+
+.chat h1 {
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1.4em;
+}
+
+.chat .name {
+    font-weight: bold;
+}
+
+/* -- colors -- */
+
+.player {
+    color: #fff;
+    background: #000;
+}
+
+.player[data-status="loading"]:before {
+    border-color: rgba(255,255,255,0.2);
+    border-top-color: #fff;
+}
+
+.player .controls {
+    background: rgba(0,0,0,0.5);
+}
+
+.player .volume:before {
+    border-bottom-color: rgba(255,255,255,0.33);
+}
+
+.player .volume .slider {
+    border-bottom-color: #fff;
+}
+
+.chat {
+    background: #eee;
+}
+
+.chat h1 {
+    background: #ddd;
+}
+
+.chat .empty-message, .chat .offline-message {
+    color: #aaa;
+}

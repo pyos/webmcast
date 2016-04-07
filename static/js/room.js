@@ -3,9 +3,9 @@
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
         if (screenfull.isFullscreen)
-            document.body.classList.add('is-fullscreen');
+            screenfull.element.classList.add('fullscreen');
         else
-            document.body.classList.remove('is-fullscreen');
+            document.querySelector('.fullscreen').classList.remove('fullscreen');
     });
 
     document.addEventListener(screenfull.raw.fullscreenerror, () =>
@@ -76,16 +76,6 @@ let ViewNode = function (root, info, stream) {
     let status = root.querySelector('.status');
     let volume = root.querySelector('.volume');
 
-    view.addEventListener('loadstart', () => {
-        root.setAttribute('data-status', 'loading');
-        status.textContent = 'loading';
-    });
-
-    view.addEventListener('loadedmetadata', () => {
-        root.setAttribute('data-status', 'playing');
-        status.textContent = 'playing';
-    });
-
     let onVolumeSelect = (e) => {
         e.preventDefault();
         let r = volume.getBoundingClientRect();
@@ -94,7 +84,7 @@ let ViewNode = function (root, info, stream) {
     };
 
     let onVolumeChange = (v, muted) => {
-        let e = volume.querySelector('.bg.active');
+        let e = volume.querySelector('.slider');
         let r = volume.getBoundingClientRect();
         e.style.borderLeftWidth   = `${v * (r.right - r.left)}px`;
         e.style.borderBottomWidth = `${v * (r.bottom - r.top)}px`;
@@ -118,10 +108,22 @@ let ViewNode = function (root, info, stream) {
                            : 'no media';
     };
 
+    let onLoad = () => {
+        root.setAttribute('data-status', 'loading');
+        status.textContent = 'loading';
+    };
+
+    let onPlay = () => {
+        root.setAttribute('data-status', 'playing');
+        status.textContent = 'playing';
+    };
+
+    view.addEventListener('loadstart',      onLoad);
+    view.addEventListener('loadedmetadata', onPlay);
+    view.addEventListener('error',          onDone);
+    view.addEventListener('ended',          onDone);
     view.addEventListener('timeupdate', () => onTimeUpdate(view.currentTime));
     view.addEventListener('volumechange', () => onVolumeChange(view.volume, view.muted));
-    view.addEventListener('error', onDone);
-    view.addEventListener('ended', onDone);
     // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
 
     volume.addEventListener('mousedown',  onVolumeSelect);
@@ -146,6 +148,7 @@ let ViewNode = function (root, info, stream) {
             screenfull.request(root);
     });
 
+    onLoad();
     return {
         onLoad: (socket) => {
             rpc = socket;
@@ -166,13 +169,12 @@ let ViewNode = function (root, info, stream) {
 
 
 let ChatNode = function (root) {
-    let log = root.querySelector('.log');
-    let msg = log.querySelector('.message');
-    let rpc = null;
-    msg.remove();
-
     let form = root.querySelector('.input-form');
     let text = form.querySelector('.input');
+    let log  = root.querySelector('.log');
+    let msg  = log.querySelector('.message');
+    let rpc  = null;
+    msg.remove();
 
     text.addEventListener('keydown', (ev) =>
         (ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null));
@@ -212,26 +214,26 @@ let ChatNode = function (root) {
             });
 
             rpc.callback('Chat.AcquiredName', (name) => {
-                lform.remove();
+                root.classList.add('logged-in');
                 text.focus();
             });
 
             rpc.send('Chat.RequestHistory');
-            root.classList.add('active');
+            root.classList.add('online');
         },
 
         onUnload: () => {
             rpc = null;
-            root.classList.remove('active');
+            root.classList.remove('online');
         },
     };
 };
 
 
 let stream = document.body.getAttribute('data-stream-id');
-let view   = new ViewNode(document.querySelector('.view-container'),
+let view   = new ViewNode(document.querySelector('.player'),
                           document.querySelector('.view-info'), stream);
-let chat   = new ChatNode(document.querySelector('.chat-container'));
+let chat   = new ChatNode(document.querySelector('.chat'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${encodeURIComponent(stream)}`,
                      chat, view);

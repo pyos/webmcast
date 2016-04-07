@@ -3,20 +3,11 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="/static/css/uikit.min.css" />
-        <link rel="stylesheet" href="/static/css/everything.css" />
+        <link rel="stylesheet" href="/static/css/error.css" />
         <title>webmcast -- oh no</title>
     </head>
     <body data-error="{{.Code}}">
-        <div class="content-container uk-block uk-block-secondary uk-contrast uk-flex">
-            <div class="uk-container uk-container-center uk-flex uk-flex-column uk-flex-item-1">
-                <div class="uk-flex-item-1 uk-flex uk-flex-column uk-flex-center uk-text-center">
-                    <h2 style="font-weight: bold">NO SIGNAL // {{.Code}} //
-                        {{.DisplayMessage}}
-                    </h2>
-                </div>
-                <h3>* {{.DisplayComment}}</h3>
-            </div>
-        </div>
+        <h1>NO SIGNAL // {{.Code}} // {{.DisplayMessage}}</h1>
+        <h2>* {{.DisplayComment}}</h2>
     </body>
 </html>
