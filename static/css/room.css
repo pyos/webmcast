@@ -26,7 +26,9 @@ body.theatre .scrollable > :not(.player) {
 }
 
 .player.is-fullscreen,
-.player.is-fullscreen video {
+.player.is-fullscreen video,
+body.theatre .player,
+body.theatre .player video {
     display: block;
     height: 100%;
     width: 100%;
@@ -111,8 +113,10 @@ body.theatre .scrollable > :not(.player) {
 .player:not(.has-video) .fullscreen,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
-.player:not(.is-fullscreen) .collapse,
-.no-fullscreen .player .fullscreen {
+body.theatre .player .theatre,
+body.theatre .player .fullscreen,
+body:not(.theatre) .player:not(.is-fullscreen) .collapse,
+body.no-fullscreen .player .fullscreen {
     display: none;
 }
 
@@ -157,6 +161,7 @@ body.theatre .scrollable > :not(.player) {
 
 .chat h1 {
     text-align: center;
+    margin: 0 2em;
 }
 
 .chat fieldset:not(:first-child) {
@@ -276,10 +281,11 @@ body.theatre .scrollable > :not(.player) {
 
 .chat {
     background: #eee;
+    box-shadow: 7px 0 10px -10px #000 inset;
 }
 
 .chat h1 {
-    background: #ddd;
+    border-bottom: 1px solid #ddd;
 }
 
 .chat .empty-message, .chat .offline-message {
@@ -292,7 +298,7 @@ body.theatre .chat {
 }
 
 body.theatre .chat h1 {
-    background: #181818;
+    border-color: #333;
     color: #fff;
 }
 

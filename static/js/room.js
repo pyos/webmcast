@@ -141,18 +141,14 @@ let ViewNode = function (root, info, stream) {
         view.muted = !view.muted;
     });
 
-    root.querySelector('.theatre').addEventListener('click', () => {
-        document.body.classList.add('theatre');
-        root.classList.add('is-fullscreen');
-    });
+    root.querySelector('.theatre').addEventListener('click', () =>
+        document.body.classList.add('theatre'));
 
-    root.querySelector('.fullscreen').addEventListener('click', () => {
-        screenfull.request(root);
-    });
+    root.querySelector('.fullscreen').addEventListener('click', () =>
+        screenfull.request(root));
 
     root.querySelector('.collapse').addEventListener('click', () => {
         document.body.classList.remove('theatre');
-        root.classList.remove('is-fullscreen');
         screenfull.exit();
     });
 
