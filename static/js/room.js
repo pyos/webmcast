@@ -3,9 +3,9 @@
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
         if (screenfull.isFullscreen)
-            screenfull.element.classList.add('fullscreen');
+            screenfull.element.classList.add('is-fullscreen');
         else
-            document.querySelector('.fullscreen').classList.remove('fullscreen');
+            document.querySelector('.is-fullscreen').classList.remove('is-fullscreen');
     });
 
     document.addEventListener(screenfull.raw.fullscreenerror, () =>
@@ -141,11 +141,19 @@ let ViewNode = function (root, info, stream) {
         view.muted = !view.muted;
     });
 
+    root.querySelector('.theatre').addEventListener('click', () => {
+        document.body.classList.add('theatre');
+        root.classList.add('is-fullscreen');
+    });
+
     root.querySelector('.fullscreen').addEventListener('click', () => {
-        if (screenfull.isFullscreen)
-            screenfull.exit();
-        else
-            screenfull.request(root);
+        screenfull.request(root);
+    });
+
+    root.querySelector('.collapse').addEventListener('click', () => {
+        document.body.classList.remove('theatre');
+        root.classList.remove('is-fullscreen');
+        screenfull.exit();
     });
 
     onLoad();

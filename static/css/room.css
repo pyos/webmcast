@@ -10,6 +10,14 @@
     padding: 2em;
 }
 
+body.theatre .scrollable {
+    padding: 0;
+}
+
+body.theatre .scrollable > :not(.player) {
+    display: none;
+}
+
 .player {
     display: inline-block;
     overflow: hidden;
@@ -17,8 +25,8 @@
     max-width: 100%;
 }
 
-.player.fullscreen,
-.player.fullscreen video {
+.player.is-fullscreen,
+.player.is-fullscreen video {
     display: block;
     height: 100%;
     width: 100%;
@@ -101,6 +109,9 @@
 .player:not(.has-audio) .mute,
 .player:not(.has-audio) .volume,
 .player:not(.has-video) .fullscreen,
+.player.is-fullscreen .theatre,
+.player.is-fullscreen .fullscreen,
+.player:not(.is-fullscreen) .collapse,
 .no-fullscreen .player .fullscreen {
     display: none;
 }
@@ -217,11 +228,15 @@
     content: "\f026";  /* .uk-icon-volume-off */
 }
 
-.player .fullscreen:before {
+.player .theatre:before {
     content: "\f065";  /* .uk-icon-expand */
 }
 
-.player.fullscreen .fullscreen:before {
+.player .fullscreen:before {
+    content: "\f26c";  /* .uk-icon-television */
+}
+
+.player .collapse:before {
     content: "\f066";  /* .uk-icon-compress */
 }
 
@@ -269,4 +284,18 @@
 
 .chat .empty-message, .chat .offline-message {
     color: #aaa;
+}
+
+body.theatre .chat {
+    background: #111;
+    color: #eee;
+}
+
+body.theatre .chat h1 {
+    background: #181818;
+    color: #fff;
+}
+
+body.theatre .chat .uk-icon-hover:hover {
+    color: #fff;
 }
