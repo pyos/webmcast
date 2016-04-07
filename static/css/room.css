@@ -44,7 +44,7 @@ body.theatre .player video {
 
 .player[data-status="playing"] svg,
 .player:not([data-status="playing"]) video {
-    display: none;
+    display: none !important;
 }
 
 .player:before /* overlayed status icon */ {
