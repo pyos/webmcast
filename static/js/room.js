@@ -176,9 +176,8 @@ let ChatNode = function (root) {
     let form = root.querySelector('.input-form');
     let text = form.querySelector('.input');
     let log  = root.querySelector('.log');
-    let msg  = log.querySelector('.message');
+    let msg  = root.querySelector('.message-template');
     let rpc  = null;
-    msg.remove();
 
     text.addEventListener('keydown', (ev) =>
         (ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null));
@@ -214,7 +213,7 @@ let ChatNode = function (root) {
             rpc.callback('Chat.Message', (name, text) => {
                 let rect = log.getBoundingClientRect();
                 let scroll = log.scrollTop + (rect.bottom - rect.top) >= log.scrollHeight;
-                let entry = msg.cloneNode(true);
+                let entry = document.importNode(msg.content, true);
                 entry.querySelector('.name').textContent = name;
                 entry.querySelector('.text').textContent = text;
                 log.appendChild(entry);
