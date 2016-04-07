@@ -195,6 +195,7 @@ let ChatNode = function (root) {
         ev.preventDefault();
         if (rpc && text.value) {
             rpc.send('Chat.SendMessage', text.value).then(() => {
+                log.scrollTop = log.scrollHeight;
                 text.value = '';
                 text.focus();
             });
@@ -215,15 +216,20 @@ let ChatNode = function (root) {
         onLoad: (socket) => {
             rpc = socket;
             rpc.callback('Chat.Message', (name, text) => {
+                let rect = log.getBoundingClientRect();
+                let scroll = log.scrollTop + (rect.bottom - rect.top) >= log.scrollHeight;
                 let entry = msg.cloneNode(true);
                 entry.querySelector('.name').textContent = name;
                 entry.querySelector('.text').textContent = text;
                 log.appendChild(entry);
+                if (scroll)
+                    log.scrollTop = log.scrollHeight;
             });
 
             rpc.callback('Chat.AcquiredName', (name) => {
                 root.classList.add('logged-in');
                 text.focus();
+                log.scrollTop = log.scrollHeight;
             });
 
             rpc.send('Chat.RequestHistory');
