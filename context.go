@@ -12,6 +12,7 @@ type Context struct {
 	OnStreamClose func(ctx *Context, stream *BroadcastContext, id string)
 	// How many messages to transmit on a `Chat.RequestHistory` RPC call.
 	ChatHistory int
+	DB          Database
 }
 
 type BroadcastContext struct {

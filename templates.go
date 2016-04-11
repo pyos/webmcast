@@ -36,6 +36,7 @@ func (ts *templateSet) Get(name string) (*template.Template, error) {
 type roomViewModel struct {
 	ID     string
 	Stream *BroadcastContext
+	Meta   *StreamMetadata
 }
 
 type errorViewModel struct {

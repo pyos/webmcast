@@ -33,6 +33,7 @@
 package main
 
 import (
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
@@ -76,7 +77,21 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 		case "GET", "HEAD":
 			stream, ok := ctx.Get(streamID)
 			if !ok {
-				return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+				switch _, err := ctx.DB.GetStreamServer(streamID); err {
+				case nil:
+					// this is a server-side error. this stream is supposed to be
+					// on this server, but somehow it is not.
+					return ErrStreamNotExist
+				case ErrStreamNotHere:
+					// TODO redirect
+					return RenderError(w, http.StatusNotFound, "This stream is not here.")
+				case ErrStreamOffline:
+					return RenderError(w, http.StatusNotFound, "Stream offline.")
+				case ErrStreamNotExist:
+					return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+				default:
+					return err
+				}
 			}
 
 			if wantsWebsocket(r) {
@@ -111,6 +126,20 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 			return nil
 
 		case "PUT", "POST":
+			// TODO obtain token from params
+			err := ctx.DB.StartStream(streamID, "")
+			switch err {
+			case nil:
+			case ErrInvalidToken:
+				return RenderError(w, http.StatusForbidden, "Invalid token.")
+			case ErrStreamNotExist:
+				return RenderError(w, http.StatusNotFound, "Invalid stream ID.")
+			case ErrStreamNotHere:
+				return RenderError(w, http.StatusForbidden, "The stream is on another server.")
+			default:
+				return err
+			}
+
 			stream, ok := ctx.Acquire(streamID)
 			if !ok {
 				return RenderError(w, http.StatusForbidden, "Stream ID already taken.")
@@ -138,10 +167,34 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 	streamID := strings.TrimPrefix(r.URL.Path, "/")
 	stream, ok := ctx.Get(streamID)
 	if !ok {
-		return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+		switch _, err := ctx.DB.GetStreamServer(streamID); err {
+		case nil:
+			return ErrStreamNotExist
+		case ErrStreamNotHere:
+			// TODO redirect
+			return RenderError(w, http.StatusNotFound, "This stream is not here.")
+		case ErrStreamOffline:
+			return RenderError(w, http.StatusNotFound, "Stream offline.")
+		case ErrStreamNotExist:
+			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+		default:
+			return err
+		}
 	}
 
-	return Render(w, http.StatusOK, "room.html", roomViewModel{streamID, stream})
+	meta, err := ctx.DB.GetStreamMetadata(streamID)
+	if err != nil {
+		// since we know the stream exists (it is on this server),
+		// this has to be an sql error.
+		return err
+	}
+	return Render(w, http.StatusOK, "room.html", roomViewModel{streamID, stream, meta})
+}
+
+func onClose(ctx *Context, stream *BroadcastContext, id string) {
+	if err := ctx.DB.StopStream(id); err != nil {
+		log.Println("Error stopping the stream: ", err)
+	}
 }
 
 type noIndexFilesystem struct {
@@ -160,7 +213,21 @@ func (fs noIndexFilesystem) Open(name string) (http.File, error) {
 }
 
 func main() {
-	ctx := Context{Timeout: time.Second * 10, ChatHistory: 20}
+	db, err := NewDatabase(":8000", "sqlite3", "asd.db")
+	if err != nil {
+		log.Fatal("Could not connect to database: ", err)
+	}
+
+	user, err := db.NewUser("yoba", "yoba@yoba.yoba", []byte("yoba"))
+	if err != nil {
+		log.Fatal("Could not create user: ", err)
+	}
+
+	if err := db.ActivateUser(user.ID, user.ActivationToken); err != nil {
+		log.Fatal("Could not activate user: ", err)
+	}
+
+	ctx := Context{Timeout: time.Second * 10, ChatHistory: 20, DB: db, OnStreamClose: onClose}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(noIndexFilesystem{http.Dir(".")}))
 	mux.Handle("/", &ctx)
