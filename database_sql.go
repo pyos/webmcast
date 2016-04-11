@@ -66,9 +66,9 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 	streamToken := makeToken(20)
 	r, err := d.Exec(
 		`begin;
-         insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?);
-         insert into streams values (NULL, "", "", ?, NULL);
-         commit;`,
+		 insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?);
+		 insert into streams values (NULL, "", "", ?, NULL);
+		 commit;`,
 		activationToken, name, email, name, hash, streamToken,
 	)
 	if err != nil {
@@ -127,8 +127,8 @@ func (d *SQLDatabase) GetUserFull(email string, password []byte) (*UserMetadata,
 	meta := UserMetadata{}
 	err := d.QueryRow(
 		`select password, users.id, users.name, email, display_name, users.about,
-                activated, activation_token, streams.token from users, streams
-         where users.email = ? and streams.id = users.id`,
+		        activated, activation_token, streams.token from users, streams
+		 where users.email = ? and streams.id = users.id`,
 		email,
 	).Scan(&hash, &meta.ID, &meta.Login, &meta.Email, &meta.Name,
 		&meta.About, &meta.Activated, &meta.ActivationToken, &meta.StreamToken)
@@ -144,7 +144,7 @@ func (d *SQLDatabase) GetUserFull(email string, password []byte) (*UserMetadata,
 func (d *SQLDatabase) SetUserName(id int64, name string, displayName string) error {
 	r, err := d.Exec(
 		`update users set name = ?, display_name = ?
-		    where id in (select id from streams where id = ? and server is null)`,
+		 where id in (select id from streams where id = ? and server is null)`,
 		name, displayName, id, id,
 	)
 	rows, err := r.RowsAffected()
@@ -274,8 +274,8 @@ func (d *SQLDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	meta := StreamMetadata{}
 	err := d.QueryRow(
 		`select display_name, users.about, email, streams.name, streams.about, streams.server
-         from   users, streams
-         where  users.name = ? and streams.id = users.id`,
+		 from   users, streams
+		 where  users.name = ? and streams.id = users.id`,
 		user,
 	).Scan(&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &meta.About, &server)
 	if err == sql.ErrNoRows {
