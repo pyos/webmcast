@@ -73,7 +73,7 @@ body.theatre .player video {
 }
 
 .player .controls > * {
-    margin: 0.33em;
+    margin: 0.5em;
 }
 
 .player .controls > *:before {
@@ -290,6 +290,15 @@ body.no-fullscreen .player .fullscreen {
 
 .player .volume .slider {
     border-bottom-color: #fff;
+}
+
+.player .button {
+    transition: text-shadow 0.1s ease-out;
+}
+
+.player .button:hover,
+.player .button:focus {
+    text-shadow: 0 0 5px #fff;
 }
 
 .chat {
