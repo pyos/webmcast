@@ -213,20 +213,7 @@ func (fs noIndexFilesystem) Open(name string) (http.File, error) {
 }
 
 func main() {
-	db, err := NewDatabase(":8000", "sqlite3", "asd.db")
-	if err != nil {
-		log.Fatal("Could not connect to database: ", err)
-	}
-
-	user, err := db.NewUser("yoba", "yoba@yoba.yoba", []byte("yoba"))
-	if err != nil {
-		log.Fatal("Could not create user: ", err)
-	}
-
-	if err := db.ActivateUser(user.ID, user.ActivationToken); err != nil {
-		log.Fatal("Could not activate user: ", err)
-	}
-
+	db := NewAnonDatabase()
 	ctx := Context{Timeout: time.Second * 10, ChatHistory: 20, DB: db, OnStreamClose: onClose}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(noIndexFilesystem{http.Dir(".")}))
