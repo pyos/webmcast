@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 )
 
 var (
@@ -31,8 +35,23 @@ type StreamMetadata struct {
 	UserName  string
 	UserAbout string
 	Name      string
+	Email     string
 	About     string
 	Server    sql.NullString
+}
+
+func gravatarURL(email string, size int) string {
+	hash := md5.Sum([]byte(strings.ToLower(email)))
+	hexhash := hex.EncodeToString(hash[:])
+	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
+}
+
+func (u *UserMetadata) GravatarURL(size int) string {
+	return gravatarURL(u.Email, size)
+}
+
+func (s *StreamMetadata) GravatarURL(size int) string {
+	return gravatarURL(s.Email, size)
 }
 
 type Database interface {
@@ -335,11 +354,11 @@ func (d *SQLDatabase) GetStreamServer(user string) (string, error) {
 func (d *SQLDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	meta := StreamMetadata{}
 	err := d.QueryRow(
-		`select users.display_name, users.about, streams.name, streams.about, streams.server
+		`select display_name, users.about, email, streams.name, streams.about, streams.server
          from   users, streams
          where  users.name = ? and streams.id = users.id`,
 		user,
-	).Scan(&meta.UserName, &meta.UserAbout, &meta.Name, &meta.About, &meta.Server)
+	).Scan(&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &meta.About, &meta.Server)
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist
 	}
