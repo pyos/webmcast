@@ -280,6 +280,7 @@ body.theatre .player video {
 
 body.theatre .content {
     padding: 0;
+    height: 100%;
 }
 
 body.theatre .chat {
