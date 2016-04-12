@@ -63,16 +63,9 @@ body.theatre .player video {
     content: ' ';
 }
 
-.player[data-status="error"]:before {
-    content: '\f071';  /* .uk-icon-exclamation-triangle */
-}
-
+.player[data-status="error"]:before,
 .player[data-status="ended"]:before {
-    content: '\f04d';  /* .uk-icon-stop */
-}
-
-.player:not(.has-video)[data-status="playing"]:before {
-    content: '\f001';  /* .uk-icon-music */
+    content: '\f071';  /* .uk-icon-exclamation-triangle */
 }
 
 .player .controls {
@@ -162,6 +155,27 @@ body.theatre .player video {
 
 .player .collapse:before {
     content: '\f066';  /* .uk-icon-compress */
+}
+
+.player:not(.has-video) {
+    border-radius: 0.5em;
+}
+
+.player:not(.has-video):before {
+    left: 100%;
+    margin-left: -0.66em;
+}
+
+.player:not(.has-video) svg,
+.player:not(.has-video) video {
+    width: 30em;
+    height: 2.5em;
+}
+
+.player:not(.has-video) .status:after {
+    content: 'audio-only';
+    opacity: 0.5;
+    margin-left: 1em;
 }
 
 .meta {

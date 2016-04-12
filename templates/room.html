@@ -22,7 +22,7 @@
             </div>
 
         {{ if not .Stream }}
-            <div class="player" data-status="error">
+            <div class="player has-video" data-status="error">
                 <svg width="853" height="480"></svg>
         {{- else -}}
             <div class="player{{- if .Stream.HasVideo}} has-video{{end -}}
