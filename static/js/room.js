@@ -86,8 +86,8 @@ let ViewNode = function (root, info, stream) {
     let onVolumeChange = (v, muted) => {
         let e = volume.querySelector('.slider');
         let r = volume.getBoundingClientRect();
-        e.style.borderLeftWidth   = `${v * (r.right - r.left)}px`;
-        e.style.borderBottomWidth = `${v * (r.bottom - r.top)}px`;
+        e.style.left = `${v * (r.right - r.left)}px`;
+        e.style.top = `${(1 - v) * (r.bottom - r.top)}px`;
         if (muted)
             root.classList.add('muted');
         else

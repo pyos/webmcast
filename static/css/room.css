@@ -1,69 +1,66 @@
-*, *:before, *:after {
-    box-sizing: border-box;
+html, body {
+    height: 100%;
 }
 
-.scrollable {
-    height: 100vh;
-    overflow: auto;
+body {
+    display: flex;
+}
+
+.content {
+    flex: 1;
     padding: 2em;
-}
-
-body.theatre .scrollable {
-    padding: 0;
-}
-
-body.theatre .scrollable > :not(.player) {
-    display: none;
+    /* move the scrollbar inside the container. otherwise, there would be
+       two scrollbars (one for content and one for the chat log) at the right
+       edge of the screen in close proximity. */
+    overflow: auto;
 }
 
 .player {
-    display: inline-block;
-    overflow: hidden;
-    position: relative;
-    max-width: 100%;
     color: #fff;
     background: #000;
+    display: inline-block;  /* 1. fit width to content (video) */
+    position: relative;     /* 2. allow to anchor the controls bar and an overlayed status icon */
+    overflow: hidden;       /* 3. hide the controls bar when it is supposed to be out of view */
+    max-width: 100%;        /* 4. allow to scale the video responsively */
+}
+
+.player svg,
+.player video {
+    width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
+    height: auto;
+    max-width: 100%;
+    max-height: 100vh;
 }
 
 .player.is-fullscreen,
 .player.is-fullscreen video,
 body.theatre .player,
 body.theatre .player video {
-    display: block;
+    width: 100%;  /* scale to *exactly* fit the window while preserving aspect ratio */
     height: 100%;
-    width: 100%;
-}
-
-.player svg,
-.player video {
-    height: auto;
-    width: auto;
-    max-height: 100vh;
-    max-width: 100%;
-}
-
-.player[data-status="playing"] svg,
-.player:not([data-status="playing"]) video {
-    display: none !important;
+    display: block;
 }
 
 .player:before /* overlayed status icon */ {
+    font: normal 4em FontAwesome;
+    display: block;
     position: absolute;
-    top: calc(50% - 0.5em);
-    left: calc(50% - 0.5em);
+    top: 50%;
+    left: 50%;
     width: 1em;
     height: 1em;
-    display: block;
+    margin-top: -0.5em;  /* alternatively, `top: calc(50% - 0.5em);`... */
+    margin-left: -0.5em;
     z-index: 1;
-    font: normal 4em FontAwesome;
 }
 
 .player[data-status="loading"]:before {
-    content: ' ';
-    border: 0.1em solid rgba(255,255,255,0.2);
-    border-radius: 50%;
-    border-top-color: #fff;
     animation: uk-rotate 0.66s infinite linear;
+    border: 0.1em solid rgba(255,255,255,0.2);  /* there are a few spinners in FontAwesome, */
+    border-radius: 50%;                         /* but a thin transparent ring with */
+    border-top-color: #fff;                     /* a white dash looks neater imo */
+    box-sizing: border-box;
+    content: ' ';
 }
 
 .player[data-status="error"]:before {
@@ -79,28 +76,24 @@ body.theatre .player video {
 }
 
 .player .controls {
-    cursor: default;
+    display: flex;
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    display: flex;
-    align-items: center;
-    transition: transform 0.3s ease-out;
+    padding: 0 0.5em;
     line-height: 1.5em;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.7);  /* XXX maybe something else, like a gradient? */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
 }
 
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
+    opacity: 0;
     transform: translateY(100%);
 }
 
-.player .controls {
-    padding: 0 0.5em;
-}
-
 .player .controls > * {
-    margin: 0.5em;
+    margin: 0.5em;  /* = padding-left = padding-right of `.player .controls` */
 }
 
 .player .controls > *:before {
@@ -118,37 +111,32 @@ body.theatre .player video {
     cursor: ew-resize;
 }
 
-.player .volume:before,
-.player .volume .slider {
+.player .volume:before {
     content: ' ';
     display: block;
-    border-left: 5em solid transparent;
-    border-bottom: 1.5em /* = line-height */ solid transparent;
-}
-
-.player .volume:before {
-    border-bottom-color: rgba(255,255,255,0.33);
+    border-top: 1.5em /* = line-height */ solid transparent;
+    border-right: 6em solid rgba(255,255,255,0.3);
 }
 
 .player .volume .slider {
-    border-bottom-color: #fff;
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
+    bottom: 0;
+    border: 1px solid #fff;
+    border-radius: 1px;
 }
 
 .player .button {
-    width: 2.5em;
     cursor: pointer;
-    /* add margin to clickable area */
+    width: 1.5em;    /* = line-height */
     margin: 0;
-    padding: 0.5em;
+    padding: 0.5em;  /* margin does not trigger onclick, padding does */
     transition: text-shadow 0.1s ease-out;
 }
 
 .player .button:before {
-    font: normal 1.5em /* = width */ FontAwesome;
-    line-height: 1;
+    font: normal 1.4em FontAwesome;  /* 1.5em is 0.33px more than line-height for some reason */
 }
 
 .player .button:hover,
@@ -176,63 +164,32 @@ body.theatre .player video {
     content: '\f066';  /* .uk-icon-compress */
 }
 
-.player:not(.has-audio) .mute,
-.player:not(.has-audio) .volume,
-.player:not(.has-video) .theatre,
-.player:not(.has-video) .fullscreen,
-.player.is-fullscreen .theatre,
-.player.is-fullscreen .fullscreen,
-body.theatre .player .theatre,
-body.theatre .player .fullscreen,
-body:not(.theatre) .player:not(.is-fullscreen) .collapse,
-body.no-fullscreen .player .fullscreen {
-    display: none;
+.meta {
+    display: none;  /* TODO */
 }
 
 .meta .avatar {
     float: left;
-    margin: 0 1em;
+    margin-right: 1em;
 }
 
 .meta .viewers:before {
     font: normal 1em FontAwesome;
     opacity: 0.5;
-    content: '\f06e';
+    content: '\f06e';  /* .uk-icon-eye */
 }
 
 .chat {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
     width: 20em;
-    display: none;
+    display: flex;
     flex-direction: column;
     background: #eee;
     box-shadow: 7px 0 10px -10px #000 inset;
 }
 
-.chat ::-webkit-scrollbar {
-    width: 0.6em;
-    margin: 0.2em;
-}
-
-.chat ::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
-}
-
-.chat ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-}
-
-@media (min-width: 45em) {
-    body {
-        margin-right: 20em;
-    }
-
+@media (max-width: 45em) {
     .chat {
-        display: flex;
+        display: none;
     }
 }
 
@@ -258,10 +215,6 @@ body.no-fullscreen .player .fullscreen {
     width: 100%;
 }
 
-.chat .empty-message, .chat .offline-message {
-    color: #aaa;
-}
-
 .chat .log {
     flex: 1;
     margin: 0;
@@ -270,17 +223,29 @@ body.no-fullscreen .player .fullscreen {
     word-wrap: break-word;
 }
 
+.chat .log::-webkit-scrollbar {
+    width: 0.66em;
+}
+
+.chat .log::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat .log::-webkit-scrollbar-thumb {
+    background: rgba(127,127,127,0.5);
+}
+
+.chat .empty-message,
+.chat .offline-message {
+    color: #aaa;
+}
+
 .chat .name {
     font-weight: bold;
 }
 
-.chat .empty-message:not(:only-child),
-.chat.online .offline-message,
-.chat.logged-in .login-form,
-.chat:not(.online) form,
-.chat:not(.logged-in) .input-form
-{
-    display: none;
+body.theatre .content {
+    padding: 0;
 }
 
 body.theatre .chat {
@@ -295,4 +260,25 @@ body.theatre .chat h1 {
 
 body.theatre .chat .uk-icon-hover:hover {
     color: #fff;
+}
+
+.player[data-status="playing"] svg,
+.player:not([data-status="playing"]) video,
+.player:not(.has-audio) .mute,
+.player:not(.has-audio) .volume,
+.player:not(.has-video) .theatre,
+.player:not(.has-video) .fullscreen,
+.player.is-fullscreen .theatre,
+.player.is-fullscreen .fullscreen,
+.chat .empty-message:not(:only-child),
+.chat.online .offline-message,
+.chat.logged-in .login-form,
+.chat:not(.online) form,
+.chat:not(.logged-in) .input-form,
+body.theatre .content > :not(.player),
+body.theatre .player .theatre,
+body.theatre .player .fullscreen,
+body:not(.theatre) .player:not(.is-fullscreen) .collapse,
+body.no-fullscreen .player .fullscreen {
+    display: none;
 }

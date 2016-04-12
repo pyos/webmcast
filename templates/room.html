@@ -8,8 +8,8 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <div class="scrollable">
-            <div class="meta" hidden>
+        <div class="content">
+            <div class="meta">
                 <img class="avatar" src="{{.Meta.GravatarURL 60}}" width="60" height="60" />
                 <h1 class="name">{{.Meta.Name}}</h1>
                 <h2 class="creator">{{.Meta.UserName}}</h2>
@@ -43,7 +43,7 @@
                 </div>
             </div>
 
-            <div hidden>
+            <div>
                 {{.Meta.About}}
             </div>
         </div>
