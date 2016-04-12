@@ -1,5 +1,3 @@
-/* -- layout -- */
-
 *, *:before, *:after {
     box-sizing: border-box;
 }
@@ -23,6 +21,8 @@ body.theatre .scrollable > :not(.player) {
     overflow: hidden;
     position: relative;
     max-width: 100%;
+    color: #fff;
+    background: #000;
 }
 
 .player.is-fullscreen,
@@ -55,6 +55,27 @@ body.theatre .player video {
     height: 1em;
     display: block;
     z-index: 1;
+    font: normal 4em FontAwesome;
+}
+
+.player[data-status="loading"]:before {
+    content: ' ';
+    border: 0.1em solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: uk-rotate 0.66s infinite linear;
+}
+
+.player[data-status="error"]:before {
+    content: '\f071';  /* .uk-icon-exclamation-triangle */
+}
+
+.player[data-status="ended"]:before {
+    content: '\f04d';  /* .uk-icon-stop */
+}
+
+.player:not(.has-video)[data-status="playing"]:before {
+    content: '\f001';  /* .uk-icon-music */
 }
 
 .player .controls {
@@ -66,10 +87,16 @@ body.theatre .player video {
     display: flex;
     align-items: center;
     transition: transform 0.3s ease-out;
+    line-height: 1.5em;
+    background: rgba(0,0,0,0.5);
 }
 
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
     transform: translateY(100%);
+}
+
+.player .controls {
+    padding: 0 0.5em;
 }
 
 .player .controls > * {
@@ -82,6 +109,8 @@ body.theatre .player video {
 
 .player .status {
     flex: 1;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .player .volume {
@@ -97,15 +126,54 @@ body.theatre .player video {
     border-bottom: 1.5em /* = line-height */ solid transparent;
 }
 
+.player .volume:before {
+    border-bottom-color: rgba(255,255,255,0.33);
+}
+
 .player .volume .slider {
+    border-bottom-color: #fff;
     position: absolute;
     bottom: 0;
     left: 0;
 }
 
 .player .button {
-    width: 1.5em;
+    width: 2.5em;
     cursor: pointer;
+    /* add margin to clickable area */
+    margin: 0;
+    padding: 0.5em;
+    transition: text-shadow 0.1s ease-out;
+}
+
+.player .button:before {
+    font: normal 1.5em /* = width */ FontAwesome;
+    line-height: 1;
+}
+
+.player .button:hover,
+.player .button:focus {
+    text-shadow: 0 0 5px #fff;
+}
+
+.player .mute:before {
+    content: '\f028';  /* .uk-icon-volume-up */
+}
+
+.player.muted .mute:before {
+    content: '\f026';  /* .uk-icon-volume-off */
+}
+
+.player .theatre:before {
+    content: '\f065';  /* .uk-icon-expand */
+}
+
+.player .fullscreen:before {
+    content: '\f0b2';  /* .uk-icon-arrows-alt */
+}
+
+.player .collapse:before {
+    content: '\f066';  /* .uk-icon-compress */
 }
 
 .player:not(.has-audio) .mute,
@@ -121,18 +189,15 @@ body.no-fullscreen .player .fullscreen {
     display: none;
 }
 
-.view-info {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
+.meta .avatar {
+    float: left;
+    margin: 0 1em;
 }
 
-.view-info > * {
-    margin: 0.5em 0 0.3em 0;
-}
-
-.view-info > *:not(:first-child) {
-    margin-left: 1em;
+.meta .viewers:before {
+    font: normal 1em FontAwesome;
+    opacity: 0.5;
+    content: '\f06e';
 }
 
 .chat {
@@ -144,6 +209,21 @@ body.no-fullscreen .player .fullscreen {
     width: 20em;
     display: none;
     flex-direction: column;
+    background: #eee;
+    box-shadow: 7px 0 10px -10px #000 inset;
+}
+
+.chat ::-webkit-scrollbar {
+    width: 0.6em;
+    margin: 0.2em;
+}
+
+.chat ::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+}
+
+.chat ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
 }
 
 @media (min-width: 45em) {
@@ -161,8 +241,12 @@ body.no-fullscreen .player .fullscreen {
 }
 
 .chat h1 {
-    text-align: center;
     margin: 0 2em;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1.4em;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
 }
 
 .chat fieldset:not(:first-child) {
@@ -174,12 +258,20 @@ body.no-fullscreen .player .fullscreen {
     width: 100%;
 }
 
+.chat .empty-message, .chat .offline-message {
+    color: #aaa;
+}
+
 .chat .log {
     flex: 1;
     margin: 0;
     overflow-y: auto;
     list-style: none;
     word-wrap: break-word;
+}
+
+.chat .name {
+    font-weight: bold;
 }
 
 .chat .empty-message:not(:only-child),
@@ -189,134 +281,6 @@ body.no-fullscreen .player .fullscreen {
 .chat:not(.logged-in) .input-form
 {
     display: none;
-}
-
-/* -- typography -- */
-
-.player:before {
-    font: normal 4em FontAwesome;
-}
-
-.player[data-status="loading"]:before {
-    content: ' ';
-	border: 0.1em solid transparent;
-	border-radius: 50%;
-	animation: uk-rotate 0.66s infinite linear;
-}
-
-.player[data-status="error"]:before {
-    content: '\f071';  /* .uk-icon-exclamation-triangle */
-}
-
-.player[data-status="ended"]:before {
-    content: '\f04d';  /* .uk-icon-stop */
-}
-
-.player:not(.has-video)[data-status="playing"]:before {
-    content: '\f001';  /* .uk-icon-music */
-}
-
-.player .controls {
-    line-height: 1.5em;
-}
-
-.player .status {
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-.player .button:before {
-    font: normal 1.5em /* = width */ FontAwesome;
-    line-height: 1;
-}
-
-.player .mute:before {
-    content: "\f028";  /* .uk-icon-volume-up */
-}
-
-.player.muted .mute:before {
-    content: "\f026";  /* .uk-icon-volume-off */
-}
-
-.player .theatre:before {
-    content: "\f065";  /* .uk-icon-expand */
-}
-
-.player .fullscreen:before {
-    content: "\f26c";  /* .uk-icon-television */
-}
-
-.player .collapse:before {
-    content: "\f066";  /* .uk-icon-compress */
-}
-
-.chat h1 {
-    font-size: 1.2em;
-    font-weight: bold;
-    line-height: 1.4em;
-}
-
-.chat .name {
-    font-weight: bold;
-}
-
-/* -- colors -- */
-
-.chat ::-webkit-scrollbar {
-    width: 0.6em;
-    margin: 0.2em;
-}
-
-.chat ::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
-}
-
-.chat ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-}
-
-.player {
-    color: #fff;
-    background: #000;
-}
-
-.player[data-status="loading"]:before {
-    border-color: rgba(255,255,255,0.2);
-    border-top-color: #fff;
-}
-
-.player .controls {
-    background: rgba(0,0,0,0.5);
-}
-
-.player .volume:before {
-    border-bottom-color: rgba(255,255,255,0.33);
-}
-
-.player .volume .slider {
-    border-bottom-color: #fff;
-}
-
-.player .button {
-    transition: text-shadow 0.1s ease-out;
-}
-
-.player .button:hover,
-.player .button:focus {
-    text-shadow: 0 0 5px #fff;
-}
-
-.chat {
-    background: #eee;
-    box-shadow: 7px 0 10px -10px #000 inset;
-}
-
-.chat h1 {
-    border-bottom: 1px solid #ddd;
-}
-
-.chat .empty-message, .chat .offline-message {
-    color: #aaa;
 }
 
 body.theatre .chat {

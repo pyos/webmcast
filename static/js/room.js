@@ -242,7 +242,7 @@ let ChatNode = function (root) {
 
 let stream = document.body.getAttribute('data-stream-id');
 let view   = new ViewNode(document.querySelector('.player'),
-                          document.querySelector('.view-info'), stream);
+                          document.querySelector('.meta'), stream);
 let chat   = new ChatNode(document.querySelector('.chat'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${encodeURIComponent(stream)}`,

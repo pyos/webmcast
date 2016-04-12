@@ -9,6 +9,20 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <div class="scrollable">
+            <div class="meta" hidden>
+                <img class="avatar" src="{{.Meta.GravatarURL 60}}" width="60" height="60" />
+                <h1 class="name">{{.Meta.Name}}</h1>
+                <h2 class="creator">{{.Meta.UserName}}</h2>
+                {{ if .Stream }}
+                    <h2>
+                        <span class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</span>
+                        <span class="viewers" title="Viewers">{{len .Stream.Chat.Users}}</span>
+                    </h2>
+                {{- else -}}
+                    <h2>Offline</h2>
+                {{- end -}}
+            </div>
+
         {{ if not .Stream }}
             <div class="player" data-status="error">
                 <svg width="853" height="480"></svg>
@@ -20,26 +34,17 @@
                 <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}"></svg>
         {{- end -}}
                 <video></video><div class="controls">
-                    <div class="status">not connected</div>
                     <div class="button mute" title="Mute"></div>
                     <div class="volume"><div class="slider"></div></div>
+                    <div class="status">not connected</div>
                     <div class="button theatre" title="Theatre mode"></div>
                     <div class="button fullscreen" title="Fullscreen"></div>
                     <div class="button collapse" title="Normal view"></div>
                 </div>
             </div>
 
-            <div class="view-info">
-                <h1 class="id">{{.ID}}</h1>
-                {{ if .Stream }}
-                    <h3 class="created">
-                        <span class="uk-text-muted">created on</span>
-                        {{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}
-                    </h3>
-                    <h3><i class="uk-icon-eye uk-text-muted"></i> <span class="viewers">{{len .Stream.Chat.Users}}</span></h3>
-                {{- else -}}
-                    <h3 class="created"><span class="uk-text-muted">Offline</span></h3>
-                {{- end -}}
+            <div hidden>
+                {{.Meta.About}}
             </div>
         </div>
 
