@@ -110,6 +110,7 @@ body.theatre .player video {
 
 .player:not(.has-audio) .mute,
 .player:not(.has-audio) .volume,
+.player:not(.has-video) .theatre,
 .player:not(.has-video) .fullscreen,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
@@ -205,6 +206,10 @@ body.no-fullscreen .player .fullscreen {
 
 .player[data-status="error"]:before {
     content: '\f071';  /* .uk-icon-exclamation-triangle */
+}
+
+.player[data-status="ended"]:before {
+    content: '\f04d';  /* .uk-icon-stop */
 }
 
 .player:not(.has-video)[data-status="playing"]:before {

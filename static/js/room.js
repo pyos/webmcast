@@ -100,12 +100,13 @@ let ViewNode = function (root, info, stream) {
     };
 
     let onDone = () => {
-        root.setAttribute('data-status', 'error');
+        root.setAttribute('data-status',
+            view.error === null || view.error.code === 4 ? 'ended' : 'error');
         status.textContent = view.error === null   ? 'stream ended'
                            : view.error.code === 1 ? 'aborted'
                            : view.error.code === 2 ? 'network error'
                            : view.error.code === 3 ? 'decoding error'
-                           : 'no media';
+                           : /* view.error.code === 4 ? */ 'stream ended';
     };
 
     let onLoad = () => {
