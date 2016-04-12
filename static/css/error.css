@@ -1,5 +1,3 @@
-/* -- layout -- */
-
 body {
     box-sizing: border-box;  /* ie6 did nothing wrong */
     margin: 0;
@@ -7,30 +5,19 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background: #111;
+    color: #fff;
+    font-family: monospace;
 }
 
 h1 {
     flex: 1;
-    /* center content both horizontally and vertically */
     display: flex;
     text-align: center;
     flex-direction: column;
     justify-content: center;
 }
 
-/* -- typography -- */
-
-body {
-    font-family: monospace;
-}
-
 h2 {
     font-weight: normal;
-}
-
-/* -- colors -- */
-
-body {
-    background: #111;
-    color: #fff;
 }
