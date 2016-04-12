@@ -9,17 +9,15 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <div class="content">
-            <div class="meta">
+            <div class="meta uk-clearfix">
                 <img class="avatar" src="{{.Meta.GravatarURL 60}}" width="60" height="60" />
-                <h1 class="name">{{.Meta.Name}}</h1>
-                <h2 class="creator">{{.Meta.UserName}}</h2>
+                <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
+                <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
                 {{ if .Stream }}
-                    <h2>
-                        <span class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</span>
-                        <span class="viewers" title="Viewers">{{len .Stream.Chat.Users}}</span>
-                    </h2>
+                    <h2 class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</h2>
+                    <h2 class="viewers" title="Viewers">{{len .Stream.Chat.Users}}</h2>
                 {{- else -}}
-                    <h2>Offline</h2>
+                    <h2 class="offline">is now offline.</h2>
                 {{- end -}}
             </div>
 
@@ -35,16 +33,12 @@
         {{- end -}}
                 <video></video><div class="controls">
                     <div class="button mute" title="Mute"></div>
-                    <div class="volume"><div class="slider"></div></div>
+                    <div class="volume" title="Volume"><div class="slider"></div></div>
                     <div class="status">not connected</div>
                     <div class="button theatre" title="Theatre mode"></div>
                     <div class="button fullscreen" title="Fullscreen"></div>
                     <div class="button collapse" title="Normal view"></div>
                 </div>
-            </div>
-
-            <div>
-                {{.Meta.About}}
             </div>
         </div>
 
@@ -59,7 +53,7 @@
                     <span class="text"></span>
                 </li>
             </template>
-            <div class="offline-message">Offline.</div>
+            <div class="offline-message">Chat offline.</div>
             <form class="login-form uk-form">
                 <fieldset>
                     <input class="input" placeholder="What's your name?" />
