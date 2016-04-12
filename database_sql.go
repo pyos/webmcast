@@ -281,7 +281,12 @@ func (d *SQLDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist
 	}
-	// TODO signal NULL somehow...
+	if err != nil {
+		return nil, err
+	}
 	meta.Server = server.String
-	return &meta, err
+	if !server.Valid {
+		return &meta, ErrStreamOffline
+	}
+	return &meta, nil
 }
