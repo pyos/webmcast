@@ -174,7 +174,11 @@ func (ctx *Context) RootHTTP(w http.ResponseWriter, r *http.Request) error {
 			// TODO redirect
 			return RenderError(w, http.StatusNotFound, "This stream is not here.")
 		case ErrStreamOffline:
-			return RenderError(w, http.StatusNotFound, "Stream offline.")
+			meta, err := ctx.DB.GetStreamMetadata(streamID)
+			if err != ErrStreamOffline {
+				return err
+			}
+			return Render(w, http.StatusOK, "room.html", roomViewModel{streamID, nil, meta})
 		case ErrStreamNotExist:
 			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 		default:

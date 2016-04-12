@@ -9,15 +9,17 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <div class="scrollable">
+        {{ if not .Stream }}
+            <div class="player" data-status="error">
+                <svg width="853" height="480"></svg>
+        {{- else -}}
             <div class="player{{- if .Stream.HasVideo}} has-video{{end -}}
                               {{- if .Stream.HasAudio}} has-audio{{end -}}" data-status="error">
                 {{- /* `video` with `height: auto` will always use the default aspect ratio.
                      so instead we enforce the size of this element with an empty image. */ -}}
                 <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}"></svg>
-                {{- /* this comment erases whitespace between inline elements */ -}}
-                <video></video>
-                {{- /* this one too */ -}}
-                <div class="controls">
+        {{- end -}}
+                <video></video><div class="controls">
                     <div class="status">not connected</div>
                     <div class="button mute" title="Mute"></div>
                     <div class="volume"><div class="slider"></div></div>
@@ -29,11 +31,15 @@
 
             <div class="view-info">
                 <h1 class="id">{{.ID}}</h1>
-                <h3 class="created">
-                    <span class="uk-text-muted">created on</span>
-                    {{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}
-                </h3>
-                <h3><i class="uk-icon-eye uk-text-muted"></i> <span class="viewers">{{len .Stream.Chat.Users}}</span></h3>
+                {{ if .Stream }}
+                    <h3 class="created">
+                        <span class="uk-text-muted">created on</span>
+                        {{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}
+                    </h3>
+                    <h3><i class="uk-icon-eye uk-text-muted"></i> <span class="viewers">{{len .Stream.Chat.Users}}</span></h3>
+                {{- else -}}
+                    <h3 class="created"><span class="uk-text-muted">Offline</span></h3>
+                {{- end -}}
             </div>
         </div>
 
