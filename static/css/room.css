@@ -15,13 +15,23 @@ body {
     overflow: auto;
 }
 
+.player-block {
+    background: #111;
+    margin: 0 -2em;
+    text-align: center;
+}
+
+.player-block > * {
+    text-align: left;
+    vertical-align: middle; /* avoid a small margin below due to whitespace in markup */
+}
+
 .player {
     color: #fff;
     background: #000;
-    display: inline-block;  /* 1. fit width to content (video) */
+    display: inline-block;  /* 1. fit width to content (svg/video) */
     position: relative;     /* 2. allow to anchor the controls bar and an overlayed status icon */
     overflow: hidden;       /* 3. hide the controls bar when it is supposed to be out of view */
-    max-width: 100%;        /* 4. allow to scale the video responsively */
 }
 
 .player svg,
@@ -33,11 +43,15 @@ body {
 }
 
 .player.is-fullscreen,
+.player.is-fullscreen svg,
 .player.is-fullscreen video,
+body.theatre .player-block,
 body.theatre .player,
+body.theatre .player svg,
 body.theatre .player video {
     width: 100%;  /* scale to *exactly* fit the window while preserving aspect ratio */
     height: 100%;
+    margin: 0;
     display: block;
 }
 
@@ -87,6 +101,7 @@ body.theatre .player video {
 
 .player .controls > * {
     margin: 0.5em;  /* = padding-left = padding-right of `.player .controls` */
+    white-space: nowrap;
 }
 
 .player .controls > *:before {
@@ -157,39 +172,36 @@ body.theatre .player video {
     content: '\f066';  /* .uk-icon-compress */
 }
 
-.player:not(.has-video) {
-    border-radius: 0.5em;
+.player:not(.has-video) .controls {
+    left: 2em;  /* = margin of .content = half of .player:before's width */
+    right: 2em;
 }
 
 .player:not(.has-video):before {
-    left: 100%;
-    margin-left: -0.66em;
+    left: 0;
 }
 
+.player:not(.has-video),
 .player:not(.has-video) svg,
 .player:not(.has-video) video {
-    width: 30em;
+    width: 100%;
     height: 2.5em;
 }
 
-.player:not(.has-video) .status:after {
+.player:not(.has-video) .status:before {
     content: 'audio-only';
     opacity: 0.5;
-    margin-left: 1em;
+    margin-right: 1em;
+    vertical-align: baseline;
 }
 
 .meta {
     margin-bottom: 2em;
 }
 
-.meta .avatar {
-    float: left;
-    margin-right: 1em;
-}
-
 .meta h1 {
     margin: 0;
-    font-size: 1.66em;
+    font-size: 1.6em;
     line-height: 1.5;
 }
 
@@ -197,7 +209,14 @@ body.theatre .player video {
     display: inline-block;
     margin: 0;
     font-size: 1.2em;
-    line-height: 1.5;  /* h1 + h2 should have a combined height of ~60px */
+    line-height: 1.5;
+}
+
+.meta .avatar {
+    float: left;
+    margin-right: 1em;
+    width: 4.2em;
+    height: 4.2em;  /* = (h1.font-size + h2.font-size) * line-height = 58.8px */
 }
 
 .meta h1:before,
@@ -254,15 +273,6 @@ body.theatre .player video {
     border-bottom: 1px solid #ddd;
 }
 
-.chat fieldset:not(:first-child) {
-    margin-top: 1em;
-    text-align: right;
-}
-
-.chat .input {
-    width: 100%;
-}
-
 .chat .log {
     flex: 1;
     margin: 0;
@@ -290,6 +300,15 @@ body.theatre .player video {
 
 .chat .name {
     font-weight: bold;
+}
+
+.chat fieldset:not(:first-child) {
+    margin-top: 1em;
+    text-align: right;
+}
+
+.chat .input {
+    width: 100%;
 }
 
 body.theatre .content {
@@ -324,10 +343,10 @@ body.theatre .chat .uk-icon-hover:hover {
 .chat.logged-in .login-form,
 .chat:not(.online) form,
 .chat:not(.logged-in) .input-form,
-body.theatre .content > :not(.player),
+body.theatre .content > :not(.player-block),
 body.theatre .player .theatre,
 body.theatre .player .fullscreen,
 body:not(.theatre) .player:not(.is-fullscreen) .collapse,
 body.no-fullscreen .player .fullscreen {
-    display: none;
+    display: none !important;
 }
