@@ -1,11 +1,12 @@
 /*#a168ad #84d2d4 #f7d358*/
 html, body {
     height: 100%;
+    overflow: hidden;
 }
 
 body {
     display: flex;
-    overflow: hidden;
+    position: relative;
 }
 
 ::-webkit-scrollbar {
@@ -318,7 +319,7 @@ body.theatre .player video {
         bottom: 0;
         text-align: right;
         border-top: 2em solid transparent;
-        border-right: 2em solid #111;
+        border-right: 2em solid #222;
         transition: opacity 0.4s ease-out;
     }
 
