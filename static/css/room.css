@@ -7,12 +7,49 @@ body {
     display: flex;
 }
 
+::-webkit-scrollbar {
+    width: 0.5em;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(127,127,127,0.5);
+}
+
 .content {
     flex: 1;
     /* move the scrollbar inside the container. otherwise, there would be
        two scrollbars (one for content and one for the chat log) at the right
        edge of the screen in close proximity. */
     overflow: auto;
+}
+
+.navbar {
+    display: flex;
+    line-height: 1.4;
+    padding: 0 1.66em;
+    align-items: center;
+}
+
+.navbar > :not(.uk-form) {
+    padding: 1em 0;
+}
+
+.navbar .brand {
+    color: inherit;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.navbar .brand ~ * {
+    margin-left: 1.66em;
+}
+
+.navbar .search {
+    flex: 1;
 }
 
 .player-block {
@@ -284,18 +321,6 @@ body.theatre .player video {
     overflow-y: auto;
     list-style: none;
     word-wrap: break-word;
-}
-
-.chat .log::-webkit-scrollbar {
-    width: 0.66em;
-}
-
-.chat .log::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.chat .log::-webkit-scrollbar-thumb {
-    background: rgba(127,127,127,0.5);
 }
 
 .chat .empty-message,

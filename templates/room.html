@@ -9,6 +9,15 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <article class="content">
+            <nav class="navbar">
+                <a href="/" class="brand">webmcast</a>
+                <span class="search uk-form">
+                    <input type="text" placeholder="Search???" />
+                </span>
+                <a href="#">Login?</a>
+                <a href="#">Sign up?</a>
+            </nav>
+
             <section class="player-block">
             {{ if not .Stream }}
                 <div class="player has-video" data-status="error">
