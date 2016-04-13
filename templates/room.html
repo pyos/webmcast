@@ -8,20 +8,8 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <div class="content">
-            <div class="meta uk-clearfix">
-                <img class="avatar" src="{{.Meta.GravatarURL 60}}" />
-                <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                {{ if .Stream }}
-                    <h2 class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</h2>
-                    <h2 class="viewers" title="Viewers">{{len .Stream.Chat.Users}}</h2>
-                {{- else -}}
-                    <h2 class="offline">is now offline.</h2>
-                {{- end -}}
-            </div>
-
-            <div class="player-block">
+        <article class="content">
+            <section class="player-block">
             {{ if not .Stream }}
                 <div class="player has-video" data-status="error">
                     <svg width="853" height="480"></svg>
@@ -41,10 +29,26 @@
                         <div class="button collapse" title="Normal view"></div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="chat">
+            <header class="meta">
+                <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
+                <div>
+                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
+                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
+                {{ if .Stream }}
+                    <h2 class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</h2>
+                {{- else -}}
+                    <h2 class="offline">is now offline.</h2>
+                {{- end -}}
+                </div>
+                <h2 class="viewers" title="Viewers">
+                    {{ if .Stream }}{{len .Stream.Chat.Users}}{{ else }}0{{ end }}
+                </h2>
+            </header>
+        </article>
+
+        <aside class="chat">
             <h1>{{.ID}}</h1>
             <ul class="log">
                 <li class="empty-message">Nothing here.</li>
@@ -73,7 +77,7 @@
                     <button class="uk-button uk-button-primary" type="submit">Send</button>
                 </fieldset>
             </form>
-        </div>
+        </aside>
 
         <script src="/static/js/vendored.min.js"></script>
         <script src="/static/js/room.js"></script>

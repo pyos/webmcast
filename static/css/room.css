@@ -8,7 +8,6 @@ body {
 
 .content {
     flex: 1;
-    padding: 2em;
     /* move the scrollbar inside the container. otherwise, there would be
        two scrollbars (one for content and one for the chat log) at the right
        edge of the screen in close proximity. */
@@ -17,7 +16,6 @@ body {
 
 .player-block {
     background: #111;
-    margin: 0 -2em;
     text-align: center;
 }
 
@@ -196,7 +194,10 @@ body.theatre .player video {
 }
 
 .meta {
-    margin-bottom: 2em;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 2em;
 }
 
 .meta h1 {
@@ -213,10 +214,13 @@ body.theatre .player video {
 }
 
 .meta .avatar {
-    float: left;
     margin-right: 1em;
-    width: 4.2em;
-    height: 4.2em;  /* = (h1.font-size + h2.font-size) * line-height = 58.8px */
+    width: 60px;
+    height: 60px;  /* ~= 58.8px = 4.2em = (h1.font-size + h2.font-size) * line-height */
+}
+
+.meta .avatar + * {
+    flex: 1;
 }
 
 .meta h1:before,
