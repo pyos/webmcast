@@ -1,3 +1,4 @@
+/*#a168ad #84d2d4 #f7d358*/
 html, body {
     height: 100%;
 }
@@ -225,7 +226,7 @@ body.theatre .player video {
 
 .meta h1:before,
 .meta h2:before {
-    opacity: 0.5;
+    color: #777;
 }
 
 .meta .viewers {
@@ -234,7 +235,7 @@ body.theatre .player video {
 
 .meta .viewers,
 .meta .offline {
-    opacity: 0.5;
+    color: #777;
 }
 
 .meta .creator:before {
@@ -272,7 +273,7 @@ body.theatre .player video {
     margin: 0 2em;
     font-size: 1.2em;
     font-weight: bold;
-    line-height: 1.4em;
+    line-height: 1.4;
     text-align: center;
     border-bottom: 1px solid #ddd;
 }
@@ -299,7 +300,7 @@ body.theatre .player video {
 
 .chat .empty-message,
 .chat .offline-message {
-    color: #aaa;
+    color: #777;
 }
 
 .chat .name {
