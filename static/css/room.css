@@ -306,9 +306,7 @@ body.theatre .player video {
     .navbar .search input {
         display: none;
     }
-}
 
-@media (max-width: 45em) {
     .chat {
         margin-right: -20em;
     }
