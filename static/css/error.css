@@ -1,23 +1,56 @@
 body {
-    box-sizing: border-box;  /* ie6 did nothing wrong */
     margin: 0;
     padding: 2em;
-    min-height: 100vh;
     display: flex;
+    min-height: 100vh;
+    box-sizing: border-box;  /* ie6 did nothing wrong */
     flex-direction: column;
-    background: #111;
+
     color: #fff;
-    font-family: monospace;
+    background: #111;
+    background-image:
+        /* vertical lines of curvature increasing with distance to center */
+        linear-gradient(90deg, transparent, transparent calc(50% - 2px), #222 50%, transparent calc(50% + 2px), transparent),
+        radial-gradient(ellipse 100px 150%, transparent, transparent 100%, #222 102%, transparent 104%, transparent),
+        radial-gradient(ellipse 100px 125%, transparent, transparent 200%, #222 202%, transparent 204%, transparent),
+        radial-gradient(ellipse 100px 100%, transparent, transparent 300%, #222 302%, transparent 304%, transparent),
+        radial-gradient(ellipse 100px  75%, transparent, transparent 400%, #222 402%, transparent 404%, transparent),
+        radial-gradient(ellipse 100px  50%, transparent, transparent 500%, #222 502%, transparent 504%, transparent),
+        radial-gradient(ellipse 100px  33%, transparent, transparent 600%, #222 603%, transparent 606%, transparent),
+        /* similar horizontal lines */
+        linear-gradient( 0deg, transparent, transparent calc(50% - 2px), #222 50%, transparent calc(50% + 2px), transparent),
+        radial-gradient(ellipse 150% 100px, transparent, transparent 100%, #222 102%, transparent 104%, transparent),
+        radial-gradient(ellipse 100% 100px, transparent, transparent 200%, #222 202%, transparent 204%, transparent),
+        radial-gradient(ellipse  75% 100px, transparent, transparent 300%, #222 302%, transparent 304%, transparent),
+        radial-gradient(ellipse  50% 100px, transparent, transparent 400%, #222 402%, transparent 404%, transparent);
+}
+
+body > * {
+    display: flex;
 }
 
 h1 {
-    flex: 1;
-    display: flex;
-    text-align: center;
-    flex-direction: column;
-    justify-content: center;
+    font: bold 28px monospace;
+    text-transform: uppercase;
 }
 
 h2 {
-    font-weight: normal;
+    font: normal 18px monospace;
+}
+
+a {
+    color: #fff;
+    transition: text-shadow;
+}
+
+a:hover {
+    text-shadow: 0 0 5px #fff;
+}
+
+.muted {
+    opacity: 0.33;
+}
+
+.stretch {
+    flex: 1;
 }

@@ -4,10 +4,15 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/error.css" />
-        <title>webmcast -- oh no</title>
+        <title>webmcast: error {{.Code}}</title>
     </head>
     <body data-error="{{.Code}}">
-        <h1>NO SIGNAL // {{.Code}} // {{.DisplayMessage}}</h1>
-        <h2>* {{.DisplayComment}}</h2>
+        <div class="stretch">
+            <h1 class="stretch">{{.Code}} // {{.DisplayMessage}}</h1>
+            <h1><a href="/">webmcast</a></h1>
+        </div>
+        <div class="muted">
+            <h2>* {{.DisplayComment}}</h2>
+        </div>
     </body>
 </html>
