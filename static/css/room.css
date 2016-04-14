@@ -29,10 +29,16 @@ body {
     overflow: auto;
 }
 
+.navbar, .meta {
+    max-width: 70em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .navbar {
     display: flex;
     line-height: 1.4;
-    padding: 0 1.66em;
+    padding: 0 2em;
     align-items: center;
 }
 
@@ -55,7 +61,8 @@ body {
 }
 
 .player-block {
-    background: #111;
+    overflow: hidden;
+    background: #1a1a1a;
     text-align: center;
 }
 
@@ -70,6 +77,7 @@ body {
     display: inline-block;  /* 1. fit width to content (svg/video) */
     position: relative;     /* 2. allow to anchor the controls bar and an overlayed status icon */
     overflow: hidden;       /* 3. hide the controls bar when it is supposed to be out of view */
+    box-shadow: 0 0 5px #000;
 }
 
 .player svg,
@@ -226,11 +234,13 @@ body.theatre .player video {
     height: 2.5em;
 }
 
-.player:not(.has-video) .status:before {
-    content: 'audio-only';
-    opacity: 0.5;
-    margin-right: 1em;
-    vertical-align: baseline;
+@media (min-width: 25em) {
+    .player:not(.has-video) .status:before {
+        content: 'no video';
+        opacity: 0.5;
+        margin-right: 1em;
+        vertical-align: baseline;
+    }
 }
 
 .meta {
