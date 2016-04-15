@@ -97,6 +97,7 @@ body {
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
+    min-height: 15em;
     max-height: calc(100vh - 8.2em);  /* - total height of .meta */
 }
 
@@ -307,7 +308,6 @@ body.theatre .player video {
 
 .chat {
     width: 20em;
-    max-width: 80%;
     display: flex;
     z-index: 1;
     position: relative;
