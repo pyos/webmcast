@@ -10,7 +10,7 @@ body {
 }
 
 ::-webkit-scrollbar {
-    width: 0.5em;
+    width: 0em;
 }
 
 ::-webkit-scrollbar-track {
@@ -85,7 +85,7 @@ body {
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
-    max-height: 100vh;
+    max-height: calc(100vh - 8.2em);  /* - total height of .meta */
 }
 
 .player.is-fullscreen,
@@ -95,10 +95,12 @@ body.theatre .player-block,
 body.theatre .player,
 body.theatre .player svg,
 body.theatre .player video {
+    display: block;
+    margin: 0;
     width: 100%;  /* scale to *exactly* fit the window while preserving aspect ratio */
     height: 100%;
-    margin: 0;
-    display: block;
+    max-width: none;
+    max-height: none;
 }
 
 .player:before /* overlayed status icon */ {
@@ -137,7 +139,7 @@ body.theatre .player video {
     padding: 0 0.5em;
     line-height: 1.5em;
     background: rgba(0,0,0,0.7);  /* XXX maybe something else, like a gradient? */
-    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
 }
 
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
@@ -186,7 +188,7 @@ body.theatre .player video {
     width: 1.5em;    /* = line-height */
     margin: 0;
     padding: 0.5em;  /* margin does not trigger onclick, padding does */
-    transition: text-shadow 0.1s ease-out;
+    transition: text-shadow 0.1s ease-in-out;
 }
 
 .player .button:before {
@@ -269,22 +271,12 @@ body.theatre .player video {
     height: 60px;  /* ~= 58.8px = 4.2em = (h1.font-size + h2.font-size) * line-height */
 }
 
-.meta .avatar + * {
+.meta :nth-child(2) {
     flex: 1;
 }
 
-.meta h1:before,
-.meta h2:before {
-    color: #777;
-}
-
-.meta .viewers {
+.meta :nth-child(3) h2 {
     margin-left: 1em;
-}
-
-.meta .viewers,
-.meta .offline {
-    color: #777;
 }
 
 .meta .creator:before {
@@ -295,9 +287,10 @@ body.theatre .player video {
     content: 'on ';
 }
 
-.meta .viewers:after {
+.meta .viewers:before {
     font: normal 1em FontAwesome;
-    content: ' \f06e';  /* .uk-icon-eye */
+    content: '\f06e';  /* .uk-icon-eye */
+    margin-right: 0.5em;
 }
 
 .chat {
@@ -309,7 +302,7 @@ body.theatre .player video {
     flex-direction: column;
     background: #eee;
     box-shadow: 7px 0 10px -10px #000 inset;
-    transition: transform 0.4s ease-out;
+    transition: transform 0.4s ease-in-out;
 }
 
 @media (max-width: 50em) {
@@ -328,7 +321,7 @@ body.theatre .player video {
         text-align: right;
         border-top: 2em solid transparent;
         border-right: 2em solid #222;
-        transition: opacity 0.4s ease-out;
+        transition: opacity 0.4s ease-in-out;
     }
 
     .chat:hover {

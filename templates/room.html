@@ -51,9 +51,11 @@
                     <h2 class="offline">is now offline.</h2>
                 {{- end -}}
                 </div>
-                <h2 class="viewers" title="Viewers">
-                    {{ if .Stream }}{{len .Stream.Chat.Users}}{{ else }}0{{ end }}
-                </h2>
+                <div>
+                    <h2 class="viewers" title="Viewers">
+                        {{ if .Stream }}{{len .Stream.Chat.Users}}{{ else }}0{{ end }}
+                    </h2>
+                </div>
             </header>
         </article>
 
