@@ -8,7 +8,7 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <article class="content">
+        <article class="content" data-scrollable>
             <nav class="navbar">
                 <a href="/" class="brand">webmcast</a>
                 <span class="search uk-form">
@@ -61,7 +61,7 @@
 
         <aside class="chat">
             <h1>{{.ID}}</h1>
-            <ul class="log">
+            <ul class="log" data-scrollable>
                 <li class="empty-message">Nothing here.</li>
             </ul>
             <template class="message-template">

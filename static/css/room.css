@@ -9,24 +9,35 @@ body {
     position: relative;
 }
 
-::-webkit-scrollbar {
-    width: 0em;
+[data-scrollable] {
+    overflow: auto;
+    position: relative;
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+[data-scrollable] > .scrollbar {
+    position: absolute;
+    width: 0.5em;
+    top: 5px;
+    right: 5px;
+    bottom: 5px;
+    background: rgba(127,127,127,0.3);
+    border-radius: 0.25em;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
 }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(127,127,127,0.5);
+[data-scrollable] > .scrollbar.hidden {
+    opacity: 0;
+}
+
+[data-scrollable] > .scrollbar > .thumb {
+    position: relative;
+    background: rgba(127,127,127,0.8);
+    border-radius: 0.25em;
 }
 
 .content {
     flex: 1;
-    /* move the scrollbar inside the container. otherwise, there would be
-       two scrollbars (one for content and one for the chat log) at the right
-       edge of the screen in close proximity. */
-    overflow: auto;
 }
 
 .navbar, .meta {
@@ -80,6 +91,7 @@ body {
     box-shadow: 0 0 5px #000;
 }
 
+.player,
 .player svg,
 .player video {
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
@@ -353,7 +365,6 @@ body.theatre .player video {
 .chat .log {
     flex: 1;
     margin: 0;
-    overflow-y: auto;
     list-style: none;
     word-wrap: break-word;
 }
@@ -403,7 +414,7 @@ body.theatre .chat .uk-icon-hover:hover {
 .player:not(.has-video) .fullscreen,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
-.chat .empty-message:not(:only-child),
+.chat .empty-message:not(:only-of-type),
 .chat.online .offline-message,
 .chat.logged-in .login-form,
 .chat:not(.online) form,
