@@ -1,14 +1,25 @@
+html, body, .content {
+    margin: auto;
+    height: 100%;
+}
+
 body {
-    margin: 0;
+    color: #fff;
+    background: #000;
+}
+
+.content {
     padding: 2em;
+    max-width: 1400px;
+    max-height: 1000px;
+    box-sizing: border-box;
+
     display: flex;
-    min-height: 100vh;
-    box-sizing: border-box;  /* ie6 did nothing wrong */
     flex-direction: column;
 
-    color: #fff;
-    background: #111;
+    background: #0d110b;
     background-image:
+        repeating-linear-gradient(0deg, #000, #000 1px, transparent 1px, transparent 2px),
         /* vertical lines of curvature increasing with distance to center */
         linear-gradient(90deg, transparent, transparent calc(50% - 2px), #222 50%, transparent calc(50% + 2px), transparent),
         radial-gradient(ellipse 100px 150%, transparent, transparent 100%, #222 102%, transparent 104%, transparent),
@@ -22,20 +33,19 @@ body {
         radial-gradient(ellipse 150% 100px, transparent, transparent 100%, #222 102%, transparent 104%, transparent),
         radial-gradient(ellipse 100% 100px, transparent, transparent 200%, #222 202%, transparent 204%, transparent),
         radial-gradient(ellipse  75% 100px, transparent, transparent 300%, #222 302%, transparent 304%, transparent),
-        radial-gradient(ellipse  50% 100px, transparent, transparent 400%, #222 402%, transparent 404%, transparent);
-}
-
-body > * {
-    display: flex;
+        radial-gradient(ellipse  50% 100px, transparent, transparent 400%, #222 402%, transparent 404%, transparent),
+        radial-gradient(circle, #0d110b, #000);
 }
 
 h1 {
+    flex: 1;
     font: bold 28px monospace;
     text-transform: uppercase;
 }
 
 h2 {
     font: normal 18px monospace;
+    opacity: 0.33;
 }
 
 a {
@@ -45,12 +55,4 @@ a {
 
 a:hover {
     text-shadow: 0 0 5px #fff;
-}
-
-.muted {
-    opacity: 0.33;
-}
-
-.stretch {
-    flex: 1;
 }
