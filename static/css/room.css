@@ -155,6 +155,11 @@ body.theatre .player video {
     transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
 }
 
+.player.has-video[data-status="playing"].hide-cursor {
+    cursor: none;
+}
+
+.player.has-video[data-status="playing"].hide-cursor .controls,
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
     opacity: 0;
     transform: translateY(100%);

@@ -119,6 +119,23 @@ let ViewNode = function (root, info, stream) {
         status.textContent = 'playing';
     };
 
+    let hideCursorTimeout = null;
+    let hideCursorLater = () => {
+        showCursor();
+        hideCursorTimeout = window.setTimeout(() => {
+            hideCursorTimeout = null;
+            root.classList.add('hide-cursor');
+        }, 3000);
+    };
+
+    let showCursor = () => {
+        if (hideCursorTimeout !== null)
+            window.clearTimeout(hideCursorTimeout);
+        else
+            root.classList.remove('hide-cursor');
+        hideCursorTimeout = null;
+    };
+
     view.addEventListener('loadstart',      onLoad);
     view.addEventListener('loadedmetadata', onPlay);
     view.addEventListener('error',          onDone);
@@ -126,6 +143,13 @@ let ViewNode = function (root, info, stream) {
     view.addEventListener('timeupdate', () => onTimeUpdate(view.currentTime));
     view.addEventListener('volumechange', () => onVolumeChange(view.volume, view.muted));
     // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
+
+    view.addEventListener('mouseenter', hideCursorLater);
+    view.addEventListener('mouseleave', showCursor);
+    view.addEventListener('mouseenter', () =>
+        view.addEventListener('mousemove', hideCursorLater));
+    view.addEventListener('mouseleave', () =>
+        view.removeEventListener('mousemove', hideCursorLater));
 
     volume.addEventListener('mousedown',  onVolumeSelect);
     volume.addEventListener('touchstart', onVolumeSelect);
