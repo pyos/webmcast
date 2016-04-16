@@ -9,10 +9,9 @@ type Context struct {
 	// elapses, the stream is closed for good.
 	Timeout time.Duration
 	// When a stream is actually closed, this function is called as a notification.
-	OnStreamClose func(ctx *Context, stream *BroadcastContext, id string)
+	OnStreamClose func(id string)
 	// How many messages to transmit on a `Chat.RequestHistory` RPC call.
 	ChatHistory int
-	DB          Database
 }
 
 type BroadcastContext struct {
@@ -82,7 +81,7 @@ func (stream *BroadcastContext) monitor(ctx *Context, id string) {
 					stream.Chat.Close()
 					stream.Broadcast.Close()
 					if ctx.OnStreamClose != nil {
-						ctx.OnStreamClose(ctx, stream, id)
+						ctx.OnStreamClose(id)
 					}
 					return
 				}
