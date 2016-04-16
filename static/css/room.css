@@ -160,11 +160,11 @@ body.theatre .player video {
     transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
 }
 
-.player.has-video[data-status="playing"].hide-cursor {
+body.hide-cursor .player.has-video[data-status="playing"] {
     cursor: none;
 }
 
-.player.has-video[data-status="playing"].hide-cursor .controls,
+body.hide-cursor .player.has-video[data-status="playing"] .controls,
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
     opacity: 0;
     transform: translateY(100%);
@@ -350,7 +350,8 @@ body.theatre .player video {
         transform: translateX(-100%);
     }
 
-    .chat:hover .tab {
+    .chat:hover .tab,
+    body.theatre.hide-cursor .chat .tab {
         opacity: 0;
     }
 

@@ -125,7 +125,7 @@ let ViewNode = function (root, info, stream) {
         showCursor();
         hideCursorTimeout = window.setTimeout(() => {
             hideCursorTimeout = null;
-            root.classList.add('hide-cursor');
+            document.body.classList.add('hide-cursor');
         }, 3000);
     };
 
@@ -133,7 +133,7 @@ let ViewNode = function (root, info, stream) {
         if (hideCursorTimeout !== null)
             window.clearTimeout(hideCursorTimeout);
         else
-            root.classList.remove('hide-cursor');
+            document.body.classList.remove('hide-cursor');
         hideCursorTimeout = null;
     };
 
