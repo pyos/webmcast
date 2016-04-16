@@ -81,6 +81,7 @@ let ViewNode = function (root, info, stream) {
         let r = volume.getBoundingClientRect();
         let x = Math.min(r.right, Math.max(r.left, e.touches ? e.touches[0].clientX : e.clientX));
         view.volume = (x - r.left) / (r.right - r.left);
+        view.muted  = false;
     };
 
     let onVolumeChange = (v, muted) => {
