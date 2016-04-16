@@ -97,8 +97,13 @@ body {
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
-    min-height: 15em;
     max-height: calc(100vh - 8.2em);  /* - total height of .meta */
+}
+
+.player.has-video,
+.player.has-video svg,
+.player.has-video video {
+    min-height: 15em;
 }
 
 .player.is-fullscreen,
