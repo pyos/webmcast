@@ -3,17 +3,15 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="/static/css/uikit.min.css" />
+        <link rel="stylesheet" href="/static/css/global.css" />
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
         <article class="content" data-scrollable>
-            <nav class="navbar">
+            <nav>
                 <a href="/" class="brand">webmcast</a>
-                <span class="search uk-form">
-                    <input type="text" placeholder="Search???" />
-                </span>
+                <div class="search"><input type="text" placeholder="Search???" /></div>
                 <a href="#">Login?</a>
                 <a href="#">Sign up?</a>
             </nav>
@@ -30,12 +28,12 @@
                     <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}"></svg>
             {{- end -}}
                     <video></video><div class="controls">
-                        <div class="button mute" title="Mute"></div>
+                        <a class="button mute" title="Mute"></a>
                         <div class="volume" title="Volume"><div class="slider"></div></div>
                         <div class="status">not connected</div>
-                        <div class="button theatre" title="Theatre mode"></div>
-                        <div class="button fullscreen" title="Fullscreen"></div>
-                        <div class="button collapse" title="Normal view"></div>
+                        <a class="button theatre" title="Theatre mode"></a>
+                        <a class="button fullscreen" title="Fullscreen"></a>
+                        <a class="button collapse" title="Normal view"></a>
                     </div>
                 </div>
             </section>
@@ -57,6 +55,14 @@
                     </h2>
                 </div>
             </header>
+
+            <section class="about">
+                {{.Meta.About}}
+            </section>
+
+            <footer>
+                webmcast node {{printf "%q" (or .Meta.Server "nil")}}
+            </footer>
         </article>
 
         <aside class="chat">
@@ -71,22 +77,14 @@
                 </li>
             </template>
             <div class="offline-message">Chat offline.</div>
-            <form class="login-form uk-form">
-                <fieldset>
-                    <input class="input" placeholder="What's your name?" />
-                </fieldset>
-                <fieldset>
-                    <button class="uk-button uk-button-primary" type="submit">Join</button>
-                </fieldset>
+            <form class="login-form">
+                <input type="text" class="input" placeholder="What's your name?" />
+                <button type="submit">Join</button>
             </form>
-            <form class="input-form uk-form">
-                <fieldset>
-                    <textarea class="input" cols="1" rows="2" placeholder="Write a message"></textarea>
-                </fieldset>
-                <fieldset>
-                    <button class="uk-button uk-button-link uk-icon-smile-o uk-icon-small uk-icon-hover"></button>
-                    <button class="uk-button uk-button-primary" type="submit">Send</button>
-                </fieldset>
+            <form class="input-form">
+                <textarea class="input" cols="1" rows="2" placeholder="Write a message"></textarea>
+                <button type="submit">Send</button>
+                <a class="button ins-emoji" title="Emoji..."></a>
             </form>
             <div class="tab"></div>
         </aside>

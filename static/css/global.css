@@ -1,0 +1,128 @@
+@font-face {
+    font-family: 'FontAwesome';
+    src: url("../fonts/fontawesome-webfont.woff2") format('woff2'),
+         url("../fonts/fontawesome-webfont.woff") format('woff'),
+         url("../fonts/fontawesome-webfont.ttf") format('truetype');
+}
+
+html {
+    font: normal 14px/1.5 sans-serif;
+    color: #444;
+}
+
+body {
+    margin: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
+a {
+    color: #a168ad;
+}
+
+a:not(:hover) {
+    text-decoration: none;
+}
+
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    margin: 0;
+    height: 2em;
+    padding: 0.33em;
+    vertical-align: middle;
+    font: inherit;
+    color: #444;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    transition: all linear 0.2s;
+}
+
+textarea {
+    height: auto;
+}
+
+textarea:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+    outline: 0;
+    background: #fffdef;
+    border-color: #f7d358;
+}
+
+textarea:disabled,
+input[type="text"]:disabled,
+input[type="email"]:disabled,
+input[type="password"]:disabled {
+    color: #999;
+    border-color: #ddd;
+    background-color: #fafafa;
+}
+
+button {
+    -webkit-appearance: none;
+    display: inline-block;
+    font: inherit;
+    margin: 0;
+    padding: 0 1em;
+    color: #444;
+    text-align: center;
+    text-transform: none;
+    vertical-align: middle;
+    min-height: 2.5em;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 4px;
+    background-color: #f7d358;
+}
+
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+button:focus {
+    outline: none;
+    border-color: rgba(0,0,0,0.21);
+}
+
+button:active {
+    background-color: #cfac33;
+}
+
+button:disabled {
+    color: #999;
+    border-color: rgba(0,0,0,0.06);
+    background-color: #fafafa;
+}
+
+input::-moz-focus-inner,
+button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+a.button {
+    width: 1.5em;
+    padding: 0.5em;
+    display: inline-block;
+    vertical-align: middle;
+    color: inherit;
+    cursor: pointer;
+    transition: text-shadow 0.1s ease-in-out;
+}
+
+a.button:before {
+    font: normal 1.4em FontAwesome;  /* 1.5em is 0.33px more than width for some reason */
+    vertical-align: middle;
+}
+
+a.button:hover,
+a.button:focus {
+    text-shadow: 0 0 0.33em;
+}

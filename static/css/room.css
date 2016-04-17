@@ -16,12 +16,12 @@ body {
 
 [data-scrollable] > .scrollbar {
     position: absolute;
-    width: 0.5em;
+    width: 8px;
     top: 5px;
     right: 5px;
     bottom: 5px;
     background: rgba(127,127,127,0.3);
-    border-radius: 0.25em;
+    border-radius: 4px;
     transition: opacity 0.2s ease-in-out;
     pointer-events: none;
 }
@@ -32,42 +32,37 @@ body {
 
 [data-scrollable] > .scrollbar > .thumb {
     position: relative;
-    background: rgba(127,127,127,0.8);
-    border-radius: 0.25em;
+    background: rgba(127,127,127,0.5);
+    border-radius: 4px;
 }
 
 .content {
     flex: 1;
 }
 
-.navbar, .meta {
-    max-width: 70em;
+nav, .meta, .about, footer {
+    max-width: 60em;
     margin-left: auto;
     margin-right: auto;
 }
 
-.navbar {
+nav {
     display: flex;
-    line-height: 1.4;
-    padding: 0 2em;
+    padding: 1em 2em;
     align-items: center;
 }
 
-.navbar > :not(.uk-form) {
-    padding: 1em 0;
-}
-
-.navbar .brand {
+nav .brand {
     color: inherit;
     font-size: 1.2em;
     font-weight: bold;
 }
 
-.navbar .brand ~ * {
+nav .brand ~ * {
     margin-left: 1.66em;
 }
 
-.navbar .search {
+nav .search {
     flex: 1;
 }
 
@@ -103,7 +98,7 @@ body {
 .player.has-video,
 .player.has-video svg,
 .player.has-video video {
-    min-height: 15em;
+    min-height: 200px;
 }
 
 .player.is-fullscreen,
@@ -135,12 +130,17 @@ body.theatre .player video {
 }
 
 .player[data-status="loading"]:before {
-    animation: uk-rotate 0.66s infinite linear;
+    animation: spin 0.66s infinite linear;
     border: 0.1em solid rgba(255,255,255,0.2);  /* there are a few spinners in FontAwesome, */
     border-radius: 50%;                         /* but a thin transparent ring with */
     border-top-color: #fff;                     /* a white dash looks neater imo */
     box-sizing: border-box;
     content: ' ';
+}
+
+@keyframes spin {
+    0%   {transform: rotate(0deg);}
+    100% {transform: rotate(359deg);}
 }
 
 .player[data-status="error"]:before,
@@ -155,7 +155,6 @@ body.theatre .player video {
     right: 0;
     bottom: 0;
     padding: 0 0.5em;
-    line-height: 1.5em;
     background: rgba(0,0,0,0.7);  /* XXX maybe something else, like a gradient? */
     transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
 }
@@ -170,13 +169,9 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     transform: translateY(100%);
 }
 
-.player .controls > * {
+.player .controls > :not(.button) {
     margin: 0.5em;  /* = padding-left = padding-right of `.player .controls` */
     white-space: nowrap;
-}
-
-.player .controls > *:before {
-    vertical-align: middle;
 }
 
 .player .status {
@@ -204,23 +199,6 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     bottom: 0;
     border: 1px solid #fff;
     border-radius: 1px;
-}
-
-.player .button {
-    cursor: pointer;
-    width: 1.5em;    /* = line-height */
-    margin: 0;
-    padding: 0.5em;  /* margin does not trigger onclick, padding does */
-    transition: text-shadow 0.1s ease-in-out;
-}
-
-.player .button:before {
-    font: normal 1.4em FontAwesome;  /* 1.5em is 0.33px more than line-height for some reason */
-}
-
-.player .button:hover,
-.player .button:focus {
-    text-shadow: 0 0 5px #fff;
 }
 
 .player .mute:before {
@@ -278,14 +256,12 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 .meta h1 {
     margin: 0;
     font-size: 1.6em;
-    line-height: 1.5;
 }
 
 .meta h2 {
     display: inline-block;
     margin: 0;
     font-size: 1.2em;
-    line-height: 1.5;
 }
 
 .meta .avatar {
@@ -316,19 +292,28 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     margin-right: 0.5em;
 }
 
+.about {
+    padding: 0 2em;
+}
+
+footer {
+    padding: 2em 2em 1em 2em;
+    color: #777;
+}
+
 .chat {
     width: 20em;
     display: flex;
     z-index: 1;
     position: relative;
     flex-direction: column;
-    background: #f7f7f7;
+    background: #f3f3f3;
     box-shadow: 7px 0 10px -10px #000 inset;
     transition: transform 0.4s ease-in-out;
 }
 
 @media (max-width: 50em) {
-    .navbar .search input {
+    nav .search input {
         display: none;
     }
 
@@ -360,7 +345,9 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     }
 }
 
-.chat > :not(.tab) {
+.chat h1,
+.chat .log,
+.chat .offline-message {
     padding: 1em;
 }
 
@@ -368,7 +355,6 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     margin: 0 2em;
     font-size: 1.2em;
     font-weight: bold;
-    line-height: 1.4;
     text-align: center;
     border-bottom: 1px solid #ddd;
 }
@@ -389,13 +375,20 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     font-weight: bold;
 }
 
-.chat fieldset:not(:first-child) {
+.chat form {
+    padding: 0 1em 1em 1em;
+}
+
+.chat form > * {
     margin-top: 1em;
-    text-align: right;
 }
 
 .chat .input {
     width: 100%;
+}
+
+.chat .ins-emoji:before {
+    content: '\f118';  /* .uk-icon-smile-o */
 }
 
 body.theatre .content {
@@ -410,10 +403,6 @@ body.theatre .chat {
 
 body.theatre .chat h1 {
     border-color: #333;
-    color: #fff;
-}
-
-body.theatre .chat .uk-icon-hover:hover {
     color: #fff;
 }
 
