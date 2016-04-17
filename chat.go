@@ -4,7 +4,6 @@ import (
 	"errors"
 	"golang.org/x/net/websocket"
 	"strings"
-	"sync"
 	"unicode"
 )
 
@@ -14,13 +13,12 @@ type ChatMessage struct {
 }
 
 type ChatMessageQueue struct {
-	mutex sync.RWMutex
 	data  []ChatMessage
 	start int
 }
 
 type ChatContext struct {
-	mutex   sync.RWMutex            // protects `Users` and `Names`
+	events  chan interface{}
 	Users   map[*ChatterContext]int // A hash set. Values are ignored.
 	Names   map[string]int          // Same
 	History ChatMessageQueue
@@ -32,16 +30,7 @@ type ChatterContext struct {
 	chat   *ChatContext
 }
 
-func NewChat(qsize int) ChatContext {
-	return ChatContext{
-		Users:   make(map[*ChatterContext]int),
-		Names:   make(map[string]int),
-		History: ChatMessageQueue{data: make([]ChatMessage, 0, qsize), start: 0},
-	}
-}
-
 func (q *ChatMessageQueue) Push(x ChatMessage) {
-	q.mutex.Lock()
 	if len(q.data) == cap(q.data) {
 		q.data[q.start] = x
 		q.start = (q.start + 1) % len(q.data)
@@ -49,55 +38,97 @@ func (q *ChatMessageQueue) Push(x ChatMessage) {
 		q.data = q.data[:len(q.data)+1]
 		q.data[len(q.data)-1] = x
 	}
-	q.mutex.Unlock()
 }
 
 func (q *ChatMessageQueue) Iterate(f func(x ChatMessage) error) error {
-	q.mutex.RLock()
-	for i := 0; i < len(q.data); i++ {
-		if err := f(q.data[(i+q.start)%len(q.data)]); err != nil {
-			q.mutex.RUnlock()
+	// this should be safe to use without a mutex. at worst, pushing more than
+	// `cap(q.data)` messages while iterating may result in skipping over some of them.
+	for i, s, n := 0, q.start, len(q.data); i < n; i++ {
+		if err := f(q.data[(i+s)%n]); err != nil {
 			return err
 		}
 	}
-	q.mutex.RUnlock()
 	return nil
+}
+
+func NewChat(qsize int) *ChatContext {
+	ctx := &ChatContext{
+		events:  make(chan interface{}),
+		Users:   make(map[*ChatterContext]int),
+		Names:   make(map[string]int),
+		History: ChatMessageQueue{make([]ChatMessage, 0, qsize), 0},
+	}
+	go ctx.handle()
+	return ctx
+}
+
+type chatSetNameEvent struct {
+	user *ChatterContext
+	name string
+}
+
+func (c *ChatContext) handle() {
+	closed := false
+	for genericEvent := range c.events {
+		switch event := genericEvent.(type) {
+		case nil:
+			closed = true
+			for u := range c.Users {
+				u.socket.Close()
+			}
+			if len(c.Users) == 0 {
+				return // else must handle pending events first
+			}
+
+		case *ChatterContext:
+			if _, exists := c.Users[event]; exists {
+				delete(c.Users, event)
+				if event.name != "" {
+					delete(c.Names, event.name)
+				}
+				if closed && len(c.Users) == 0 {
+					return // if these events were left unhandled, senders would block forever
+				}
+			} else {
+				c.Users[event] = 0
+			}
+			for u := range c.Users {
+				u.pushViewerCount()
+			}
+
+		case chatSetNameEvent:
+			if _, ok := c.Names[event.name]; ok {
+				// XXX should push an error notification, maybe?..
+				continue
+			}
+			c.Names[event.name] = 0
+			if event.user.name != "" {
+				delete(c.Names, event.user.name)
+			}
+			event.user.name = event.name
+			event.user.pushName(event.name)
+
+		case ChatMessage:
+			c.History.Push(event)
+			for u := range c.Users {
+				u.pushMessage(event)
+			}
+		}
+	}
 }
 
 func (c *ChatContext) Connect(ws *websocket.Conn) *ChatterContext {
 	chatter := &ChatterContext{name: "", socket: ws, chat: c}
-	// XXX maybe send a reference into a channel from which `monitor` would read?
-	c.mutex.Lock()
-	c.Users[chatter] = 0
-	c.mutex.Unlock()
-	c.mutex.RLock()
-	for u := range c.Users {
-		u.pushViewerCount()
-	}
-	c.mutex.RUnlock()
+	c.events <- chatter
 	return chatter
 }
 
 func (c *ChatContext) Disconnect(u *ChatterContext) {
-	c.mutex.Lock()
-	delete(c.Users, u)
-	if u.name != "" {
-		delete(c.Names, u.name)
-	}
-	c.mutex.Unlock()
-	c.mutex.RLock()
-	for v := range c.Users {
-		v.pushViewerCount()
-	}
-	c.mutex.RUnlock()
+	c.events <- u
 }
 
 func (c *ChatContext) Close() {
-	c.mutex.RLock()
-	for u := range c.Users {
-		u.socket.Close()
-	}
-	c.mutex.RUnlock()
+	c.events <- nil
 }
 
 func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
@@ -113,18 +144,7 @@ func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) err
 			return errors.New("name contains invalid characters")
 		}
 	}
-	ctx.chat.mutex.Lock()
-	if _, ok := ctx.chat.Names[name]; ok {
-		ctx.chat.mutex.Unlock()
-		return errors.New("name already taken")
-	}
-	ctx.chat.Names[name] = 0
-	if ctx.name != "" {
-		delete(ctx.chat.Names, ctx.name)
-	}
-	ctx.chat.mutex.Unlock()
-	ctx.name = name
-	ctx.pushName(name)
+	ctx.chat.events <- chatSetNameEvent{ctx, name}
 	return nil
 }
 
@@ -136,12 +156,7 @@ func (ctx *ChatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{})
 	if len(msg.text) == 0 || len(msg.text) > 256 {
 		return errors.New("message must have between 1 and 256 characters")
 	}
-	ctx.chat.mutex.RLock()
-	for u := range ctx.chat.Users {
-		u.pushMessage(msg)
-	}
-	ctx.chat.mutex.RUnlock()
-	ctx.chat.History.Push(msg)
+	ctx.chat.events <- msg
 	return nil
 }
 

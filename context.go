@@ -24,7 +24,7 @@ type BroadcastContext struct {
 	closingStateChange chan bool
 
 	Created time.Time
-	Chat    ChatContext
+	Chat    *ChatContext
 	// These values are for the whole stream, so they include audio and muxing overhead.
 	// The latter is negligible, however, and the former is normally about 64k,
 	// so also negligible. Or at least predictable.
