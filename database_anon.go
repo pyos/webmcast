@@ -1,70 +1,63 @@
 package main
 
-type AnonDatabase struct {
-	active map[string]int
-}
+type AnonDatabase int
 
 func NewAnonDatabase() Database {
-	return &AnonDatabase{make(map[string]int)}
+	return AnonDatabase(0)
 }
 
-func (d *AnonDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
+func (d AnonDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
 	return nil, ErrNotSupported
 }
 
-func (d *AnonDatabase) GetUserID(email string, password []byte) (int64, error) {
+func (d AnonDatabase) GetUserID(email string, password []byte) (int64, error) {
 	return 0, ErrNotSupported
 }
 
-func (d *AnonDatabase) GetUserFull(email string, password []byte) (*UserMetadata, error) {
+func (d AnonDatabase) GetUserFull(email string, password []byte) (*UserMetadata, error) {
 	return nil, ErrNotSupported
 }
 
-func (d *AnonDatabase) ActivateUser(id int64, token string) error {
+func (d AnonDatabase) ActivateUser(id int64, token string) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) SetUserName(id int64, name string, displayName string) error {
+func (d AnonDatabase) SetUserName(id int64, name string, displayName string) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) SetUserEmail(id int64, email string) (string, error) {
+func (d AnonDatabase) SetUserEmail(id int64, email string) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (d *AnonDatabase) SetUserAbout(id int64, about string) error {
+func (d AnonDatabase) SetUserAbout(id int64, about string) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) SetUserPassword(id int64, password []byte) error {
+func (d AnonDatabase) SetUserPassword(id int64, password []byte) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) SetStreamName(id int64, name string) error {
+func (d AnonDatabase) SetStreamName(id int64, name string) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) SetStreamAbout(id int64, about string) error {
+func (d AnonDatabase) SetStreamAbout(id int64, about string) error {
 	return ErrNotSupported
 }
 
-func (d *AnonDatabase) StartStream(user string, token string) error {
-	d.active[user] = 1
+func (d AnonDatabase) StartStream(user string, token string) error {
 	return nil
 }
 
-func (d *AnonDatabase) StopStream(user string) error {
-	delete(d.active, user)
+func (d AnonDatabase) StopStream(user string) error {
 	return nil
 }
 
-func (d *AnonDatabase) GetStreamServer(user string) (string, error) {
-	if _, ok := d.active[user]; ok {
-		return "", nil
-	}
+func (d AnonDatabase) GetStreamServer(user string) (string, error) {
 	return "", ErrStreamNotExist
 }
 
-func (d *AnonDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
+func (d AnonDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	return &StreamMetadata{}, nil
 }
