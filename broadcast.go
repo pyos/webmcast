@@ -48,9 +48,11 @@ func NewBroadcast() Broadcast {
 
 func (cast *Broadcast) Close() error {
 	cast.Closed = true
+	cast.vlock.Lock()
 	for _, cb := range cast.viewers {
 		cb.write([]byte{})
 	}
+	cast.vlock.Unlock()
 	return nil
 }
 

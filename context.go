@@ -1,8 +1,12 @@
 package main
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type Context struct {
+	mutex   sync.RWMutex // protects `streams`
 	streams map[string]*BroadcastContext
 	// There is a timeout after releasing a stream during which it is possible
 	// to reacquire the same object and continue broadcasting. Once the timeout
@@ -34,20 +38,22 @@ type BroadcastContext struct {
 // Acquire a stream for writing. Only one "writable" reference can be held;
 // until it is closed, this function will return an error.
 func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
+	ctx.mutex.Lock()
+	defer ctx.mutex.Unlock()
 	if ctx.streams == nil {
 		ctx.streams = make(map[string]*BroadcastContext)
 	}
 	stream, ok := ctx.streams[id]
 	if !ok {
-		v := BroadcastContext{
+		v := &BroadcastContext{
 			Broadcast:          NewBroadcast(),
 			Chat:               NewChat(ctx.ChatHistory),
 			Created:            time.Now().UTC(),
 			closingStateChange: make(chan bool),
 		}
-		ctx.streams[id] = &v
+		ctx.streams[id] = v
 		go v.monitor(ctx, id)
-		return &v, true
+		return v, true
 	}
 	if !stream.closing {
 		return nil, false
@@ -61,7 +67,9 @@ func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
 	if ctx.streams == nil {
 		return nil, false
 	}
+	ctx.mutex.RLock()
 	stream, ok := ctx.streams[id]
+	ctx.mutex.RUnlock()
 	return stream, ok
 }
 
@@ -76,6 +84,8 @@ func (stream *BroadcastContext) monitor(ctx *Context, id string) {
 		case <-ticker.C:
 			if stream.closing {
 				if ticksWhileOffline += time.Second; ticksWhileOffline > ctx.Timeout {
+					ctx.mutex.Lock()
+					defer ctx.mutex.Unlock()
 					delete(ctx.streams, id)
 					ticker.Stop()
 					stream.Chat.Close()
