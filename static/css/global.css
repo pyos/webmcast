@@ -1,8 +1,7 @@
 @font-face {
     font-family: 'FontAwesome';
-    src: url("../fonts/fontawesome-webfont.woff2") format('woff2'),
-         url("../fonts/fontawesome-webfont.woff") format('woff'),
-         url("../fonts/fontawesome-webfont.ttf") format('truetype');
+    src: url('../fonts/fontawesome-webfont.woff2') format('woff2'),
+         url('../fonts/fontawesome-webfont.woff') format('woff');
 }
 
 html {
@@ -24,6 +23,14 @@ a {
 
 a:not(:hover) {
     text-decoration: none;
+}
+
+img,
+svg,
+video,
+audio,
+canvas {
+    vertical-align: middle;  /* https://github.com/h5bp/html5-boilerplate/issues/440 */
 }
 
 textarea,
