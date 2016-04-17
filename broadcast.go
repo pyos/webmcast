@@ -1,6 +1,9 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 type broadcastViewer struct {
 	// This function may return `false` to signal that it cannot write any more data.
@@ -25,6 +28,7 @@ type Broadcast struct {
 	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
 	Height   uint // Hopefully, there's only one video track in the file.
 
+	vlock   sync.Mutex // protects `viewers`. not RWMutex because there's only one reader.
 	viewers map[chan<- []byte]*broadcastViewer
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
@@ -61,11 +65,15 @@ func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
 		return true
 	}
 
+	cast.vlock.Lock()
 	cast.viewers[ch] = &broadcastViewer{write, skipHeaders, false, 0}
+	cast.vlock.Unlock()
 }
 
 func (cast *Broadcast) Disconnect(ch chan<- []byte) {
+	cast.vlock.Lock()
 	delete(cast.viewers, ch)
+	cast.vlock.Unlock()
 }
 
 func (cast *Broadcast) Reset() {
@@ -281,6 +289,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 			trackMask := uint32(1) << track.Value
+			cast.vlock.Lock()
 			for _, cb := range cast.viewers {
 				if !cb.skipHeaders {
 					if !cb.write(cast.header) || !cb.write(cast.tracks) {
@@ -305,6 +314,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				}
 			}
 
+			cast.vlock.Unlock()
 			cast.time.sent = timecode
 
 		default:
