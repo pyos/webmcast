@@ -1,13 +1,15 @@
 package main
 
 import (
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/websocket"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type noIndexFileSystem struct {
@@ -30,6 +32,16 @@ type HTTPContext struct {
 	Context
 }
 
+func NewHTTPContext(d Database, c Context) *HTTPContext {
+	ctx := &HTTPContext{d, c}
+	ctx.OnStreamClose = func(id string) {
+		if err := ctx.StopStream(id); err != nil {
+			log.Println("Error stopping the stream: ", err)
+		}
+	}
+	return ctx
+}
+
 func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := ctx.ServeHTTPUnsafe(w, r); err != nil {
 		log.Println("error rendering template", r.URL.Path, err.Error())
@@ -49,6 +61,9 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	}
 	if strings.HasPrefix(r.URL.Path, "/stream/") && !strings.ContainsRune(r.URL.Path[8:], '/') {
 		return ctx.Stream(w, r, r.URL.Path[8:])
+	}
+	if strings.HasPrefix(r.URL.Path, "/user/") {
+		return ctx.UserControl(w, r, r.URL.Path[5:])
 	}
 	return RenderError(w, http.StatusNotFound, "Page not found.")
 }
@@ -173,8 +188,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 		return nil
 
 	case "PUT", "POST":
-		// TODO obtain token from params
-		err := ctx.StartStream(id, "")
+		err := ctx.StartStream(id, r.URL.RawQuery)
 		switch err {
 		case nil:
 		case ErrInvalidToken:
@@ -213,16 +227,29 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 	return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
 }
 
+// GET /user/register/
+//     ...
+//
+// POST /user/register/
+//     ...
+//
+// GET /user/login/
+//     ...
+//
+// POST /user/login/
+//     Obtain a session cookie.
+//
+//     Parameters: email string, password string
+//
+func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
+	// ...
+	return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+}
+
 func main() {
-	db := NewAnonDatabase()
+	rand.Seed(time.Now().UTC().UnixNano())
 
-	ctx := &HTTPContext{db, Context{Timeout: time.Second * 10, ChatHistory: 20}}
-	ctx.OnStreamClose = func(id string) {
-		if err := ctx.StopStream(id); err != nil {
-			log.Println("Error stopping the stream: ", err)
-		}
-	}
-
+	ctx := NewHTTPContext(NewAnonDatabase(), Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(noIndexFileSystem{http.Dir(".")}))
 	mux.Handle("/", ctx)

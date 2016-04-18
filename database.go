@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 )
 
@@ -19,8 +20,14 @@ var (
 	ErrStreamOffline  = errors.New("Stream is offline.")
 )
 
+var randomTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+
 func makeToken(length int) string {
-	return "" // TODO
+	xs := make([]byte, length)
+	for i := 0; i < length; i++ {
+		xs[i] = randomTokenAlphabet[rand.Intn(len(randomTokenAlphabet))]
+	}
+	return string(xs)
 }
 
 func gravatarURL(email string, size int) string {
