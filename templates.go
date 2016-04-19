@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/oxtoacart/bpool"
 	"html/template"
 	"net/http"
@@ -9,28 +10,25 @@ import (
 	"time"
 )
 
-type templateItem struct {
-	parsed *template.Template
-	mtime  time.Time
-}
-
 type templateSet struct {
 	root   string
-	loaded map[string]templateItem
+	parsed *template.Template
+	at     time.Time
 }
 
 func (ts *templateSet) Get(name string) (*template.Template, error) {
-	path := filepath.Join(ts.root, name)
-	stat, err := os.Stat(path)
-	if t, ok := ts.loaded[name]; ok && !(err == nil && stat.ModTime().After(t.mtime)) {
-		return t.parsed, nil
+	stat, err := os.Stat(filepath.Join(ts.root, name))
+	if ts.parsed == nil || (err == nil && stat.ModTime().After(ts.at)) {
+		ts.parsed, err = template.ParseGlob(filepath.Join(ts.root, "*"))
+		if err != nil {
+			return nil, err
+		}
+		ts.at = time.Now()
 	}
-	t, err := template.ParseFiles(path)
-	if err != nil {
-		return nil, err
+	if t := ts.parsed.Lookup(name); t != nil {
+		return t, nil
 	}
-	ts.loaded[name] = templateItem{t, stat.ModTime()}
-	return t, nil
+	return nil, fmt.Errorf("template not found: %s", name)
 }
 
 type roomViewModel struct {
@@ -79,7 +77,7 @@ func (e errorViewModel) DisplayComment() string {
 }
 
 var bufpool = bpool.NewBufferPool(64)
-var templates = templateSet{"templates", make(map[string]templateItem)}
+var templates = templateSet{root: "templates"}
 
 func Render(w http.ResponseWriter, code int, template string, data interface{}) error {
 	tpl, err := templates.Get(template)
