@@ -25,8 +25,10 @@ html, body {
 }
 
 [data-scrollable] {
-    overflow: auto;
     position: relative;
+    overflow-y: auto;
+    box-sizing: border-box;
+    max-height: 100vh;
 }
 
 [data-scrollable] > .scrollbar {
@@ -57,10 +59,11 @@ h1, h2, h3, h4, h5, h6 {
 
 a {
     color: #a168ad;
+    text-decoration: none;
 }
 
-a:not(:hover) {
-    text-decoration: none;
+a:hover {
+    cursor: pointer;
 }
 
 img,
@@ -170,4 +173,97 @@ a.button:before {
 a.button:hover,
 a.button:focus {
     text-shadow: 0 0 0.33em;
+    text-decoration: none;
+}
+
+nav {
+    display: flex;
+    padding: 1em 2em;
+    align-items: center;
+}
+
+nav .brand {
+    color: inherit;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+nav .brand ~ * {
+    margin-left: 1.66em;
+}
+
+nav .search {
+    flex: 1;
+}
+
+@media (max-width: 50em) {
+    nav .search input {
+        display: none;
+    }
+}
+
+.tabbar {
+    display: flex;
+}
+
+.tabbar > * {
+    cursor: pointer;
+    margin: 0;
+    padding: 0.5em 1em;
+    font-size: 1em;
+    border-bottom: 1px solid #a168ad;
+}
+
+.tabbar > .active {
+    border-bottom: 5px solid #a168ad;
+}
+
+.modal-outer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 256;
+    background: rgba(0,0,0,0.7);
+    background-image: repeating-linear-gradient(0deg,
+        rgba(0,0,0,0.2), rgba(0,0,0,0.2) 1px, transparent 1px, transparent 2px);
+}
+
+.modal-inner {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: white;
+    max-width: 30em;
+}
+
+.modal-inner > .close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: #ccc;
+}
+
+.modal-inner > .close:before {
+    content: '\f00d';  /* close */
+}
+
+.login-form {
+    padding: 1em;
+}
+
+.login-form > form > * {
+    display: block;
+}
+
+.login-form > form > input {
+    margin-bottom: 1em;
+}
+
+.tos-notice {
+    color: #aaa;
 }

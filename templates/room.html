@@ -9,12 +9,7 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <article class="content" data-scrollable>
-            <nav>
-                <a href="/" class="brand">webmcast</a>
-                <div class="search"><input type="text" placeholder="Search???" /></div>
-                <a href="#">Login?</a>
-                <a href="#">Sign up?</a>
-            </nav>
+            {{ template "nav.html" }}
 
             <section class="player-block">
             {{ if not .Stream }}

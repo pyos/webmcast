@@ -1,0 +1,36 @@
+<nav>
+    <a href="/" class="brand">webmcast</a>
+    <div class="search"><input type="text" placeholder="Search???" /></div>
+    <a class="login">Log in</a>
+    <a class="signup">Sign up</a>
+</nav>
+
+<template id="login-form">
+    <div data-tabs>
+        <div class="login-form">
+            <h1 data-tab="login">Log in</h1>
+            <form method="POST" action="/user/new">
+                <label for="user-name">Username</label>
+                <input name="user-name" type="text" />
+                <label for="password">Password</label>
+                <input name="password" type="password" />
+                {{/* todo: restore password */}}
+                <button type="submit">Log in</button>
+            </form>
+        </div>
+        <div class="login-form">
+            <h1 data-tab="signup">Sign up</h1>
+            <form method="POST" action="/user/new">
+                <label for="user-name">Username</label>
+                <input name="user-name" type="text" />
+                <label for="password">Password</label>
+                <input name="password" type="password" />
+                <label for="email">Email</label>
+                <input name="email" type="email" />
+                {{/* todo: recaptcha, tos, privacy policy */}}
+                <p class="tos-notice">By signing up you agree blah-blah-blah...</p>
+                <button type="submit">Sign up</button>
+            </form>
+        </div>
+    </div>
+</template>

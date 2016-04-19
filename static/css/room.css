@@ -5,26 +5,6 @@ nav, .meta, .about, footer {
     margin-right: auto;
 }
 
-nav {
-    display: flex;
-    padding: 1em 2em;
-    align-items: center;
-}
-
-nav .brand {
-    color: inherit;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-nav .brand ~ * {
-    margin-left: 1.66em;
-}
-
-nav .search {
-    flex: 1;
-}
-
 .player-block {
     overflow: hidden;
     background: #1a1a1a;
@@ -104,7 +84,7 @@ body.theatre .player video {
 
 .player[data-status="error"]:before,
 .player[data-status="ended"]:before {
-    content: '\f071';  /* .uk-icon-exclamation-triangle */
+    content: '\f071';  /* exclamation-triangle */
 }
 
 .player .controls {
@@ -161,23 +141,23 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 }
 
 .player .mute:before {
-    content: '\f028';  /* .uk-icon-volume-up */
+    content: '\f028';  /* volume-up */
 }
 
 .player.muted .mute:before {
-    content: '\f026';  /* .uk-icon-volume-off */
+    content: '\f026';  /* volume-off */
 }
 
 .player .theatre:before {
-    content: '\f065';  /* .uk-icon-expand */
+    content: '\f065';  /* expand */
 }
 
 .player .fullscreen:before {
-    content: '\f0b2';  /* .uk-icon-arrows-alt */
+    content: '\f0b2';  /* arrows-alt */
 }
 
 .player .collapse:before {
-    content: '\f066';  /* .uk-icon-compress */
+    content: '\f066';  /* compress */
 }
 
 .player:not(.has-video) .controls {
@@ -247,7 +227,7 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 
 .meta .viewers:before {
     font: normal 1em FontAwesome;
-    content: '\f06e';  /* .uk-icon-eye */
+    content: '\f06e';  /* eye */
     margin-right: 0.5em;
 }
 
@@ -272,10 +252,6 @@ footer {
 }
 
 @media (max-width: 50em) {
-    nav .search input {
-        display: none;
-    }
-
     .chat {
         margin-right: -20em;
     }
@@ -347,7 +323,7 @@ footer {
 }
 
 .chat .ins-emoji:before {
-    content: '\f118';  /* .uk-icon-smile-o */
+    content: '\f118';  /* smile-o */
 }
 
 body.theatre .content {
