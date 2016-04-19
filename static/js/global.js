@@ -121,11 +121,21 @@ let showModal = (e) => {
     inner.appendChild(scroll);
     inner.appendChild(close);
     outer.appendChild(inner);
-    document.body.appendChild(initElement(outer));
 
+    let onFocus = (ev) => {
+        for (let t = ev.target; t !== null; t = t.parentElement)
+            if (t === outer)
+                return;
+        ev.target.blur();  // FIXME should somehow set focus to the dialog instead
+    };
+
+    document.body.appendChild(initElement(outer));
+    document.body.addEventListener('focusin', onFocus);
     outer.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget || e.target === close)
+        if (e.target === e.currentTarget || e.target === close) {
             outer.remove();
+            document.body.removeEventListener('focusin', onFocus);
+        }
     });
 
     return e;
