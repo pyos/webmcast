@@ -215,7 +215,7 @@ nav .search {
 }
 
 .tabbar > .active {
-    border-bottom: 5px solid #a168ad;
+    border-bottom-width: 4px;
 }
 
 .modal-outer {
@@ -253,17 +253,19 @@ nav .search {
 }
 
 .login-form {
-    padding: 1em;
+    padding: 2em;
 }
 
 .login-form > form > * {
     display: block;
+    margin: 1em 0 0 0;
 }
 
-.login-form > form > input {
-    margin-bottom: 1em;
+.login-form > form > :first-child,
+.login-form > form > label + * {
+    margin-top: 0;
 }
 
-.tos-notice {
+.login-form .notice {
     color: #aaa;
 }

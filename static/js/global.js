@@ -94,7 +94,7 @@ let createTabSelector = (e) => {
                 init = id;
             tabs[id] = {tab: c, elem: c.parentElement};
             c.parentElement.removeChild(c);
-            c.addEventListener('click', setThisActive.bind(c));
+            c.addEventListener('click', setThisActive);
             bar.appendChild(c);
         }
     }
@@ -137,10 +137,21 @@ let showLoginForm = (signup) => {
     if (template === null)
         return;
 
-    let form = document.importNode(template.content, true);
+    let submitForm = function () {
+        // TODO ajax
+    };
+
+    let it = document.importNode(template.content, true).firstElementChild;
     if (signup)
-        form.querySelector('[data-tabs]').setAttribute('data-tabs', 'signup');
-    return showModal(form);
+        it.setAttribute('data-tabs', 'signup');
+
+    it.querySelector('.go-to-restore').addEventListener('click', () =>
+        it.setAttribute('data-tabs', 'restore'));
+
+    let forms = it.querySelector('form');
+    for (let i = 0; i < forms.length; i++)
+        forms[i].addEventListener('submit', submitForm);
+    return showModal(it);
 };
 
 
