@@ -6,22 +6,16 @@ nav, .meta, .about, footer {
 }
 
 .player-block {
+    display: flex;
     overflow: hidden;
+    justify-content: center;
     background: #1a1a1a;
-    text-align: center;
-}
-
-.player-block > * {
-    text-align: left;
-    vertical-align: middle; /* avoid a small margin below due to whitespace in markup */
 }
 
 .player {
+    position: relative;
     color: #fff;
     background: #000;
-    display: inline-block;  /* 1. fit width to content (svg/video) */
-    position: relative;     /* 2. allow to anchor the controls bar and an overlayed status icon */
-    overflow: hidden;       /* 3. hide the controls bar when it is supposed to be out of view */
     box-shadow: 0 0 5px #000;
 }
 
