@@ -11,6 +11,44 @@ html {
 
 body {
     margin: 0;
+    display: flex;
+    position: relative;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.content {
+    flex: 1;
+}
+
+[data-scrollable] {
+    overflow: auto;
+    position: relative;
+}
+
+[data-scrollable] > .scrollbar {
+    position: absolute;
+    width: 8px;
+    top: 5px;
+    right: 5px;
+    bottom: 5px;
+    background: rgba(127,127,127,0.3);
+    border-radius: 4px;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+}
+
+[data-scrollable] > .scrollbar.hidden {
+    opacity: 0;
+}
+
+[data-scrollable] > .scrollbar > .thumb {
+    position: relative;
+    background: rgba(127,127,127,0.5);
+    border-radius: 4px;
 }
 
 h1, h2, h3, h4, h5, h6 {

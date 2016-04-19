@@ -1,45 +1,4 @@
 /*#a168ad #84d2d4 #f7d358*/
-html, body {
-    height: 100%;
-    overflow: hidden;
-}
-
-body {
-    display: flex;
-    position: relative;
-}
-
-[data-scrollable] {
-    overflow: auto;
-    position: relative;
-}
-
-[data-scrollable] > .scrollbar {
-    position: absolute;
-    width: 8px;
-    top: 5px;
-    right: 5px;
-    bottom: 5px;
-    background: rgba(127,127,127,0.3);
-    border-radius: 4px;
-    transition: opacity 0.2s ease-in-out;
-    pointer-events: none;
-}
-
-[data-scrollable] > .scrollbar.hidden {
-    opacity: 0;
-}
-
-[data-scrollable] > .scrollbar > .thumb {
-    position: relative;
-    background: rgba(127,127,127,0.5);
-    border-radius: 4px;
-}
-
-.content {
-    flex: 1;
-}
-
 nav, .meta, .about, footer {
     max-width: 60em;
     margin-left: auto;
