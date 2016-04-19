@@ -19,7 +19,7 @@ body {
 
     background: #0d110b;
     background-image:
-        repeating-linear-gradient(0deg, #000, #000 1px, transparent 1px, transparent 2px),
+        repeating-linear-gradient(0deg, #000, #000 2px, transparent 2px, transparent 4px),
         /* vertical lines of curvature increasing with distance to center */
         linear-gradient(90deg, transparent, transparent calc(50% - 2px), #222 50%, transparent calc(50% + 2px), transparent),
         radial-gradient(ellipse 100px 150%, transparent, transparent 100%, #222 102%, transparent 104%, transparent),

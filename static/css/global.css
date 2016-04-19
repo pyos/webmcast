@@ -230,7 +230,7 @@ nav .search {
     z-index: 256;
     background: rgba(0,0,0,0.7);
     background-image: repeating-linear-gradient(0deg,
-        rgba(0,0,0,0.2), rgba(0,0,0,0.2) 1px, transparent 1px, transparent 2px);
+        rgba(0,0,0,0.2), rgba(0,0,0,0.2) 2px, transparent 2px, transparent 4px);
 }
 
 .modal-inner {
