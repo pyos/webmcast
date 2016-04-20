@@ -1,10 +1,3 @@
-/*#a168ad #84d2d4 #f7d358*/
-nav, .meta, .about, footer {
-    max-width: 60em;
-    margin-left: auto;
-    margin-right: auto;
-}
-
 .player-block {
     display: flex;
     overflow: hidden;
@@ -227,11 +220,6 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 
 .about {
     padding: 0 2em;
-}
-
-footer {
-    padding: 2em 2em 1em 2em;
-    color: #777;
 }
 
 .chat {

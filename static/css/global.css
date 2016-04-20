@@ -1,3 +1,4 @@
+/*#a168ad #84d2d4 #f7d358*/
 @font-face {
     font-family: 'FontAwesome';
     src: url('../fonts/fontawesome-webfont.woff2') format('woff2'),
@@ -22,6 +23,12 @@ html, body {
 
 .content {
     flex: 1;
+}
+
+.center-block {
+    max-width: 60em;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 [data-scrollbar] {
@@ -215,6 +222,11 @@ nav .search {
     nav .search input {
         display: none;
     }
+}
+
+footer {
+    padding: 2em;
+    color: #777;
 }
 
 .modal-bg {

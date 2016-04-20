@@ -33,7 +33,7 @@
                 </div>
             </section>
 
-            <header class="meta">
+            <header class="meta center-block">
                 <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
                 <div>
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
@@ -51,13 +51,11 @@
                 </div>
             </header>
 
-            <section class="about">
+            <section class="about center-block">
                 {{.Meta.About}}
             </section>
 
-            <footer>
-                webmcast node {{printf "%q" (or .Meta.Server "nil")}}
-            </footer>
+            {{ template "footer.html" }}
         </article>
 
         <aside class="chat">
