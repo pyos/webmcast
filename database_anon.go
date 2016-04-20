@@ -10,11 +10,15 @@ func (d AnonDatabase) NewUser(name string, email string, password []byte) (*User
 	return nil, ErrNotSupported
 }
 
-func (d AnonDatabase) GetUserID(email string, password []byte) (int64, error) {
+func (d AnonDatabase) GetUserID(name string, password []byte) (int64, error) {
 	return 0, ErrNotSupported
 }
 
-func (d AnonDatabase) GetUserFull(email string, password []byte) (*UserMetadata, error) {
+func (d AnonDatabase) GetUserShort(id int64) (*UserShortData, error) {
+	return nil, ErrNotSupported
+}
+
+func (d AnonDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 	return nil, ErrNotSupported
 }
 

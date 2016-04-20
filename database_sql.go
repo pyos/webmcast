@@ -86,7 +86,9 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 		return nil, err
 	}
 
-	return &UserMetadata{uid, name, email, name, "", false, activationToken, streamToken}, nil
+	return &UserMetadata{
+		UserShortData{uid, name, email, name}, "", false, activationToken, streamToken,
+	}, nil
 }
 
 func (d *SQLDatabase) ActivateUser(id int64, token string) error {
@@ -109,36 +111,49 @@ func (d *SQLDatabase) ActivateUser(id int64, token string) error {
 	return nil
 }
 
-func (d *SQLDatabase) GetUserID(email string, password []byte) (int64, error) {
+func (d *SQLDatabase) GetUserID(name string, password []byte) (int64, error) {
 	var id int64
 	var hash []byte
-	err := d.QueryRow(`select id, password from users where email = ?`, email).Scan(&id, &hash)
+	err := d.QueryRow(`select id, password from users where name = ?`, name).Scan(&id, &hash)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, ErrUserNotExist
 		}
 		return 0, err
 	}
-	return id, bcrypt.CompareHashAndPassword(hash, password)
+	err = bcrypt.CompareHashAndPassword(hash, password)
+	if err == bcrypt.ErrMismatchedHashAndPassword {
+		err = ErrUserNotExist
+	}
+	return id, err
 }
 
-func (d *SQLDatabase) GetUserFull(email string, password []byte) (*UserMetadata, error) {
-	var hash []byte
-	meta := UserMetadata{}
-	err := d.QueryRow(
-		`select password, users.id, users.name, email, display_name, users.about,
-		        activated, activation_token, streams.token from users, streams
-		 where users.email = ? and streams.id = users.id`,
-		email,
-	).Scan(&hash, &meta.ID, &meta.Login, &meta.Email, &meta.Name,
-		&meta.About, &meta.Activated, &meta.ActivationToken, &meta.StreamToken)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrUserNotExist
-		}
-		return nil, err
+func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
+	meta := UserShortData{ID: id}
+	err := d.QueryRow(`select name, display_name, email from users where users.id = ?`, id).Scan(
+		&meta.Login, &meta.Name, &meta.Email,
+	)
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotExist
 	}
-	return &meta, bcrypt.CompareHashAndPassword(hash, password)
+	return &meta, err
+}
+
+func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
+	meta := UserMetadata{UserShortData: UserShortData{ID: id}}
+	err := d.QueryRow(
+		`select users.name, email, display_name, users.about,
+		        activated, activation_token, streams.token from users, streams
+		 where users.id = ? and streams.id = users.id`,
+		id,
+	).Scan(
+		&meta.Login, &meta.Email, &meta.Name, &meta.About,
+		&meta.Activated, &meta.ActivationToken, &meta.StreamToken,
+	)
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotExist
+	}
+	return &meta, err
 }
 
 func (d *SQLDatabase) SetUserName(id int64, name string, displayName string) error {

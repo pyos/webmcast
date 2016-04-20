@@ -36,11 +36,15 @@ func gravatarURL(email string, size int) string {
 	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
 }
 
+type UserShortData struct {
+	ID    int64
+	Login string
+	Email string
+	Name  string
+}
+
 type UserMetadata struct {
-	ID              int64
-	Login           string
-	Email           string
-	Name            string
+	UserShortData
 	About           string
 	Activated       bool
 	ActivationToken string
@@ -56,7 +60,7 @@ type StreamMetadata struct {
 	Server    string
 }
 
-func (u *UserMetadata) GravatarURL(size int) string {
+func (u *UserShortData) GravatarURL(size int) string {
 	return gravatarURL(u.Email, size)
 }
 
@@ -67,10 +71,11 @@ func (s *StreamMetadata) GravatarURL(size int) string {
 type Database interface {
 	// Create a new user entry. Display name = name, activation token is generated randomly.
 	NewUser(name string, email string, password []byte) (*UserMetadata, error)
-	// Authenticate a user. (The only way to retrieve a user ID, by design.)
-	GetUserID(email string, password []byte) (int64, error)
-	// A version of the above function that returns the rest of the data too.
-	GetUserFull(email string, password []byte) (*UserMetadata, error)
+	// Authenticate a user.
+	GetUserID(name string, password []byte) (int64, error)
+	GetUserShort(id int64) (*UserShortData, error)
+	GetUserFull(id int64) (*UserMetadata, error)
+	// TODO something for password recovery.
 	// Allow a user to create streams.
 	ActivateUser(id int64, token string) error
 	// Various setters. They're separate for efficiency; requests to modify
