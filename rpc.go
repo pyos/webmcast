@@ -30,8 +30,8 @@ func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 	})
 }
 
-func (stream *BroadcastContext) RunRPC(ws *websocket.Conn) {
-	chatter := stream.Chat.Connect(ws)
+func (stream *BroadcastContext) RunRPC(ws *websocket.Conn, user *UserShortData) {
+	chatter := stream.Chat.Connect(ws, user)
 	defer stream.Chat.Disconnect(chatter)
 
 	server := rpc.NewServer()

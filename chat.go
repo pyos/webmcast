@@ -8,8 +8,10 @@ import (
 )
 
 type ChatMessage struct {
-	name string
-	text string
+	name   string
+	login  string
+	text   string
+	authed bool
 }
 
 type ChatMessageQueue struct {
@@ -20,12 +22,14 @@ type ChatMessageQueue struct {
 type ChatContext struct {
 	events  chan interface{}
 	Users   map[*ChatterContext]int // A hash set. Values are ignored.
-	Names   map[string]int          // Same
+	Names   map[string]*ChatterContext
 	History ChatMessageQueue
 }
 
 type ChatterContext struct {
 	name   string
+	login  string
+	authed bool
 	socket *websocket.Conn
 	chat   *ChatContext
 }
@@ -55,7 +59,7 @@ func NewChat(qsize int) *ChatContext {
 	ctx := &ChatContext{
 		events:  make(chan interface{}),
 		Users:   make(map[*ChatterContext]int),
-		Names:   make(map[string]int),
+		Names:   make(map[string]*ChatterContext),
 		History: ChatMessageQueue{make([]ChatMessage, 0, qsize), 0},
 	}
 	go ctx.handle()
@@ -83,14 +87,23 @@ func (c *ChatContext) handle() {
 		case *ChatterContext:
 			if _, exists := c.Users[event]; exists {
 				delete(c.Users, event)
-				if event.name != "" {
-					delete(c.Names, event.name)
+				if event.login != "" {
+					delete(c.Names, event.login)
 				}
 				if closed && len(c.Users) == 0 {
 					return // if these events were left unhandled, senders would block forever
 				}
 			} else {
 				c.Users[event] = 0
+				if event.login != "" {
+					if old, exists := c.Names[event.login]; exists {
+						old.name = ""
+						old.login = ""
+						old.pushName("", "")
+					}
+					c.Names[event.login] = event
+					event.pushName(event.name, event.login)
+				}
 			}
 			for u := range c.Users {
 				u.pushViewerCount()
@@ -98,15 +111,16 @@ func (c *ChatContext) handle() {
 
 		case chatSetNameEvent:
 			if _, ok := c.Names[event.name]; ok {
-				// XXX should push an error notification, maybe?..
+				event.user.pushName(event.user.name, event.user.login)
 				continue
 			}
-			c.Names[event.name] = 0
-			if event.user.name != "" {
-				delete(c.Names, event.user.name)
+			c.Names[event.name] = event.user
+			if event.user.login != "" {
+				delete(c.Names, event.user.login)
 			}
 			event.user.name = event.name
-			event.user.pushName(event.name)
+			event.user.login = event.name
+			event.user.pushName(event.name, event.name)
 
 		case ChatMessage:
 			c.History.Push(event)
@@ -117,8 +131,13 @@ func (c *ChatContext) handle() {
 	}
 }
 
-func (c *ChatContext) Connect(ws *websocket.Conn) *ChatterContext {
-	chatter := &ChatterContext{name: "", socket: ws, chat: c}
+func (c *ChatContext) Connect(ws *websocket.Conn, auth *UserShortData) *ChatterContext {
+	chatter := &ChatterContext{socket: ws, chat: c}
+	if auth != nil {
+		chatter.name = auth.Name
+		chatter.login = auth.Login
+		chatter.authed = true
+	}
 	c.events <- chatter
 	return chatter
 }
@@ -149,10 +168,10 @@ func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) err
 }
 
 func (ctx *ChatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
-	if ctx.name == "" {
+	if ctx.login == "" {
 		return errors.New("must obtain a name first")
 	}
-	msg := ChatMessage{ctx.name, strings.TrimSpace(args.First)}
+	msg := ChatMessage{ctx.name, ctx.login, strings.TrimSpace(args.First), ctx.authed}
 	if len(msg.text) == 0 || len(msg.text) > 256 {
 		return errors.New("message must have between 1 and 256 characters")
 	}
@@ -164,12 +183,13 @@ func (ctx *ChatterContext) RequestHistory(_ *interface{}, _ *interface{}) error 
 	return ctx.chat.History.Iterate(ctx.pushMessage)
 }
 
-func (ctx *ChatterContext) pushName(name string) error {
-	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", []interface{}{name})
+func (ctx *ChatterContext) pushName(name, login string) error {
+	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", []interface{}{name, login})
 }
 
 func (ctx *ChatterContext) pushMessage(msg ChatMessage) error {
-	return RPCPushEvent(ctx.socket, "Chat.Message", []interface{}{msg.name, msg.text})
+	return RPCPushEvent(ctx.socket, "Chat.Message",
+		[]interface{}{msg.name, msg.text, msg.login, msg.authed})
 }
 
 func (ctx *ChatterContext) pushViewerCount() error {

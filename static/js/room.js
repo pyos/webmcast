@@ -232,7 +232,7 @@ let Chat = function (root) {
     return {
         onLoad: (socket) => {
             rpc = socket;
-            rpc.connect('Chat.Message', (name, text) => {
+            rpc.connect('Chat.Message', (name, text, login, authed) => {
                 let rect = log.getBoundingClientRect();
                 let scroll = log.scrollTop + (rect.bottom - rect.top) >= log.scrollHeight;
                 let entry = document.importNode(msg.content, true);
@@ -243,9 +243,13 @@ let Chat = function (root) {
                     log.scrollTop = log.scrollHeight;
             });
 
-            rpc.connect('Chat.AcquiredName', (name) => {
-                root.classList.add('logged-in');
-                text.focus();
+            rpc.connect('Chat.AcquiredName', (name, login) => {
+                if (name === "") {
+                    root.classList.remove('logged-in');
+                } else {
+                    root.classList.add('logged-in');
+                    text.focus();
+                }
                 log.scrollTop = log.scrollHeight;
             });
 

@@ -251,7 +251,13 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 		if upgrade, ok := r.Header["Upgrade"]; ok {
 			for i := range upgrade {
 				if strings.ToLower(upgrade[i]) == "websocket" {
-					websocket.Handler(stream.RunRPC).ServeHTTP(w, r)
+					auth, err := ctx.GetAuthInfo(r)
+					if err != nil && err != ErrUserNotExist {
+						return err
+					}
+					websocket.Handler(func(ws *websocket.Conn) {
+						stream.RunRPC(ws, auth)
+					}).ServeHTTP(w, r)
 					return nil
 				}
 			}
