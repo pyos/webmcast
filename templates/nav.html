@@ -1,7 +1,9 @@
 <nav class="center-block" {{if .User}}data-user="{{.User.Login}}"{{end}}>
     <a href="/" class="brand">webmcast</a>
     <div class="search"><input type="text" placeholder="Search???" /></div>
-    <span class="userinfo">Hi, <a class="username">{{if .User}}{{.User.Login}}{{end}}</a>???</span>
+    <span class="userinfo">
+        Hi, <a class="username" href="/user/cfg">{{if .User}}{{.User.Login}}{{end}}</a>.
+    </span>
     <a tabindex="0" class="login"  href="/user/login">Log in</a>
     <a tabindex="0" class="logout" href="/user/logout">Log out</a>
     <a tabindex="0" class="signup" href="/user/new">Sign up</a>

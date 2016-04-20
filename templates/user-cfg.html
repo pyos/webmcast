@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/static/css/global.css" />
+        <title>webmcast</title>
+    </head>
+    <body>
+        <article class="content" data-scrollbar>
+            {{ template "nav.html" . }}
+
+            <div class="noscript-form-wrapper">
+                <section class="login-form center-block">
+                    <h2>Hey there, {{.User.Login}}.</h2>
+                    <label>Stream URL</label>
+                    <div>
+                        <a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Broadcast</a> |
+                        <a href="/stream/{{.User.Login}}">View in a player</a> |
+                        <a href="/{{.User.Login}}">View in a browser</a>
+                    </div>
+                    <form method="POST" action="/user/new-token">
+                        <span class="notice">
+                            Your auth token is {{printf "%q" .User.StreamToken}} and is a part
+                            of the broadcast URL. Think it might have been compromised?
+                        </span>
+                        <button type="submit">Get a new token</button>
+                    </form>
+                    <form method="POST" action="/user/cfg">
+                        <label for="password-old">Old password</label>
+                        <input name="password-old" type="password" placeholder="Required to change anything." />
+                        <label for="username">Username</label>
+                        <input name="username" type="text" placeholder="{{.User.Login}}" />
+                        <label form="displayname">Display name</label>
+                        <input name="displayname" type="text" placeholder="{{.User.Name}}" />
+                        <label for="email">Email</label>
+                        <input name="email" type="email" placeholder="{{.User.Email}}" />
+                    {{ if not .User.Activated }}
+                        {{/* TODO display a notice telling the user to check the email */}}
+                    {{- end -}}
+                        <label for="password">New password</label>
+                        <input name="password" type="password" placeholder="Leave empty to keep the old one." />
+                        <label for="about">About yourself</label>
+                        <textarea name="about" rows="6" cols="40">{{.User.About}}</textarea>
+                        <button type="submit">Update</button>
+                    </form>
+                </section>
+            </div>
+
+            {{ template "footer.html" }}
+        </article>
+
+        <script src="/static/js/vendored.min.js"></script>
+        <script src="/static/js/global.js"></script>
+    </body>
+</html>

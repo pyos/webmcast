@@ -151,9 +151,8 @@ let showLoginForm = (navbar, showSignup) => {
         it.setAttribute('data-tabs', 'restore');
     });
 
-    let forms = it.querySelector('form');
-    for (let i = 0; i < forms.length; i++)
-        forms[i].addEventListener('submit', submitForm);
+    for (let form of Array.from(it.querySelector('form')))
+        form.addEventListener('submit', submitForm);
     return showModal(it);
 };
 

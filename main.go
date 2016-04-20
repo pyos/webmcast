@@ -319,7 +319,8 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 }
 
 // POST /user/new
-//     ...
+//     Create a new user, duh.
+//     Parameters: username string, password string, email string
 //
 // POST /user/login
 //     Obtain a session cookie.
@@ -331,6 +332,13 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 //
 // GET /user/logout
 //     Remove the session cookie.
+//
+// GET,POST /user/cfg
+//     View/update the current user's data.
+//     Parameters: ...?
+//
+// POST /user/new-token
+//     Request a new stream token.
 //
 func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
 	switch path {
@@ -352,7 +360,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 				return Render(w, http.StatusOK, "noscript-user-login.html", nil)
 			}
 			if err == nil {
-				http.Redirect(w, r, "/", http.StatusSeeOther)
+				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
 			}
 			return err
 
@@ -378,12 +386,45 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		}
 		return RenderInvalidMethod(w, "GET, POST")
 
-	case "/logout":
+	case "/logout": // TODO some protection against XSS?
 		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
 		}
 		ctx.SetAuthInfo(w, -1) // should not fail
 		return redirectBack(w, r, "/", http.StatusSeeOther)
+
+	case "/cfg":
+		switch r.Method {
+		case "GET":
+			user, err := ctx.GetAuthInfo(r)
+			if err == ErrUserNotExist {
+				http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+				return nil
+			}
+			userFull, err := ctx.GetUserFull(user.ID)
+			if err != nil {
+				return err
+			}
+			return Render(w, http.StatusOK, "user-cfg.html", userConfigViewModel{userFull})
+
+		case "POST":
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+		}
+		return RenderInvalidMethod(w, "GET")
+
+	case "/new-token":
+		if r.Method != "POST" {
+			return RenderInvalidMethod(w, "POST")
+		}
+		user, err := ctx.GetAuthInfo(r)
+		if err == ErrUserNotExist {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return nil
+		}
+		if err = ctx.NewStreamToken(user.ID); err != nil {
+			return err
+		}
+		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 	}
 
 	return RenderError(w, http.StatusNotFound, "")

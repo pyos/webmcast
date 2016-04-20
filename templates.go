@@ -35,6 +35,10 @@ type landingViewModel struct {
 	User *UserShortData
 }
 
+type userConfigViewModel struct {
+	User *UserMetadata
+}
+
 type roomViewModel struct {
 	ID     string
 	Stream *BroadcastContext

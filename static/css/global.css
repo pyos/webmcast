@@ -278,6 +278,7 @@ footer {
     padding: 2em;
 }
 
+.login-form > *,
 .login-form > form > * {
     display: block;
     margin: 1em 0 0 0;
@@ -289,6 +290,10 @@ footer {
     margin-top: 0;
 }
 
+.login-form label {
+    font-weight: bold;
+}
+
 .login-form .notice {
     color: #aaa;
 }
@@ -298,6 +303,6 @@ footer {
 }
 
 .noscript-form-wrapper > .login-form {
-    max-width: 30em;
+    max-width: 60em;
     background: #fff;
 }
