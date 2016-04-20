@@ -31,10 +31,15 @@ func (ts *templateSet) Get(name string) (*template.Template, error) {
 	return nil, fmt.Errorf("template not found: %s", name)
 }
 
+type landingViewModel struct {
+	User *UserShortData
+}
+
 type roomViewModel struct {
 	ID     string
 	Stream *BroadcastContext
 	Meta   *StreamMetadata
+	User   *UserShortData
 }
 
 type errorViewModel struct {
@@ -52,6 +57,8 @@ func (e errorViewModel) DisplayMessage() string {
 		return "FOREBODEN."
 	case 404:
 		return "There is nothing here."
+	case 405:
+		return "Invalid HTTP method."
 	case 418:
 		return "I'm a little teapot."
 	case 500:
@@ -98,4 +105,9 @@ func Render(w http.ResponseWriter, code int, template string, data interface{}) 
 func RenderError(w http.ResponseWriter, code int, message string) error {
 	w.Header().Set("Cache-Control", "no-cache")
 	return Render(w, code, "error.html", errorViewModel{code, message})
+}
+
+func RenderInvalidMethod(w http.ResponseWriter, methods string) error {
+	w.Header().Set("Allow", methods)
+	return RenderError(w, http.StatusMethodNotAllowed, "")
 }
