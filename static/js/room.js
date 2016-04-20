@@ -15,63 +15,58 @@ if (screenfull.enabled) {
 
 
 let RPC = function(url, ...objects) {
-    let cbs_by_id   = {};
-    let cbs_by_code = {};
-    let id = 0;
+    this.nextID   = 0;
+    this.events   = {};
+    this.requests = {};
+    this.socket   = new WebSocket(url);
 
-    let socket = new WebSocket(url);
-    let self = {
-        send: (method, ...params) => {
-            return new Promise((resolve, reject) => {
-                socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-                cbs_by_id[id] = { resolve, reject };
-                id = (id + 1) & 0x7FFF;
-            });
-        },
-
-        callback: (code, cb) => {
-            if (cb === undefined)
-                delete cbs_by_code[code];
-            else
-                cbs_by_code[code] = cb;
-        },
-    };
-
-    socket.onopen = () => {
+    this.socket.onopen = () => {
         for (let object of objects)
-            object.onLoad(self);
+            object.onLoad(this);
     };
 
-    socket.onclose = (ev) => {
+    this.socket.onclose = (ev) => {
         for (let object of objects)
             object.onUnload();
     };
 
-    socket.onmessage = (ev) => {
+    this.socket.onmessage = (ev) => {
         let msg = JSON.parse(ev.data);
 
-        if (msg.id === undefined) {
-            if (msg.method in cbs_by_code)
-                cbs_by_code[msg.method](...msg.params);
-            else
-                console.log('unhandled notification', msg);
-        }
+        if (msg.id === undefined)
+            if (msg.method in this.events)
+                this.events[msg.method](...msg.params);
 
-        if (msg.id in cbs_by_id) {
-            let cb = cbs_by_id[msg.id];
-            delete cbs_by_id[msg.id];
+        if (msg.id in this.requests) {
+            let cb = this.requests[msg.id];
+            delete this.requests[msg.id];
             if (msg.error === undefined)
                 cb.resolve(msg.result);
             else
                 cb.reject(msg.error);
         }
     };
-
-    return self;
 };
 
 
-let ViewNode = function (root, info, stream) {
+RPC.prototype.send = function (method, ...params) {
+    return new Promise((resolve, reject) => {
+        let id = this.nextID++ & 0xFFFF;
+        this.socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+        this.requests[id] = { resolve, reject };
+    });
+};
+
+
+RPC.prototype.connect = function (event, cb) {
+    if (cb === undefined)
+        delete this.events[event];
+    else
+        this.events[event] = cb;
+};
+
+
+let View = function (root, info, stream) {
     let rpc    = null;
     let view   = root.querySelector('video');
     let status = root.querySelector('.status');
@@ -183,7 +178,7 @@ let ViewNode = function (root, info, stream) {
     return {
         onLoad: (socket) => {
             rpc = socket;
-            rpc.callback('Stream.ViewerCount', (n) => {
+            rpc.connect('Stream.ViewerCount', (n) => {
                 info.querySelector('.viewers').textContent = n;
             });
             // TODO measure connection speed, request a stream
@@ -193,13 +188,13 @@ let ViewNode = function (root, info, stream) {
 
         onUnload: () => {
             rpc = null;
-            onDone();
+            view.src = '';
         },
     };
 };
 
 
-let ChatNode = function (root) {
+let Chat = function (root) {
     let form = root.querySelector('.input-form');
     let text = form.querySelector('.input');
     let log  = root.querySelector('.log');
@@ -237,7 +232,7 @@ let ChatNode = function (root) {
     return {
         onLoad: (socket) => {
             rpc = socket;
-            rpc.callback('Chat.Message', (name, text) => {
+            rpc.connect('Chat.Message', (name, text) => {
                 let rect = log.getBoundingClientRect();
                 let scroll = log.scrollTop + (rect.bottom - rect.top) >= log.scrollHeight;
                 let entry = document.importNode(msg.content, true);
@@ -248,7 +243,7 @@ let ChatNode = function (root) {
                     log.scrollTop = log.scrollHeight;
             });
 
-            rpc.callback('Chat.AcquiredName', (name) => {
+            rpc.connect('Chat.AcquiredName', (name) => {
                 root.classList.add('logged-in');
                 text.focus();
                 log.scrollTop = log.scrollHeight;
@@ -267,9 +262,8 @@ let ChatNode = function (root) {
 
 
 let stream = document.body.getAttribute('data-stream-id');
-let view   = new ViewNode(document.querySelector('.player'),
-                          document.querySelector('.meta'), stream);
-let chat   = new ChatNode(document.querySelector('.chat'));
+let view   = new View(document.querySelector('.player'), document.querySelector('.meta'), stream);
+let chat   = new Chat(document.querySelector('.chat'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${encodeURIComponent(stream)}`,
                      chat, view);

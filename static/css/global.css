@@ -24,33 +24,47 @@ html, body {
     flex: 1;
 }
 
-[data-scrollable] {
+[data-scrollbar] {
     position: relative;
     overflow-y: auto;
-    box-sizing: border-box;
-    max-height: 100vh;
 }
 
-[data-scrollable] > .scrollbar {
-    position: absolute;
-    width: 8px;
-    top: 5px;
-    right: 5px;
-    bottom: 5px;
-    background: rgba(127,127,127,0.3);
-    border-radius: 4px;
-    transition: opacity 0.2s ease-in-out;
+[data-scrollbar] > .track {
     pointer-events: none;
+    position: absolute;
+    right: 0;
+    width: 5px;
+    margin: 5px;
+    z-index: 255;
+    border-radius: 2px;
+    background: rgba(127,127,127,0.3);
+    transition: opacity 0.2s ease-in-out;
 }
 
-[data-scrollable] > .scrollbar.hidden {
+[data-scrollbar] > .track.hide {
     opacity: 0;
 }
 
-[data-scrollable] > .scrollbar > .thumb {
+[data-scrollbar] > .track > .thumb {
     position: relative;
-    background: rgba(127,127,127,0.5);
-    border-radius: 4px;
+    background: rgba(127,127,127,0.7);
+    border-radius: 2px;
+}
+
+[data-tabs] > .tabbar {
+    display: flex;
+}
+
+[data-tabs] > .tabbar > * {
+    font: inherit;
+    cursor: pointer;
+    margin: 0;
+    padding: 0.5em 1em;
+    border-bottom: 1px solid #a168ad;
+}
+
+[data-tabs] > .tabbar > .active {
+    border-bottom-width: 4px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -203,23 +217,7 @@ nav .search {
     }
 }
 
-.tabbar {
-    display: flex;
-}
-
-.tabbar > * {
-    cursor: pointer;
-    margin: 0;
-    padding: 0.5em 1em;
-    font-size: 1em;
-    border-bottom: 1px solid #a168ad;
-}
-
-.tabbar > .active {
-    border-bottom-width: 4px;
-}
-
-.modal-outer {
+.modal-bg {
     display: flex;
     align-items: flex-start;
     justify-content: center;
@@ -234,7 +232,7 @@ nav .search {
         rgba(0,0,0,0.2), rgba(0,0,0,0.2) 2px, transparent 2px, transparent 4px);
 }
 
-.modal-inner {
+.modal {
     flex: 1;
     overflow: hidden;
     position: relative;
@@ -242,14 +240,18 @@ nav .search {
     max-width: 30em;
 }
 
-.modal-inner > .close {
+.modal > [data-scrollbar] {
+    max-height: 100vh;
+}
+
+.modal > .close {
     position: absolute;
     top: 0;
     right: 0;
     color: #ccc;
 }
 
-.modal-inner > .close:before {
+.modal > .close:before {
     content: '\f00d';  /* close */
 }
 

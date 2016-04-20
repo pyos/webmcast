@@ -6,9 +6,9 @@
 </nav>
 
 <template id="login-form">
-    <div data-tabs>
+    <div data-tabs="login">
         <div class="login-form">
-            <h1 data-tab="login">Log in</h1>
+            <h2 data-tab="login">Log in</h2>
             <form method="POST" action="/user/login">
                 <label for="username">Username</label>
                 <input name="username" type="text" />
@@ -19,7 +19,7 @@
             </form>
         </div>
         <div class="login-form">
-            <h1 data-tab="signup">Sign up</h1>
+            <h2 data-tab="signup">Sign up</h2>
             <form method="POST" action="/user/new">
                 <label for="username">Username</label>
                 <input name="username" type="text" />
@@ -33,7 +33,7 @@
             </form>
         </div>
         <div class="login-form">
-            <h1 data-tab="restore">Password reset</h1>
+            <h2 data-tab="restore">Password reset</h2>
             <form method="POST" action="/user/reset">
                 <label for="username">Username</label>
                 <input name="username" type="text" />

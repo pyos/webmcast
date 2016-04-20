@@ -8,7 +8,7 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}">
-        <article class="content" data-scrollable>
+        <article class="content" data-scrollbar>
             {{ template "nav.html" }}
 
             <section class="player-block">
@@ -62,7 +62,7 @@
 
         <aside class="chat">
             <h1>{{.ID}}</h1>
-            <ul class="log" data-scrollable>
+            <ul class="log" data-scrollbar>
                 <li class="empty-message">Nothing here.</li>
             </ul>
             <template class="message-template">

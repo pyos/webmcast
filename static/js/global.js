@@ -1,6 +1,13 @@
 'use strict';
 
 
+let initDocument = (d) => {
+    Array.from(d.querySelectorAll('[data-scrollbar]')).map(attachFloatingScrollbar);
+    Array.from(d.querySelectorAll('[data-tabs]')).map(attachTabBar);
+    return d;
+};
+
+
 let nativeScrollbarWidth = (() => {
     let e = document.createElement('div');
     e.style.position = 'absolute';
@@ -15,38 +22,28 @@ let nativeScrollbarWidth = (() => {
 })();
 
 
-let initElement = (e) => {
-    for (let es = e.querySelectorAll('[data-scrollable]'), i = 0; i < es.length; i++)
-        createCustomScrollbar(es[i]);
-    for (let es = e.querySelectorAll('[data-tabs]'), i = 0; i < es.length; i++)
-        createTabSelector(es[i]);
-    return e;
-};
-
-
-let createCustomScrollbar = (e) => {
+let attachFloatingScrollbar = (e) => {
     if (nativeScrollbarWidth === 0)
-        return;
+        return;  // native scrollbar is already floating
 
-    e.style.overflowY = 'hidden';
     let track = document.createElement('div');
     let thumb = document.createElement('div');
     thumb.classList.add('thumb');
-    track.classList.add('scrollbar');
-    track.classList.add('hidden');
+    track.classList.add('track');
+    track.classList.add('hide');
     track.appendChild(thumb);
 
     let timeout = null;
     let show = () => {
-        thumb.style.top          =  `${e.scrollTop    / e.scrollHeight * track.clientHeight}px`;
-        thumb.style.height       =  `${e.clientHeight / e.scrollHeight * track.clientHeight}px`;
-        track.style.marginTop    =  `${e.scrollTop}px`;
-        track.style.marginBottom = `-${e.scrollTop}px`;
+        thumb.style.height =  `${e.clientHeight / e.scrollHeight * track.clientHeight}px`;
+        thumb.style.top    =  `${e.scrollTop    / e.scrollHeight * track.clientHeight}px`;
+        track.style.top    =  `${e.scrollTop}px`;
+        track.style.bottom = `-${e.scrollTop}px`;
         if (e.scrollHeight > e.clientHeight) {
             if (timeout !== null)
                 window.clearTimeout(timeout);
-            track.classList.remove('hidden');
-            timeout = window.setTimeout(() => track.classList.add('hidden'), 1000);
+            timeout = window.setTimeout(() => track.classList.add('hide'), 1000);
+            track.classList.remove('hide');
             e.style.overflowY   = 'scroll';
             e.style.marginRight = `-${nativeScrollbarWidth}px`;
         } else {
@@ -59,22 +56,25 @@ let createCustomScrollbar = (e) => {
     e.appendChild(track);
     e.addEventListener('scroll',    show);
     e.addEventListener('mousemove', show);
+    show();
 };
 
 
-let createTabSelector = (e) => {
-    let init = null;
+let attachTabBar = (e) => {
+    let bar  = document.createElement('div');
     let tabs = {};
+    let btns = {};
+    bar.classList.add('tabbar');
 
     let onSelect = () => {
-        let active = e.getAttribute('data-tabs') || init;
+        let active = e.getAttribute('data-tabs');
         for (let id in tabs) {
             if (id === active) {
-                tabs[id].elem.removeAttribute('hidden');
-                tabs[id].tab.classList.add('active');
+                btns[id].classList.add('active');
+                tabs[id].removeAttribute('hidden');
             } else {
-                tabs[id].elem.setAttribute('hidden', '1');
-                tabs[id].tab.classList.remove('active');
+                btns[id].classList.remove('active');
+                tabs[id].setAttribute('hidden', '1');
             }
         }
     };
@@ -83,62 +83,53 @@ let createTabSelector = (e) => {
         e.setAttribute('data-tabs', this.getAttribute('data-tab'));
     };
 
-    let bar = document.createElement('div');
-    bar.classList.add('tabbar');
-
-    let children = e.querySelectorAll('[data-tab]');
-    for (let i = 0; i < children.length; i++) {
-        let c = children[i], id = c.getAttribute('data-tab');
-        if (c.parentElement !== null && c.parentElement.parentElement === e) {
-            if (init === null)
-                init = id;
-            tabs[id] = {tab: c, elem: c.parentElement};
-            c.parentElement.removeChild(c);
-            c.addEventListener('click', setThisActive);
-            bar.appendChild(c);
-        }
+    for (let tab of Array.from(e.querySelectorAll('[data-tab]'))) {
+        if (tab.parentElement.parentElement !== e)
+            continue;
+        tab.addEventListener('click', setThisActive);
+        tabs[tab.getAttribute('data-tab')] = tab.parentElement;
+        btns[tab.getAttribute('data-tab')] = tab;
+        bar.appendChild(tab);
     }
 
+    new MutationObserver(onSelect).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
     e.insertBefore(bar, e.childNodes[0]);
-
     onSelect();
-    return new MutationObserver(onSelect).observe(e,
-        {attributes: true, attributeFilter: ['data-tabs']});
 };
 
 
 let showModal = (e) => {
-    let close  = document.createElement('a');
     let outer  = document.createElement('div');
     let inner  = document.createElement('div');
     let scroll = document.createElement('div');
-    outer.classList.add('modal-outer');
-    inner.classList.add('modal-inner');
+    let close  = document.createElement('a');
+    outer.classList.add('modal-bg');
+    inner.classList.add('modal');
     close.classList.add('button');
     close.classList.add('close');
-    scroll.setAttribute('data-scrollable', '1');
+    scroll.setAttribute('data-scrollbar', '1');
     scroll.appendChild(e);
     inner.appendChild(scroll);
     inner.appendChild(close);
     outer.appendChild(inner);
 
-    let onFocus = (ev) => {
+    let onFocusChange = (ev) => {
         for (let t = ev.target; t !== null; t = t.parentElement)
             if (t === outer)
                 return;
         ev.target.blur();  // FIXME should somehow set focus to the dialog instead
     };
 
-    document.body.appendChild(initElement(outer));
-    document.body.addEventListener('focusin', onFocus);
-    outer.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget || e.target === close) {
-            outer.remove();
-            document.body.removeEventListener('focusin', onFocus);
-        }
-    });
+    let onClose = () => {
+        outer.remove();
+        document.body.removeEventListener('focusin', onFocusChange);
+    };
 
-    return e;
+    document.body.appendChild(initDocument(outer));
+    document.body.addEventListener('focusin', onFocusChange);
+    outer.addEventListener('click', (e) =>
+        e.target === e.currentTarget || e.target === close ? onClose() : null);
+    return onClose;
 };
 
 
@@ -151,7 +142,7 @@ let showLoginForm = (signup) => {
         // TODO ajax
     };
 
-    let it = document.importNode(template.content, true).firstElementChild;
+    let it = initDocument(document.importNode(template.content, true)).firstElementChild;
     if (signup)
         it.setAttribute('data-tabs', 'signup');
 
@@ -165,7 +156,6 @@ let showLoginForm = (signup) => {
 };
 
 
-initElement(document);
-
+initDocument(document);
 document.querySelector('nav .login').addEventListener('click', () => showLoginForm(false));
 document.querySelector('nav .signup').addEventListener('click', () => showLoginForm(true));
