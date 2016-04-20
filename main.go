@@ -379,7 +379,14 @@ func main() {
 		iface = os.Args[1]
 	}
 
-	ctx := NewHTTPContext(NewAnonDatabase(), Context{Timeout: time.Second * 10, ChatHistory: 20})
+	db, _ := NewSQLDatabase(iface, "sqlite3", ":memory:")
+	user, _ := db.NewUser("pyos", "pyos100500@gmail.com", []byte("pyos"))
+	db.ActivateUser(user.ID, user.ActivationToken)
+	db.SetUserName(user.ID, user.Login, "Dawg")
+	db.SetStreamName(user.ID, "Test Stream")
+	db.SetStreamAbout(user.ID, "Either colored bars, or some random WebM. That's not important.")
+
+	ctx := NewHTTPContext(db, Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	mux.Handle("/", ctx)
