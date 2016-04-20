@@ -326,23 +326,40 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
 	switch path {
 	case "/new":
-		if r.Method != "POST" {
-			return RenderInvalidMethod(w, "POST")
+		switch r.Method {
+		case "GET":
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+
+		case "POST":
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
 		}
-		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+
+		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/login":
-		if r.Method != "POST" {
-			return RenderInvalidMethod(w, "POST")
-		}
-		uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
-		if err == ErrUserNotExist {
-			return RenderError(w, http.StatusForbidden, "Invalid username/password.")
-		}
-		if err = ctx.SetAuthInfo(w, uid); err != nil {
+		switch r.Method {
+		case "GET":
+			_, err := ctx.GetAuthInfo(r)
+			if err == ErrUserNotExist {
+				return Render(w, http.StatusOK, "noscript-user-login.html", nil)
+			}
+			if err == nil {
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+			}
 			return err
+
+		case "POST":
+			uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
+			if err == ErrUserNotExist {
+				return RenderError(w, http.StatusForbidden, "Invalid username/password.")
+			}
+			if err = ctx.SetAuthInfo(w, uid); err != nil {
+				return err
+			}
+			return redirectBack(w, r, "/", http.StatusSeeOther)
 		}
-		return redirectBack(w, r, "/", http.StatusSeeOther)
+
+		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/logout":
 		if r.Method != "GET" {

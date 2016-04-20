@@ -255,7 +255,7 @@ footer {
     flex: 1;
     overflow: hidden;
     position: relative;
-    background: white;
+    background: #fff;
     max-width: 30em;
 }
 
@@ -283,6 +283,7 @@ footer {
     margin: 1em 0 0 0;
 }
 
+.login-form > :first-child,
 .login-form > form > :first-child,
 .login-form > form > label + * {
     margin-top: 0;
@@ -290,4 +291,13 @@ footer {
 
 .login-form .notice {
     color: #aaa;
+}
+
+.noscript-form-wrapper {
+    background: #111;
+}
+
+.noscript-form-wrapper > .login-form {
+    max-width: 30em;
+    background: #fff;
 }

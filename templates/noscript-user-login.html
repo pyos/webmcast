@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/static/css/global.css" />
+        <title>webmcast</title>
+    </head>
+    <body>
+        <article class="content" data-scrollbar>
+            {{ template "nav.html" }}
+
+            <div class="noscript-form-wrapper">
+                <section class="login-form center-block">
+                    <h2>Log in</h2>
+                    <form method="POST" action="/user/login">
+                        <label for="username">Username</label>
+                        <input name="username" type="text" />
+                        <label for="password">Password</label>
+                        <input name="password" type="password" />
+                        <a href="/user/restore">Trouble logging in?</a>
+                        <button type="submit">Log in</button>
+                    </form>
+                </section>
+            </div>
+
+            {{ template "footer.html" }}
+        </article>
+    </body>
+</html>

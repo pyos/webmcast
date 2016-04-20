@@ -1,13 +1,15 @@
 <nav class="center-block" {{if .User}}data-user="{{.User.Login}}"{{end}}>
     <a href="/" class="brand">webmcast</a>
+{{ if . }}
     <div class="search"><input type="text" placeholder="Search???" /></div>
     <span class="userinfo">Hi, <a class="username">{{if .User}}{{.User.Login}}{{end}}</a>???</span>
-    {{/* TODO: these should also work as normal links, maybe?.. */}}
-    <a tabindex="0" class="login">Log in</a>
+    <a tabindex="0" class="login"  href="/user/login">Log in</a>
     <a tabindex="0" class="logout" href="/user/logout">Log out</a>
-    <a tabindex="0" class="signup">Sign up</a>
+    <a tabindex="0" class="signup" href="/user/new">Sign up</a>
+{{ end }}
 </nav>
 
+{{ if . }}
 <template id="login-form">
     <div data-tabs="login">
         <div class="login-form">
@@ -49,3 +51,4 @@
         </div>
     </div>
 </template>
+{{ end }}
