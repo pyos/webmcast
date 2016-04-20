@@ -1,3 +1,7 @@
+// Usage: webmcast [[interface]:port]
+//
+// A Twitch-like WebM broadcasting service.
+//
 package main
 
 import (
@@ -13,15 +17,26 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// should probably be changed in production, but not random
-// so that cookies stay valid across nodes/app restarts.
-var secretKey = []byte("12345678901234567890123456789012")
+var (
+	// the key used to sign client-side secure session cookies.
+	// should probably be changed in production, but not random
+	// so that cookies stay valid across nodes/app restarts.
+	secretKey = []byte("12345678901234567890123456789012")
+	// default interface & port to bind on
+	iface = ":8000"
+)
 
-type noIndexFileSystem struct {
+// a bunch of net/http hacks first. this structure wraps a filesystem interface
+// used to serve static files and disallows any accesses to directories,
+// returning 404 instead of listing contents.
+//
+//      http.FileServer(fs) --> http.FileServer(disallowDirectoryListing{fs})
+//
+type disallowDirectoryListing struct {
 	http.FileSystem
 }
 
-func (fs noIndexFileSystem) Open(name string) (http.File, error) {
+func (fs disallowDirectoryListing) Open(name string) (http.File, error) {
 	f, err := fs.FileSystem.Open(name)
 	if err != nil {
 		return nil, err
@@ -32,6 +47,20 @@ func (fs noIndexFileSystem) Open(name string) (http.File, error) {
 	return f, nil
 }
 
+// redirect the client back to the page that referred it here.
+// if the client does not send the `Referer` header, redirect it
+// to a fallback URL instead. never fails; the `nil` return value is for convenience.
+func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
+	ref := r.Referer()
+	if ref == "" {
+		ref = fallback
+	}
+	http.Redirect(w, r, ref, code)
+	return nil
+}
+
+// an HTTP interface to webmcast. uses a database to assign ownership
+// to normally owner-less streams in a broadcasting context. implements `http.Handler`.
 type HTTPContext struct {
 	cookieCodec *securecookie.SecureCookie
 	Database
@@ -39,6 +68,8 @@ type HTTPContext struct {
 }
 
 func NewHTTPContext(d Database, c Context) *HTTPContext {
+	// NOTE go vet complains about passing a mutex in `Context` by value.
+	//      this is fine; the mutex must not be held while creating a context anyway.
 	ctx := &HTTPContext{Database: d, Context: c}
 	ctx.cookieCodec = securecookie.New(secretKey, nil)
 	ctx.OnStreamClose = func(id string) {
@@ -47,31 +78,6 @@ func NewHTTPContext(d Database, c Context) *HTTPContext {
 		}
 	}
 	return ctx
-}
-
-func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*UserShortData, error) {
-	var uid int64
-	if cookie, err := r.Cookie("uid"); err == nil {
-		if err = ctx.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
-			return ctx.GetUserShort(uid)
-		}
-	}
-	return nil, ErrUserNotExist
-}
-
-func (ctx *HTTPContext) SetAuthInfo(w http.ResponseWriter, id int64) error {
-	if id == -1 {
-		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
-		return nil
-	}
-	enc, err := ctx.cookieCodec.Encode("uid", id)
-	if err != nil {
-		return err
-	}
-	http.SetCookie(w, &http.Cookie{
-		Name: "uid", Value: enc, Path: "/", HttpOnly: true, MaxAge: 31536000, // 1 year
-	})
-	return nil
 }
 
 func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -85,8 +91,11 @@ func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "HEAD" {
+		r.Method = "GET"
+	}
 	if r.URL.Path == "/" {
-		if r.Method != "GET" && r.Method != "HEAD" {
+		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
 		}
 		auth, err := ctx.GetAuthInfo(r)
@@ -107,11 +116,42 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	return RenderError(w, http.StatusNotFound, "Page not found.")
 }
 
+// read the id of the logged-in user from a secure session cookie.
+// returns an ErrUserNotFound if there is no cookie, the cookie is invalid,
+// or the user has since been removed from the database. all other errors
+// are sql-related and are unrecoverable. probably.
+func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*UserShortData, error) {
+	var uid int64
+	if cookie, err := r.Cookie("uid"); err == nil {
+		if err = ctx.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
+			return ctx.GetUserShort(uid)
+		}
+	}
+	return nil, ErrUserNotExist
+}
+
+// write a secure session cookie containing the specified user id to be read
+// by `GetAuthInfo` later. or, if id is -1, erase the session cookie instead.
+func (ctx *HTTPContext) SetAuthInfo(w http.ResponseWriter, id int64) error {
+	if id == -1 {
+		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
+	} else {
+		enc, err := ctx.cookieCodec.Encode("uid", id)
+		if err != nil {
+			return err
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name: "uid", Value: enc, Path: "/", HttpOnly: true, MaxAge: 31536000,
+		})
+	}
+	return nil
+}
+
 // GET /<name>
 //     Open a simple HTML5-based player with a stream-local chat.
 //
 func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string) error {
-	if r.Method != "GET" && r.Method != "HEAD" {
+	if r.Method != "GET" {
 		return RenderInvalidMethod(w, "GET")
 	}
 
@@ -139,7 +179,6 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 			return err
 		}
 	}
-
 	meta, err := ctx.GetStreamMetadata(id)
 	if err != nil {
 		// since we know the stream exists (it is on this server),
@@ -183,7 +222,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 //
 func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string) error {
 	switch r.Method {
-	case "GET", "HEAD":
+	case "GET":
 		stream, ok := ctx.Get(id)
 		if !ok {
 			switch _, err := ctx.GetStreamServer(id); err {
@@ -273,15 +312,6 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 	return RenderInvalidMethod(w, "GET, POST, PUT")
 }
 
-func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
-	ref := r.Referer()
-	if ref == "" {
-		ref = fallback
-	}
-	http.Redirect(w, r, ref, code)
-	return nil
-}
-
 // POST /user/new
 //     ...
 //
@@ -328,14 +358,13 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	iface := ":8000"
 	if len(os.Args) >= 2 {
 		iface = os.Args[1]
 	}
 
 	ctx := NewHTTPContext(NewAnonDatabase(), Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()
-	mux.Handle("/static/", http.FileServer(noIndexFileSystem{http.Dir(".")}))
+	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	mux.Handle("/", ctx)
 	http.ListenAndServe(iface, mux)
 }
