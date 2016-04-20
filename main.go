@@ -48,14 +48,20 @@ func (fs disallowDirectoryListing) Open(name string) (http.File, error) {
 }
 
 // redirect the client back to the page that referred it here.
-// if the client does not send the `Referer` header, redirect it
-// to a fallback URL instead. never fails; the `nil` return value is for convenience.
+// if the client does not send the `Referer` header, redirect it to a fallback URL
+// instead. never fails; the `nil` return value is for convenience. XHR requests
+// are never redirected with 303 See Other; instead, they get 204 No Content.
 func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
-	ref := r.Referer()
-	if ref == "" {
-		ref = fallback
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" && code == http.StatusSeeOther {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	} else {
+		ref := r.Referer()
+		if ref == "" {
+			ref = fallback
+		}
+		http.Redirect(w, r, ref, code)
 	}
-	http.Redirect(w, r, ref, code)
 	return nil
 }
 
@@ -318,7 +324,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 // POST /user/login
 //     Obtain a session cookie.
 //
-//     Parameters: email string, password string
+//     Parameters: username string, password string
 //
 // GET /user/logout
 //     Remove the session cookie.
