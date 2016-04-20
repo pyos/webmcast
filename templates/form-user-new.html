@@ -1,0 +1,12 @@
+<h2 data-tab="signup">Sign up</h2>
+<form method="POST" action="/user/new">
+    <label for="username">Username</label>
+    <input name="username" type="text" />
+    <label for="password">Password</label>
+    <input name="password" type="password" />
+    <label for="email">Email</label>
+    <input name="email" type="email" />
+    {{/* todo: recaptcha, tos, privacy policy */}}
+    <p class="notice">By signing up you agree blah-blah-blah...</p>
+    <button type="submit">Sign up</button>
+</form>

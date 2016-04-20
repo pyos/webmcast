@@ -323,8 +323,11 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 //
 // POST /user/login
 //     Obtain a session cookie.
-//
 //     Parameters: username string, password string
+//
+// POST /user/restore
+//     Request a password reset.
+//     Parameters: username string OR email string
 //
 // GET /user/logout
 //     Remove the session cookie.
@@ -334,12 +337,11 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 	case "/new":
 		switch r.Method {
 		case "GET":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+			return Render(w, http.StatusOK, "noscript-user-new.html", nil)
 
 		case "POST":
 			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
 		}
-
 		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/login":
@@ -364,7 +366,16 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			}
 			return redirectBack(w, r, "/", http.StatusSeeOther)
 		}
+		return RenderInvalidMethod(w, "GET, POST")
 
+	case "/restore":
+		switch r.Method {
+		case "GET":
+			return Render(w, http.StatusOK, "noscript-user-restore.html", nil)
+
+		case "POST":
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+		}
 		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/logout":

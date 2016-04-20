@@ -146,8 +146,10 @@ let showLoginForm = (navbar, showSignup) => {
     if (showSignup)
         it.setAttribute('data-tabs', 'signup');
 
-    it.querySelector('.go-to-restore').addEventListener('click', () =>
-        it.setAttribute('data-tabs', 'restore'));
+    it.querySelector('.go-to-restore').addEventListener('click', (ev) => {
+        ev.preventDefault();
+        it.setAttribute('data-tabs', 'restore');
+    });
 
     let forms = it.querySelector('form');
     for (let i = 0; i < forms.length; i++)

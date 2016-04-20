@@ -1,53 +1,23 @@
 <nav class="center-block" {{if .User}}data-user="{{.User.Login}}"{{end}}>
     <a href="/" class="brand">webmcast</a>
-{{ if . }}
     <div class="search"><input type="text" placeholder="Search???" /></div>
     <span class="userinfo">Hi, <a class="username">{{if .User}}{{.User.Login}}{{end}}</a>???</span>
     <a tabindex="0" class="login"  href="/user/login">Log in</a>
     <a tabindex="0" class="logout" href="/user/logout">Log out</a>
     <a tabindex="0" class="signup" href="/user/new">Sign up</a>
-{{ end }}
 </nav>
 
 {{ if . }}
 <template id="login-form">
     <div data-tabs="login">
         <div class="login-form">
-            <h2 data-tab="login">Log in</h2>
-            <form method="POST" action="/user/login">
-                <label for="username">Username</label>
-                <input name="username" type="text" />
-                <label for="password">Password</label>
-                <input name="password" type="password" />
-                <a class="go-to-restore">Trouble logging in?</a>
-                <button type="submit">Log in</button>
-            </form>
+            {{ template "form-user-login.html" }}
         </div>
         <div class="login-form">
-            <h2 data-tab="signup">Sign up</h2>
-            <form method="POST" action="/user/new">
-                <label for="username">Username</label>
-                <input name="username" type="text" />
-                <label for="password">Password</label>
-                <input name="password" type="password" />
-                <label for="email">Email</label>
-                <input name="email" type="email" />
-                {{/* todo: recaptcha, tos, privacy policy */}}
-                <p class="notice">By signing up you agree blah-blah-blah...</p>
-                <button type="submit">Sign up</button>
-            </form>
+            {{ template "form-user-new.html" }}
         </div>
         <div class="login-form">
-            <h2 data-tab="restore">Password reset</h2>
-            <form method="POST" action="/user/reset">
-                <label for="username">Username</label>
-                <input name="username" type="text" />
-                <p class="notice">&mdash; or &mdash;</p>
-                <label for="email">Email</label>
-                <input name="email" type="email" />
-                <p class="notice">You'll receive further instructions by mail.</p>
-                <button type="submit">Reset</button>
-            </form>
+            {{ template "form-user-restore.html" }}
         </div>
     </div>
 </template>
