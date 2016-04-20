@@ -119,7 +119,7 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	if strings.HasPrefix(r.URL.Path, "/user/") {
 		return ctx.UserControl(w, r, r.URL.Path[5:])
 	}
-	return RenderError(w, http.StatusNotFound, "Page not found.")
+	return RenderError(w, http.StatusNotFound, "")
 }
 
 // read the id of the logged-in user from a secure session cookie.
@@ -375,7 +375,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		return redirectBack(w, r, "/", http.StatusSeeOther)
 	}
 
-	return RenderError(w, http.StatusNotFound, "Page not found.")
+	return RenderError(w, http.StatusNotFound, "")
 }
 
 func main() {
