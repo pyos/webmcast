@@ -54,7 +54,7 @@ func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Path == "/" {
-		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+		return Render(w, http.StatusOK, "landing.html", nil)
 	}
 	if !strings.ContainsRune(r.URL.Path[1:], '/') {
 		return ctx.Player(w, r, r.URL.Path[1:])
@@ -227,31 +227,45 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 	return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
 }
 
-// GET /user/register/
+// POST /user/new
 //     ...
 //
-// POST /user/register/
-//     ...
-//
-// GET /user/login/
-//     ...
-//
-// POST /user/login/
+// POST /user/login
 //     Obtain a session cookie.
 //
 //     Parameters: email string, password string
 //
 func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
-	// ...
-	return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+	if path == "/new" {
+		if r.Method != "POST" {
+			w.Header().Set("Allow", "POST")
+			return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
+		}
+
+		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+	} else if path == "/login" {
+		if r.Method != "POST" {
+			w.Header().Set("Allow", "POST")
+			return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
+		}
+
+		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+	} else {
+		return RenderError(w, http.StatusNotFound, "Page not found.")
+	}
 }
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	iface := ":8000"
+	if len(os.Args) >= 2 {
+		iface = os.Args[1]
+	}
+
 	ctx := NewHTTPContext(NewAnonDatabase(), Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(noIndexFileSystem{http.Dir(".")}))
 	mux.Handle("/", ctx)
-	http.ListenAndServe(":8000", mux)
+	http.ListenAndServe(iface, mux)
 }
