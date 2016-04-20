@@ -50,6 +50,10 @@ func (d AnonDatabase) SetStreamAbout(id int64, about string) error {
 	return ErrNotSupported
 }
 
+func (d AnonDatabase) NewStreamToken(id int64) error {
+	return ErrNotSupported
+}
+
 func (d AnonDatabase) StartStream(user string, token string) error {
 	return nil
 }

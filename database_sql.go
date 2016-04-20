@@ -204,6 +204,14 @@ func (d *SQLDatabase) SetStreamAbout(id int64, about string) error {
 	return err
 }
 
+func (d *SQLDatabase) NewStreamToken(id int64) error {
+	// TODO invalidate token cache on all nodes
+	//      damn, it appears I ran into the most difficult problem...
+	token := makeToken(20)
+	_, err := d.Exec(`update streams set token = ? where id = ?`, token, id)
+	return err
+}
+
 func (d *SQLDatabase) StartStream(user string, token string) error {
 	if expect, ok := d.streamTokenCache[user]; ok {
 		if expect != token {

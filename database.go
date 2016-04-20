@@ -87,6 +87,7 @@ type Database interface {
 	// stream id = user id
 	SetStreamName(id int64, name string) error
 	SetStreamAbout(id int64, about string) error
+	NewStreamToken(id int64) error
 	// Mark a stream as active on the current server.
 	StartStream(user string, token string) error
 	// Mark a stream as offline.
