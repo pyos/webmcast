@@ -7,9 +7,9 @@
         <link rel="stylesheet" href="/static/css/landing.css" />
         <title>webmcast</title>
     </head>
-    <body data-stream-id="{{.ID}}">
+    <body>
         <article class="content" data-scrollbar>
-            {{ template "nav.html" }}
+            {{ template "nav.html" . }}
 
             <section class="highlight">
                 <div class="highlight-bg center-block">

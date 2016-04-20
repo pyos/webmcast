@@ -9,7 +9,7 @@
     </head>
     <body data-stream-id="{{.ID}}">
         <article class="content" data-scrollbar>
-            {{ template "nav.html" }}
+            {{ template "nav.html" . }}
 
             <section class="player-block">
             {{ if not .Stream }}

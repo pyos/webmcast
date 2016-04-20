@@ -218,6 +218,13 @@ nav .search {
     flex: 1;
 }
 
+nav[data-user] .login,
+nav[data-user] .signup,
+nav:not([data-user]) .userinfo,
+nav:not([data-user]) .logout {
+    display: none;
+}
+
 @media (max-width: 50em) {
     nav .search input {
         display: none;

@@ -133,7 +133,7 @@ let showModal = (e) => {
 };
 
 
-let showLoginForm = (signup) => {
+let showLoginForm = (navbar, showSignup) => {
     let template = document.querySelector('template#login-form');
     if (template === null)
         return;
@@ -143,7 +143,7 @@ let showLoginForm = (signup) => {
     };
 
     let it = initDocument(document.importNode(template.content, true)).firstElementChild;
-    if (signup)
+    if (showSignup)
         it.setAttribute('data-tabs', 'signup');
 
     it.querySelector('.go-to-restore').addEventListener('click', () =>
@@ -156,6 +156,29 @@ let showLoginForm = (signup) => {
 };
 
 
+let initNavBar = (e) => {
+    let onUserSwap = () => {
+        let user = e.getAttribute('data-user');
+        if (user !== null) {
+            e.querySelector('.username').textContent = user;
+        }
+    };
+
+    new MutationObserver(onUserSwap).observe(e,
+        {attributes: true, attributeFilter: ['data-user']});
+    onUserSwap();
+
+    e.querySelector('.login').addEventListener('click', (ev) => {
+        ev.preventDefault();
+        showLoginForm(e, false);
+    });
+
+    e.querySelector('.signup').addEventListener('click', (ev) => {
+        ev.preventDefault();
+        showLoginForm(e, true);
+    });
+};
+
+
 initDocument(document);
-document.querySelector('nav .login').addEventListener('click', () => showLoginForm(false));
-document.querySelector('nav .signup').addEventListener('click', () => showLoginForm(true));
+initNavBar(document.querySelector('nav'));

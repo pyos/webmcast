@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gorilla/securecookie"
 	"golang.org/x/net/websocket"
 	"log"
 	"math/rand"
@@ -11,6 +12,10 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// should probably be changed in production, but not random
+// so that cookies stay valid across nodes/app restarts.
+var secretKey = []byte("12345678901234567890123456789012")
 
 type noIndexFileSystem struct {
 	http.FileSystem
@@ -28,18 +33,45 @@ func (fs noIndexFileSystem) Open(name string) (http.File, error) {
 }
 
 type HTTPContext struct {
+	cookieCodec *securecookie.SecureCookie
 	Database
 	Context
 }
 
 func NewHTTPContext(d Database, c Context) *HTTPContext {
-	ctx := &HTTPContext{d, c}
+	ctx := &HTTPContext{Database: d, Context: c}
+	ctx.cookieCodec = securecookie.New(secretKey, nil)
 	ctx.OnStreamClose = func(id string) {
 		if err := ctx.StopStream(id); err != nil {
 			log.Println("Error stopping the stream: ", err)
 		}
 	}
 	return ctx
+}
+
+func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*UserShortData, error) {
+	var uid int64
+	if cookie, err := r.Cookie("uid"); err == nil {
+		if err = ctx.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
+			return ctx.GetUserShort(uid)
+		}
+	}
+	return nil, ErrUserNotExist
+}
+
+func (ctx *HTTPContext) SetAuthInfo(w http.ResponseWriter, id int64) error {
+	if id == -1 {
+		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
+		return nil
+	}
+	enc, err := ctx.cookieCodec.Encode("uid", id)
+	if err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: "uid", Value: enc, Path: "/", HttpOnly: true, MaxAge: 31536000, // 1 year
+	})
+	return nil
 }
 
 func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +86,14 @@ func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Path == "/" {
-		return Render(w, http.StatusOK, "landing.html", nil)
+		if r.Method != "GET" && r.Method != "HEAD" {
+			return RenderInvalidMethod(w, "GET")
+		}
+		auth, err := ctx.GetAuthInfo(r)
+		if err != nil && err != ErrUserNotExist {
+			return err
+		}
+		return Render(w, http.StatusOK, "landing.html", landingViewModel{auth})
 	}
 	if !strings.ContainsRune(r.URL.Path[1:], '/') {
 		return ctx.Player(w, r, r.URL.Path[1:])
@@ -72,6 +111,14 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 //     Open a simple HTML5-based player with a stream-local chat.
 //
 func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string) error {
+	if r.Method != "GET" && r.Method != "HEAD" {
+		return RenderInvalidMethod(w, "GET")
+	}
+
+	auth, err := ctx.GetAuthInfo(r)
+	if err != nil && err != ErrUserNotExist {
+		return err
+	}
 	stream, ok := ctx.Get(id)
 	if !ok {
 		switch _, err := ctx.GetStreamServer(id); err {
@@ -85,7 +132,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 			if err != ErrStreamOffline {
 				return err
 			}
-			return Render(w, http.StatusOK, "room.html", roomViewModel{id, nil, meta})
+			return Render(w, http.StatusOK, "room.html", roomViewModel{id, nil, meta, auth})
 		case ErrStreamNotExist:
 			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 		default:
@@ -99,7 +146,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		// this has to be an sql error.
 		return err
 	}
-	return Render(w, http.StatusOK, "room.html", roomViewModel{id, stream, meta})
+	return Render(w, http.StatusOK, "room.html", roomViewModel{id, stream, meta, auth})
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -223,8 +270,16 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 		}
 	}
 
-	w.Header().Set("Allow", "GET, POST, PUT")
-	return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
+	return RenderInvalidMethod(w, "GET, POST, PUT")
+}
+
+func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
+	ref := r.Referer()
+	if ref == "" {
+		ref = fallback
+	}
+	http.Redirect(w, r, ref, code)
+	return nil
 }
 
 // POST /user/new
@@ -235,24 +290,39 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 //
 //     Parameters: email string, password string
 //
+// GET /user/logout
+//     Remove the session cookie.
+//
 func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
-	if path == "/new" {
+	switch path {
+	case "/new":
 		if r.Method != "POST" {
-			w.Header().Set("Allow", "POST")
-			return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
+			return RenderInvalidMethod(w, "POST")
 		}
-
 		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
-	} else if path == "/login" {
+
+	case "/login":
 		if r.Method != "POST" {
-			w.Header().Set("Allow", "POST")
-			return RenderError(w, http.StatusMethodNotAllowed, "Invalid HTTP method")
+			return RenderInvalidMethod(w, "POST")
 		}
+		uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
+		if err == ErrUserNotExist {
+			return RenderError(w, http.StatusForbidden, "Invalid username/password.")
+		}
+		if err = ctx.SetAuthInfo(w, uid); err != nil {
+			return err
+		}
+		return redirectBack(w, r, "/", http.StatusSeeOther)
 
-		return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
-	} else {
-		return RenderError(w, http.StatusNotFound, "Page not found.")
+	case "/logout":
+		if r.Method != "GET" {
+			return RenderInvalidMethod(w, "GET")
+		}
+		ctx.SetAuthInfo(w, -1) // should not fail
+		return redirectBack(w, r, "/", http.StatusSeeOther)
 	}
+
+	return RenderError(w, http.StatusNotFound, "Page not found.")
 }
 
 func main() {
