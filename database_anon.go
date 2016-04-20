@@ -11,15 +11,15 @@ func (d AnonDatabase) NewUser(name string, email string, password []byte) (*User
 }
 
 func (d AnonDatabase) GetUserID(name string, password []byte) (int64, error) {
-	return 0, ErrNotSupported
+	return 0, ErrUserNotExist
 }
 
 func (d AnonDatabase) GetUserShort(id int64) (*UserShortData, error) {
-	return nil, ErrNotSupported
+	return nil, ErrUserNotExist
 }
 
 func (d AnonDatabase) GetUserFull(id int64) (*UserMetadata, error) {
-	return nil, ErrNotSupported
+	return nil, ErrUserNotExist
 }
 
 func (d AnonDatabase) ActivateUser(id int64, token string) error {
