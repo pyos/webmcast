@@ -6,75 +6,34 @@
         <link rel="stylesheet" href="/static/css/global.css" />
         <title>webmcast</title>
         <style>
-            #main-bg {
-                font-family: monospace;
-                background: #f7d358;
-            }
+            #main-bg { background: #dfe4e5; }
+            #final { text-align: center; }
+            #final button { font-size: 1.2em; }
 
-            section {
-                padding: 2em;
-            }
+            h1 { font: bold 2.5em monospace; }
+            h4 { opacity: 0.66; }
 
-            section > :first-child {
-                margin-top: 0;
-            }
-
-            section > :last-child {
-                margin-bottom: 0;
-            }
-
-            section h1 {
-                font-size: 2.2em;
-                font-weight: bold;
-            }
-
-            .content > section:last-of-type {
-                text-align: center;
-            }
-
-            #last-step button {
-                font-size: 1.5em;
-            }
-
-            .muted {
-                opacity: 0.66;
-            }
-
-            .step {
-                display: flex;
-                overflow: hidden;
+            .row {
+                min-height: 250px;
                 position: relative;
+                padding: 2em;
                 align-items: center;
             }
 
-            .step > * {
-                flex: 1 0;
-            }
-
-            .step > :first-child {
-                height: 200px;
-                text-align: center;
-            }
-
-            @media (max-width: 40em) {
-                .step > :first-child {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    bottom: 0;
-                    height: auto;
-                    opacity: 0.33;
-                }
-            }
-
-            img {
+            .row > img {
+                width: auto;
                 height: auto;
-                max-width: 100%;
+                max-width: 350px;
+                margin-right: 2em;
+                border-radius: 2em;
             }
 
-            #main-bg .step, .step:nth-of-type(2n) {
-                flex-direction: row-reverse;
-            }
+            .row > img + * { min-width: 200px; }
+            .row > img + * > :first-child { margin-top: 0; }
+            .row > img + * > :last-child { margin-bottom: 0; }
+
+            .row:nth-child(2n+1) { flex-direction: row-reverse; }
+            .row:nth-child(2n+1) > img { margin: 0 0 0 2em; }
         </style>
     </head>
     <body>
@@ -82,51 +41,52 @@
             {{ template "nav.html" . }}
 
             <div id="main-bg">
-                <section class="step center-block">
-                    <div><img /></div>
+                <section class="center-block row">
+                    <img src="/static/img/aware-of-dog.png" />
                     <div>
-                        <h1>WATCH DOG</h1>
+                        <h1>watch dog.</h1>
                         <h2>Dogspotting as a Service</h2>
-                        <h4 class="muted">
-                            * (It's kinda hard to show the most popular streams when there are
-                               no streams at all, so have a stupid landing page instead.)
-                        </h4>
+                        <h4>* (It's kinda hard to show the most popular streams when there are
+                               no streams at all, so have a stupid landing page instead.)</h4>
                     </div>
                 </section>
             </div>
-            <section class="step center-block">
-                <div><img /></div>
-                <div>
-                    <h2>1. Observe the dog</h2>
-                    <h3>Mount a camera onto a sentry station and point it
-                        directly at your best friend.</h3>
+            <section class="center-block">
+                <div>{{/* make the next row match :nth-child(2n) */}}</div>
+                <div class="row">
+                    <img src="/static/img/observing-dog.png" />
+                    <div>
+                        <h2>1. Observe the dog</h2>
+                        <h3>Mount a camera onto a sentry station and point it
+                            directly at your best friend.</h3>
+                    </div>
                 </div>
-            </section>
-            <section class="step center-block">
-                <div><img /></div>
-                <div>
-                    <h2>2. Broadcast the dog</h2>
-                    <h3>Use cutting-edge opensource software to encode the video
-                        as a WebM file and send it over here.</h3>
+                <div class="row">
+                    <img src="/static/img/mettaton.png" />
+                    <div>
+                        <h2>2. Broadcast the dog</h2>
+                        <h3>Use cutting-edge opensource software to encode the video
+                            as a WebM file and send it over here.</h3>
+                    </div>
                 </div>
-            </section>
-            <section class="step center-block">
-                <div><img /></div>
-                <div>
-                    <h2>3. Watch the dog</h2>
-                    <h3>View the stream over the 'net (short for internet)
-                        while discussing it with others in a conveniently placed chat
-                        at the same time.</h3>
+                <div class="row">
+                    <img />
+                    <div>
+                        <h2>3. Watch the dog</h2>
+                        <h3>View the stream over the 'net (short for internet)
+                            while discussing it with others in a conveniently placed chat
+                            at the same time.</h3>
+                    </div>
                 </div>
-            </section>
-            <section class="center-block" id="last-step">
-            {{ if .User }}
-                <h2>Oh, look, you've already signed up.</h2>
-                <h3>Sorry, the streaming guide is not ready yet. Figure it out yourself.</h3>
-            {{- else -}}
-                <h2>Yeah, uh...you have to sign up first.</h2>
-                <button onclick="showLoginForm(true)">Okay!</button>
-            {{- end -}}
+                <div id="final">
+                {{ if .User }}
+                    <h2>Oh, look, you've already signed up.</h2>
+                    <h3>Sorry, the streaming guide is not ready yet. Figure it out yourself.</h3>
+                {{- else -}}
+                    <h2>Yeah, uh...you have to sign up first.</h2>
+                    <button onclick="showLoginForm(true)">Okay!</button>
+                {{- end -}}
+                </div>
             </section>
 
             {{ template "footer.html" }}
