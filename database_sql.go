@@ -62,8 +62,8 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 		return nil, err
 	}
 
-	activationToken := makeToken(20)
-	streamToken := makeToken(20)
+	activationToken := makeToken(defaultTokenLength)
+	streamToken := makeToken(defaultTokenLength)
 	r, err := d.Exec(
 		`begin;
 		 insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?);
@@ -173,7 +173,7 @@ func (d *SQLDatabase) SetUserName(id int64, name string, displayName string) err
 }
 
 func (d *SQLDatabase) SetUserEmail(id int64, email string) (string, error) {
-	token := makeToken(20)
+	token := makeToken(defaultTokenLength)
 	_, err := d.Exec(
 		`update users set email = ?, activated = 0, activation_token = ? where id = ?`,
 		email, token, id,
@@ -207,7 +207,7 @@ func (d *SQLDatabase) SetStreamAbout(id int64, about string) error {
 func (d *SQLDatabase) NewStreamToken(id int64) error {
 	// TODO invalidate token cache on all nodes
 	//      damn, it appears I ran into the most difficult problem...
-	token := makeToken(20)
+	token := makeToken(defaultTokenLength)
 	_, err := d.Exec(`update streams set token = ? where id = ?`, token, id)
 	return err
 }

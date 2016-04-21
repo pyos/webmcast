@@ -20,7 +20,10 @@ var (
 	ErrStreamOffline  = errors.New("Stream is offline.")
 )
 
-var randomTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+var (
+	randomTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	defaultTokenLength  = 30
+)
 
 func makeToken(length int) string {
 	xs := make([]byte, length)
