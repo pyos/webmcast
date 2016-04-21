@@ -4,22 +4,24 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
-        <link rel="stylesheet" href="/static/css/landing.css" />
         <title>webmcast</title>
+        <style>
+            section {
+                padding: 1px 2em; /* 1px to contain margins of content within the block */
+            }
+        </style>
     </head>
     <body>
         <article class="content" data-scrollbar>
             {{ template "nav.html" . }}
 
-            <section class="highlight">
-                <div class="highlight-bg center-block">
-                    <h2>Not implemented</h2>
-                    <h4>Got no idea what to write on this page.</h4>
-                </div>
+            <section class="center-block">
+                <h2>Not implemented</h2>
+                <h3>Got no idea what to write on this page.</h3>
             </section>
 
-            <section class="main center-block">
-                <h3>Maybe some instructions?..</h3>
+            <section class="center-block">
+                <h2>Maybe some instructions?..</h2>
                 <p>Like how to publish a stream or something.
                    Also, drawings. Twitch displays the most popular streams,
                    but they can do that because they actually have some.
@@ -29,7 +31,6 @@
             {{ template "footer.html" }}
         </article>
 
-        <script src="/static/js/vendored.min.js"></script>
         <script src="/static/js/global.js"></script>
     </body>
 </html>

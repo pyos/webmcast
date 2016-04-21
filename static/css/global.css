@@ -26,9 +26,19 @@ html, body {
 }
 
 .center-block {
-    max-width: 60em;
+    max-width: 64em;
     margin-left: auto;
     margin-right: auto;
+    box-sizing: border-box;
+}
+
+.center-block-small {
+    max-width: 30em;
+}
+
+.section-highlight {
+    background: #1a1a1a;
+    color: #fff;
 }
 
 [data-scrollbar] {
@@ -225,6 +235,29 @@ nav:not([data-user]) .logout {
     display: none;
 }
 
+nav .signup {
+    margin-top: -0.5em;
+    margin-bottom: -0.5em;
+    padding: 0.5em;
+    color: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background: #a168ad;
+}
+
+nav .signup:hover {
+    text-decoration: none;
+}
+
+nav .signup:focus {
+    outline: 0;
+    border-color: #666;
+}
+
+nav .signup:active {
+    background: #91489d;
+}
+
 @media (max-width: 50em) {
     nav .search input {
         display: none;
@@ -246,9 +279,7 @@ footer {
     right: 0;
     bottom: 0;
     z-index: 256;
-    background: rgba(0,0,0,0.7);
-    background-image: repeating-linear-gradient(0deg,
-        rgba(0,0,0,0.2), rgba(0,0,0,0.2) 2px, transparent 2px, transparent 4px);
+    background: rgba(0,0,0,0.8);
 }
 
 .modal {
@@ -274,19 +305,72 @@ footer {
     content: '\f00d';  /* close */
 }
 
+.alert-warning {
+    margin: 2em 2em 0 2em;
+    padding: 2em;
+    border: 1px solid #f3efc4;
+    border-radius: 1em;
+    background: #ffffde;
+}
+
+.alert-warning > :first-child {
+    margin-top: 0;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.row > * {
+    flex: 1 0;
+}
+
+.meta {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 2em;
+}
+
+.meta h1 {
+    margin: 0;
+    font-size: 1.6em;
+}
+
+.meta h2 {
+    display: inline-block;
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.meta .avatar {
+    margin-right: 1em;
+    width: 60px;
+    height: 60px;  /* ~= 58.8px = 4.2em = (h1.font-size + h2.font-size) * line-height */
+}
+
+.meta :nth-child(2) {
+    flex: 1;
+}
+
+.meta :nth-child(3) h2 {
+    margin-left: 1em;
+}
+
 .login-form {
     padding: 2em;
 }
 
 .login-form > *,
-.login-form > form > * {
+.login-form form > * {
     display: block;
     margin: 1em 0 0 0;
 }
 
 .login-form > :first-child,
-.login-form > form > :first-child,
-.login-form > form > label + * {
+.login-form form > :first-child,
+.login-form form > label + * {
     margin-top: 0;
 }
 
@@ -296,13 +380,4 @@ footer {
 
 .login-form .notice {
     color: #aaa;
-}
-
-.noscript-form-wrapper {
-    background: #111;
-}
-
-.noscript-form-wrapper > .login-form {
-    max-width: 60em;
-    background: #fff;
 }

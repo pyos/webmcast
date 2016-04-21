@@ -4,28 +4,58 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
-        <title>webmcast</title>
+        <title>webmcast -- user config</title>
     </head>
     <body>
         <article class="content" data-scrollbar>
             {{ template "nav.html" . }}
 
-            <div class="noscript-form-wrapper">
-                <section class="login-form center-block">
-                    <h2>Hey there, {{.User.Login}}.</h2>
-                    <label>Stream URL</label>
+            <div class="section-highlight">
+                <section class="meta center-block">
+                    <img class="avatar" src="{{.User.GravatarURL 60}}" />
                     <div>
-                        <a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Broadcast</a> |
-                        <a href="/stream/{{.User.Login}}">View in a player</a> |
-                        <a href="/{{.User.Login}}">View in a browser</a>
+                        <h1>Hey there, {{.User.Name}}.</h1>
+                        <h2>Stream URL:</h2>
+                        <h2><a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Publish</a>
+                          | <a href="/{{.User.Login}}">View</a>
+                          | <a href="/stream/{{.User.Login}}">Download</a></h2>
                     </div>
+                </section>
+            </div>
+
+        {{ if not .User.Activated }}
+            <section class="center-block">
+                <div class="alert-warning">
+                    <h1>Your account is not activated yet.</h1>
+                    <p>You will not be able to actually broadcast video until you confirm
+                       your email address, {{.User.Email}}. Check the inbox for messages.</p>
+
+                    <form method="GET" action="/user/activate/{{.User.ID}}">
+                        <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
+                        <button type="submit">Or click here.</button>
+                    </form>
+                </div>
+            </section>
+        {{- end -}}
+
+            <div class="row center-block">
+                <section class="login-form">
                     <form method="POST" action="/user/new-token">
+                        <label>Your avatar is provided by Gravatar.</label>
                         <span class="notice">
-                            Your auth token is {{printf "%q" .User.StreamToken}} and is a part
-                            of the broadcast URL. Think it might have been compromised?
+                            Visit <a href="https://gravatar.com/">gravatar.com</a>
+                            to change it.
+                        </span>
+                        <label>Your authentication token is
+                            <span style="white-space:nowrap">{{.User.StreamToken}}</span></label>
+                        <span class="notice">
+                            It is included in the broadcast URL.
+                            Think it might have been compromised?
                         </span>
                         <button type="submit">Get a new token</button>
                     </form>
+                </section>
+                <section class="login-form">
                     <form method="POST" action="/user/cfg">
                         <label for="password-old">Old password</label>
                         <input name="password-old" type="password" placeholder="Required to change anything." />
@@ -35,9 +65,6 @@
                         <input name="displayname" type="text" placeholder="{{.User.Name}}" />
                         <label for="email">Email</label>
                         <input name="email" type="email" placeholder="{{.User.Email}}" />
-                    {{ if not .User.Activated }}
-                        {{/* TODO display a notice telling the user to check the email */}}
-                    {{- end -}}
                         <label for="password">New password</label>
                         <input name="password" type="password" placeholder="Leave empty to keep the old one." />
                         <label for="about">About yourself</label>
@@ -50,7 +77,6 @@
             {{ template "footer.html" }}
         </article>
 
-        <script src="/static/js/vendored.min.js"></script>
         <script src="/static/js/global.js"></script>
     </body>
 </html>
