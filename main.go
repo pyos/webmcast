@@ -407,6 +407,9 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 				http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 				return nil
 			}
+			if err != nil {
+				return err
+			}
 			userFull, err := ctx.GetUserFull(user.ID)
 			if err != nil {
 				return err
@@ -426,6 +429,9 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		if err == ErrUserNotExist {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return nil
+		}
+		if err != nil {
+			return err
 		}
 		if err = ctx.NewStreamToken(user.ID); err != nil {
 			return err
