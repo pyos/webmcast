@@ -224,14 +224,15 @@ func (d *SQLDatabase) StartStream(user string, token string) error {
 	var expect string
 	var server sql.NullString
 
-	if err := d.QueryRow(`select id from users where name = ?`, user).Scan(&id); err != nil {
+	err := d.QueryRow(`select id from users where name = ? and activated = 1`, user).Scan(&id)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return ErrStreamNotExist
 		}
 		return err
 	}
 
-	_, err := d.Exec(
+	_, err = d.Exec(
 		`update streams set server = ? where id = ? and server is null and token = ?`,
 		d.localhost, id, token,
 	)
