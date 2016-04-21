@@ -6,8 +6,74 @@
         <link rel="stylesheet" href="/static/css/global.css" />
         <title>webmcast</title>
         <style>
+            #main-bg {
+                font-family: monospace;
+                background: #f7d358;
+            }
+
             section {
-                padding: 1px 2em; /* 1px to contain margins of content within the block */
+                padding: 2em;
+            }
+
+            section > :first-child {
+                margin-top: 0;
+            }
+
+            section > :last-child {
+                margin-bottom: 0;
+            }
+
+            section h1 {
+                font-size: 2.2em;
+                font-weight: bold;
+            }
+
+            .content > section:last-of-type {
+                text-align: center;
+            }
+
+            #last-step button {
+                font-size: 1.5em;
+            }
+
+            .muted {
+                opacity: 0.66;
+            }
+
+            .step {
+                display: flex;
+                overflow: hidden;
+                position: relative;
+                align-items: center;
+            }
+
+            .step > * {
+                flex: 1 0;
+            }
+
+            .step > :first-child {
+                height: 200px;
+                text-align: center;
+            }
+
+            @media (max-width: 40em) {
+                .step > :first-child {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    bottom: 0;
+                    height: auto;
+                    opacity: 0.33;
+                }
+            }
+
+            img {
+                height: auto;
+                max-width: 100%;
+            }
+
+            #main-bg .step, .step:nth-of-type(2n) {
+                flex-direction: row-reverse;
             }
         </style>
     </head>
@@ -15,17 +81,52 @@
         <article class="content" data-scrollbar>
             {{ template "nav.html" . }}
 
-            <section class="center-block">
-                <h2>Not implemented</h2>
-                <h3>Got no idea what to write on this page.</h3>
+            <div id="main-bg">
+                <section class="step center-block">
+                    <div><img /></div>
+                    <div>
+                        <h1>WATCH DOG</h1>
+                        <h2>Dogspotting as a Service</h2>
+                        <h4 class="muted">
+                            * (It's kinda hard to show the most popular streams when there are
+                               no streams at all, so have a stupid landing page instead.)
+                        </h4>
+                    </div>
+                </section>
+            </div>
+            <section class="step center-block">
+                <div><img /></div>
+                <div>
+                    <h2>1. Observe the dog</h2>
+                    <h3>Mount a camera onto a sentry station and point it
+                        directly at your best friend.</h3>
+                </div>
             </section>
-
-            <section class="center-block">
-                <h2>Maybe some instructions?..</h2>
-                <p>Like how to publish a stream or something.
-                   Also, drawings. Twitch displays the most popular streams,
-                   but they can do that because they actually have some.
-                   I got nothing.</p>
+            <section class="step center-block">
+                <div><img /></div>
+                <div>
+                    <h2>2. Broadcast the dog</h2>
+                    <h3>Use cutting-edge opensource software to encode the video
+                        as a WebM file and send it over here.</h3>
+                </div>
+            </section>
+            <section class="step center-block">
+                <div><img /></div>
+                <div>
+                    <h2>3. Watch the dog</h2>
+                    <h3>View the stream over the 'net (short for internet)
+                        while discussing it with others in a conveniently placed chat
+                        at the same time.</h3>
+                </div>
+            </section>
+            <section class="center-block" id="last-step">
+            {{ if .User }}
+                <h2>Oh, look, you've already signed up.</h2>
+                <h3>Sorry, the streaming guide is not ready yet. Figure it out yourself.</h3>
+            {{- else -}}
+                <h2>Yeah, uh...you have to sign up first.</h2>
+                <button onclick="showLoginForm(true)">Okay!</button>
+            {{- end -}}
             </section>
 
             {{ template "footer.html" }}

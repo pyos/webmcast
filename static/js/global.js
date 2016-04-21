@@ -133,7 +133,7 @@ let showModal = (e) => {
 };
 
 
-let showLoginForm = (navbar, showSignup) => {
+let showLoginForm = (showSignup) => {
     let template = document.querySelector('template#login-form');
     if (template === null)
         return;
@@ -214,12 +214,12 @@ let initNavBar = (e) => {
 
     e.querySelector('.login').addEventListener('click', (ev) => {
         ev.preventDefault();
-        showLoginForm(e, false);
+        showLoginForm(false);
     });
 
     e.querySelector('.signup').addEventListener('click', (ev) => {
         ev.preventDefault();
-        showLoginForm(e, true);
+        showLoginForm(true);
     });
 };
 
