@@ -1,10 +1,10 @@
 <h2 data-tab="login">Log in</h2>
 <form method="POST" action="/user/login">
     <label for="username">Username</label>
-    <input name="username" type="text" required />
+    <input name="username" type="text" required tabindex="1" />
     <label for="password">Password</label>
-    <input name="password" type="password" required />
+    <input name="password" type="password" required tabindex="1" />
     <p class="error"></p>
-    <a class="go-to-restore" href="/user/restore">Trouble logging in?</a>
-    <button type="submit">Log in</button>
+    <a class="go-to-restore" href="/user/restore" tabindex="1">Trouble logging in?</a>
+    <button type="submit" tabindex="1">Log in</button>
 </form>
