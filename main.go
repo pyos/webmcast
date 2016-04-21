@@ -229,6 +229,10 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string) error {
 	switch r.Method {
 	case "GET":
+		if r.URL.RawQuery != "" {
+			return RenderError(w, http.StatusBadRequest, "POST or PUT, don't GET.")
+		}
+
 		stream, ok := ctx.Get(id)
 		if !ok {
 			switch _, err := ctx.GetStreamServer(id); err {
