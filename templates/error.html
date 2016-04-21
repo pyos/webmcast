@@ -6,9 +6,11 @@
         <link rel="stylesheet" href="/static/css/error.css" />
         <title>webmcast: error {{.Code}}</title>
     </head>
-    <body data-error="{{.Code}}">
+    <body>
         <div class="content">
-            <h1><a href="/">webmcast</a> // {{.Code}} // {{.DisplayMessage}}</h1>
+            <h1><a href="/">webmcast</a>
+             // <span id="code">{{.Code}}</span>
+             // <span id="message">{{.DisplayMessage}}</span></h1>
             <h2>* {{.DisplayComment}}</h2>
         </div>
     </body>
