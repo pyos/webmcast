@@ -130,10 +130,10 @@ let showModal = (e) => {
     outer.addEventListener('click', (e) =>
         e.target === e.currentTarget || e.target === close ? onClose() : null);
 
-    let randomLink = document.querySelector('a');
-    if (randomLink) {
-        randomLink.focus();
-        randomLink.blur();
+    let randomFocusable = e.querySelector('a, input, button, textarea');
+    if (randomFocusable) {
+        randomFocusable.focus();
+        randomFocusable.blur();
     }
 
     return onClose;
