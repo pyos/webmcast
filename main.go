@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -441,6 +442,23 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return err
 		}
 		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+
+	case "/activate":
+		if r.Method != "GET" {
+			return RenderInvalidMethod(w, "GET")
+		}
+		uid, err := strconv.ParseInt(r.FormValue("uid"), 10, 64)
+		if err != nil {
+			return RenderError(w, http.StatusBadRequest, "Invalid user ID.")
+		}
+		err = ctx.ActivateUser(uid, r.FormValue("token"))
+		if err == ErrInvalidToken {
+			return RenderError(w, http.StatusBadRequest, "Invalid activation token.")
+		}
+		if err != nil {
+			return err
+		}
+		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 	}
 
 	return RenderError(w, http.StatusNotFound, "")
@@ -455,7 +473,6 @@ func main() {
 
 	db, _ := NewSQLDatabase(iface, "sqlite3", ":memory:")
 	user, _ := db.NewUser("pyos", "pyos100500@gmail.com", []byte("pyos"))
-	db.ActivateUser(user.ID, user.ActivationToken)
 	db.SetUserName(user.ID, user.Login, "Dawg")
 	db.SetStreamName(user.ID, "Test Stream")
 	db.SetStreamAbout(user.ID, "Either colored bars, or some random WebM. That's not important.")

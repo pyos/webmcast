@@ -23,7 +23,7 @@ func (d AnonDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 }
 
 func (d AnonDatabase) ActivateUser(id int64, token string) error {
-	return ErrNotSupported
+	return ErrUserNotExist
 }
 
 func (d AnonDatabase) SetUserName(id int64, name string, displayName string) error {

@@ -30,7 +30,9 @@
                     <p>You will not be able to actually broadcast video until you confirm
                        your email address, {{.User.Email}}. Check the inbox for messages.</p>
 
-                    <form method="GET" action="/user/activate/{{.User.ID}}">
+                    <form method="GET" action="/user/activate">
+                        {{/* TODO remove this and instead offer to send another email. */}}
+                        <input type="hidden" name="uid" value="{{.User.ID}}" />
                         <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
                         <button type="submit">Or click here.</button>
                     </form>
