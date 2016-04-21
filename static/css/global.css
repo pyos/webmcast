@@ -106,6 +106,14 @@ canvas {
     vertical-align: middle;  /* https://github.com/h5bp/html5-boilerplate/issues/440 */
 }
 
+form .error {
+    color: #900;
+}
+
+form:not(.error) .error {
+    display: none;
+}
+
 textarea,
 input[type="text"],
 input[type="email"],
@@ -145,6 +153,14 @@ input[type="password"]:disabled {
     color: #999;
     border-color: #ddd;
     background-color: #fafafa;
+}
+
+form.error textarea,
+form.error input[type="text"],
+form.error input[type="email"],
+form.error input[type="password"] {
+    background: #fff0f0;
+    border-color: #e6a5a5;
 }
 
 button {
@@ -318,6 +334,10 @@ footer {
     margin-top: 0;
 }
 
+.alert-warning > :last-child {
+    margin-bottom: 0;
+}
+
 .row {
     display: flex;
     flex-wrap: wrap;
@@ -359,6 +379,45 @@ footer {
     margin-left: 1em;
 }
 
+[data-status]:before {
+    font: normal 4em FontAwesome;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1em;
+    height: 1em;
+    margin-top: -0.5em;  /* alternatively, `top: calc(50% - 0.5em);`... */
+    margin-left: -0.5em;
+    z-index: 2;
+}
+
+[data-status="loading"]:before {
+    animation: spin 0.66s infinite linear;
+    border: 0.1em solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    box-sizing: border-box;
+    content: '';
+}
+
+[data-status="loading"].with-bg:after {
+    display: block;
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    background: rgba(255,255,255,0.7);
+}
+
+@keyframes spin {
+    0%   {transform: rotate(0deg);}
+    100% {transform: rotate(359deg);}
+}
+
 .login-form {
     padding: 2em;
 }
@@ -380,5 +439,11 @@ footer {
 }
 
 .login-form .notice {
-    color: #aaa;
+    color: #888;
+}
+
+.user-config-form input[type="text"],
+.user-config-form input[type="password"],
+.user-config-form input[type="email"] {
+    width: 100%;
 }

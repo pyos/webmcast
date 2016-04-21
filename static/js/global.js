@@ -138,10 +138,6 @@ let showLoginForm = (navbar, showSignup) => {
     if (template === null)
         return;
 
-    let submitForm = function () {
-        // TODO ajax
-    };
-
     let it = initDocument(document.importNode(template.content, true)).firstElementChild;
     if (showSignup)
         it.setAttribute('data-tabs', 'signup');
@@ -151,9 +147,56 @@ let showLoginForm = (navbar, showSignup) => {
         it.setAttribute('data-tabs', 'restore');
     });
 
-    for (let form of Array.from(it.querySelector('form')))
+    let closeModal = showModal(it);
+
+    let enableForm = function () {
+        it.removeAttribute('data-status');
+        for (let i of Array.from(this.querySelectorAll(':read-write')))
+            i.removeAttribute('disabled', '');
+    };
+
+    let disableForm = function () {
+        it.setAttribute('data-status', 'loading');
+        for (let i of Array.from(this.querySelectorAll(':read-write')))
+            i.setAttribute('disabled', '');
+    };
+
+    let submitForm = function (ev) {
+        ev.preventDefault();
+        let xhr = new XMLHttpRequest();
+
+        xhr.onload = (ev) => {
+            console.log(xhr);
+            if (xhr.status === 204) {
+                // ...?
+                window.location.reload();
+            } else if (xhr.status >= 400) {
+                this.classList.add('error');
+                this.querySelector('.error').textContent =
+                    xhr.response.getElementById('message').textContent;
+            } else {
+                // ...?
+                window.location = xhr.responseURL;
+            }
+            enableForm.call(this);
+        };
+
+        xhr.onerror = (ev) => {
+            this.classList.add('error');
+            this.querySelector('.error').textContent = 'Could not connect to server.';
+            enableForm.call(this);
+        };
+
+        xhr.responseType = 'document';
+        xhr.open(this.getAttribute('method'), this.getAttribute('action'));
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(new FormData(this));
+        disableForm.call(this);
+    };
+
+    for (let form of Array.from(it.querySelectorAll('form')))
         form.addEventListener('submit', submitForm);
-    return showModal(it);
+    return closeModal;
 };
 
 

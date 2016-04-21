@@ -40,33 +40,6 @@ body.theatre .player video {
     max-height: none;
 }
 
-.player:before /* overlayed status icon */ {
-    font: normal 4em FontAwesome;
-    display: block;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 1em;
-    height: 1em;
-    margin-top: -0.5em;  /* alternatively, `top: calc(50% - 0.5em);`... */
-    margin-left: -0.5em;
-    z-index: 1;
-}
-
-.player[data-status="loading"]:before {
-    animation: spin 0.66s infinite linear;
-    border: 0.1em solid rgba(255,255,255,0.2);  /* there are a few spinners in FontAwesome, */
-    border-radius: 50%;                         /* but a thin transparent ring with */
-    border-top-color: #fff;                     /* a white dash looks neater imo */
-    box-sizing: border-box;
-    content: ' ';
-}
-
-@keyframes spin {
-    0%   {transform: rotate(0deg);}
-    100% {transform: rotate(359deg);}
-}
-
 .player[data-status="error"]:before,
 .player[data-status="ended"]:before {
     content: '\f071';  /* exclamation-triangle */
