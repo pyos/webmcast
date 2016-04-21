@@ -1,9 +1,6 @@
 package main
 
-import (
-	"database/sql"
-	"golang.org/x/crypto/bcrypt"
-)
+import "database/sql"
 
 type SQLDatabase struct {
 	sql.DB
@@ -57,11 +54,16 @@ func NewSQLDatabase(localhost string, driver string, server string) (Database, e
 }
 
 func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
-	hash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err := validateUsername(name); err != nil {
+		return nil, err
+	}
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+	hash, err := generatePwHash(password)
 	if err != nil {
 		return nil, err
 	}
-
 	activationToken := makeToken(defaultTokenLength)
 	streamToken := makeToken(defaultTokenLength)
 	r, err := d.Exec(
@@ -87,7 +89,7 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 	}
 
 	return &UserMetadata{
-		UserShortData{uid, name, email, name}, "", false, activationToken, streamToken,
+		UserShortData{uid, name, email, name, hash}, "", false, activationToken, streamToken,
 	}, nil
 }
 
@@ -112,27 +114,24 @@ func (d *SQLDatabase) ActivateUser(id int64, token string) error {
 }
 
 func (d *SQLDatabase) GetUserID(name string, password []byte) (int64, error) {
-	var id int64
-	var hash []byte
-	err := d.QueryRow(`select id, password from users where name = ?`, name).Scan(&id, &hash)
+	var meta UserShortData
+	err := d.QueryRow(
+		`select id, password from users where name = ?`, name,
+	).Scan(&meta.ID, &meta.PwHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, ErrUserNotExist
 		}
 		return 0, err
 	}
-	err = bcrypt.CompareHashAndPassword(hash, password)
-	if err == bcrypt.ErrMismatchedHashAndPassword {
-		err = ErrUserNotExist
-	}
-	return id, err
+	return meta.ID, meta.CheckPassword(password)
 }
 
 func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
 	meta := UserShortData{ID: id}
-	err := d.QueryRow(`select name, display_name, email from users where users.id = ?`, id).Scan(
-		&meta.Login, &meta.Name, &meta.Email,
-	)
+	err := d.QueryRow(
+		`select name, password, display_name, email from users where users.id = ?`, id,
+	).Scan(&meta.Login, &meta.PwHash, &meta.Name, &meta.Email)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotExist
 	}
@@ -142,12 +141,12 @@ func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
 func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 	meta := UserMetadata{UserShortData: UserShortData{ID: id}}
 	err := d.QueryRow(
-		`select users.name, email, display_name, users.about,
+		`select users.name, password, email, display_name, users.about,
 		        activated, activation_token, streams.token from users, streams
 		 where users.id = ? and streams.id = users.id`,
 		id,
 	).Scan(
-		&meta.Login, &meta.Email, &meta.Name, &meta.About,
+		&meta.Login, &meta.PwHash, &meta.Email, &meta.Name, &meta.About,
 		&meta.Activated, &meta.ActivationToken, &meta.StreamToken,
 	)
 	if err == sql.ErrNoRows {
@@ -156,42 +155,64 @@ func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 	return &meta, err
 }
 
-func (d *SQLDatabase) SetUserName(id int64, name string, displayName string) error {
-	r, err := d.Exec(
-		`update users set name = ?, display_name = ?
-		 where id in (select id from streams where id = ? and server is null)`,
-		name, displayName, id, id,
-	)
+func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
+	token := ""
+	query := "update users set "
+	params := make([]interface{}, 0, 6)
+
+	if name != "" {
+		if err := validateUsername(name); err != nil {
+			return "", err
+		}
+		query += "name = ?, "
+		params = append(params, name)
+	}
+
+	if displayName != "" {
+		query += "display_name = ?, "
+		params = append(params, displayName)
+	}
+
+	if email != "" {
+		if err := validateEmail(email); err != nil {
+			return "", err
+		}
+		token = makeToken(defaultTokenLength)
+		query += "activated = 0, activation_token = ?, email = ?, "
+		params = append(params, token, email)
+	}
+
+	if len(password) != 0 {
+		hash, err := generatePwHash(password)
+		if err != nil {
+			return "", err
+		}
+		query += "password = ?, "
+		params = append(params, hash)
+	}
+
+	query += "about = ? where id in (select id from streams where id = ? and server is null)"
+	params = append(params, about, id)
+
+	r, err := d.Exec(query, params...)
+	if err != nil {
+		if name != "" || email != "" {
+			var i int
+			q := d.QueryRow(`select 1 from users where name = ? or email = ?`, name, email)
+			if q.Scan(&i) != sql.ErrNoRows {
+				return "", ErrUserNotUnique
+			}
+		}
+		return "", err
+	}
 	rows, err := r.RowsAffected()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if rows != 1 {
-		return ErrStreamActive
+		return "", ErrStreamActive
 	}
-	return err
-}
-
-func (d *SQLDatabase) SetUserEmail(id int64, email string) (string, error) {
-	token := makeToken(defaultTokenLength)
-	_, err := d.Exec(
-		`update users set email = ?, activated = 0, activation_token = ? where id = ?`,
-		email, token, id,
-	)
 	return token, err
-}
-
-func (d *SQLDatabase) SetUserAbout(id int64, about string) error {
-	_, err := d.Exec(`update users set about = ? where id = ?`, about, id)
-	return err
-}
-
-func (d *SQLDatabase) SetUserPassword(id int64, password []byte) error {
-	hash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err == nil {
-		_, err = d.Exec(`update users set password = ? where id = ?`, hash, id)
-	}
-	return err
 }
 
 func (d *SQLDatabase) SetStreamName(id int64, name string) error {

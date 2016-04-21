@@ -4,7 +4,6 @@ import (
 	"errors"
 	"golang.org/x/net/websocket"
 	"strings"
-	"unicode"
 )
 
 type ChatMessage struct {
@@ -152,16 +151,8 @@ func (c *ChatContext) Close() {
 
 func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := strings.TrimSpace(args.First)
-	if len(name) == 0 {
-		return errors.New("name must not be empty")
-	}
-	if len(name) > 32 {
-		return errors.New("name too long")
-	}
-	for _, c := range name {
-		if !unicode.IsGraphic(c) {
-			return errors.New("name contains invalid characters")
-		}
+	if err := validateUsername(name); err != nil {
+		return err
 	}
 	ctx.chat.events <- chatSetNameEvent{ctx, name}
 	return nil

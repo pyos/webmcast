@@ -346,7 +346,8 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 //
 // GET,POST /user/cfg
 //     View/update the current user's data.
-//     Parameters: ...?
+//     Parameters: password-old string,
+//                 username, displayname, email, password, about string optional
 //
 // POST /user/new-token
 //     Request a new stream token.
@@ -359,7 +360,24 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return Render(w, http.StatusOK, "noscript-user-new.html", nil)
 
 		case "POST":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+			username := strings.TrimSpace(r.FormValue("username"))
+			password := r.FormValue("password")
+			email := r.FormValue("email")
+
+			switch user, err := ctx.NewUser(username, email, []byte(password)); err {
+			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
+				return RenderError(w, http.StatusBadRequest, err.Error())
+			case ErrNotSupported:
+				return RenderError(w, http.StatusNotImplemented, "Authentication is disabled.")
+			case nil:
+				if err = ctx.SetAuthInfo(w, user.ID); err != nil {
+					return err
+				}
+				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
+				return nil
+			default:
+				return err
+			}
 		}
 		return RenderInvalidMethod(w, "GET, POST")
 
@@ -422,7 +440,37 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return Render(w, http.StatusOK, "user-cfg.html", userConfigViewModel{userFull})
 
 		case "POST":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+			//     Parameters: password-old string,
+			//                 username, displayname, email, password, about string optional
+			user, err := ctx.GetAuthInfo(r)
+			if err == ErrUserNotExist {
+				return RenderError(w, http.StatusForbidden, "Must be logged in.")
+			}
+			if err != nil {
+				return err
+			}
+			switch err = user.CheckPassword([]byte(r.FormValue("password-old"))); err {
+			default:
+				return err
+			case ErrUserNotExist:
+				return RenderError(w, http.StatusForbidden, "Invalid old password.")
+			case nil:
+			}
+
+			_, err = ctx.SetUserMetadata(user.ID,
+				r.FormValue("username"), r.FormValue("displayname"), r.FormValue("email"),
+				r.FormValue("about"), []byte(r.FormValue("password")),
+			)
+			switch err {
+			default:
+				return err
+			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
+				return RenderError(w, http.StatusBadRequest, err.Error())
+			case ErrStreamActive:
+				return RenderError(w, http.StatusForbidden, "Stop streaming first.")
+			case nil:
+				return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+			}
 		}
 		return RenderInvalidMethod(w, "GET")
 
@@ -471,11 +519,10 @@ func main() {
 		iface = os.Args[1]
 	}
 
-	db, _ := NewSQLDatabase(iface, "sqlite3", ":memory:")
-	user, _ := db.NewUser("pyos", "pyos100500@gmail.com", []byte("pyos"))
-	db.SetUserName(user.ID, user.Login, "Dawg")
-	db.SetStreamName(user.ID, "Test Stream")
-	db.SetStreamAbout(user.ID, "Either colored bars, or some random WebM. That's not important.")
+	db, err := NewSQLDatabase(iface, "sqlite3", ":memory:")
+	if err != nil {
+		log.Fatal("Could not connect to the database: ", err)
+	}
 
 	ctx := NewHTTPContext(db, Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()

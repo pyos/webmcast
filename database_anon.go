@@ -26,20 +26,8 @@ func (d AnonDatabase) ActivateUser(id int64, token string) error {
 	return ErrUserNotExist
 }
 
-func (d AnonDatabase) SetUserName(id int64, name string, displayName string) error {
-	return ErrNotSupported
-}
-
-func (d AnonDatabase) SetUserEmail(id int64, email string) (string, error) {
+func (d AnonDatabase) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
 	return "", ErrNotSupported
-}
-
-func (d AnonDatabase) SetUserAbout(id int64, about string) error {
-	return ErrNotSupported
-}
-
-func (d AnonDatabase) SetUserPassword(id int64, password []byte) error {
-	return ErrNotSupported
 }
 
 func (d AnonDatabase) SetStreamName(id int64, name string) error {
