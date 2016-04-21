@@ -1,6 +1,6 @@
 <nav class="center-block" {{if .User}}data-user="{{.User.Login}}"{{end}}>
     <a href="/" class="brand">webmcast</a>
-    <div class="search"><input type="text" placeholder="Search???" /></div>
+    <div class="search">{{/* TODO, maybe?... */}}</div>
     <span class="userinfo">
         Hi, <a class="username" href="/user/cfg">{{if .User}}{{.User.Login}}{{end}}</a>.
     </span>
