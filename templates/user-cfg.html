@@ -17,8 +17,8 @@
                         <h1>Hey there, {{.User.Name}}.</h1>
                         <h2>Stream URL:</h2>
                         <h2><a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Publish</a>
-                          | <a href="/{{.User.Login}}">View</a>
-                          | <a href="/stream/{{.User.Login}}">Download</a></h2>
+                          // <a href="/{{.User.Login}}">View</a>
+                          // <a href="/stream/{{.User.Login}}">Download</a></h2>
                     </div>
                 </section>
             </div>
@@ -41,23 +41,23 @@
         {{- end -}}
 
             <div class="row center-block">
-                <section class="login-form">
+                <section class="login-form user-config-form">
                     <form method="POST" action="/user/new-token">
                         <label>Your avatar is provided by Gravatar.</label>
                         <span class="notice">
                             Visit <a href="https://gravatar.com/">gravatar.com</a>
                             to change it.
                         </span>
-                        <label>Your authentication token is
-                            <span style="white-space:nowrap">{{.User.StreamToken}}</span></label>
+                        <label>Your authentication token is</label>
+                        <input type="text" value="{{.User.StreamToken}}" readonly />
                         <span class="notice">
-                            It is included in the broadcast URL.
+                            It's at the end of the "Publish" URL.
                             Think it might have been compromised?
                         </span>
                         <button type="submit">Get a new token</button>
                     </form>
                 </section>
-                <section class="login-form">
+                <section class="login-form user-config-form">
                     <form method="POST" action="/user/cfg">
                         <label for="password-old">Old password</label>
                         <input name="password-old" type="password" placeholder="Required to change anything." />
