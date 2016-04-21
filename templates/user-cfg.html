@@ -26,15 +26,15 @@
         {{ if not .User.Activated }}
             <section class="center-block">
                 <div class="alert-warning">
-                    <h1>Your account is not activated yet.</h1>
-                    <p>You will not be able to actually broadcast video until you confirm
-                       your email address, {{.User.Email}}. Check the inbox for messages.</p>
+                    <h1>Your account is not activated.</h1>
+                    <p>You will not be able to broadcast until you confirm
+                       your email address, {{.User.Email}}. (Check the inbox.)</p>
 
                     <form method="GET" action="/user/activate">
                         {{/* TODO remove this and instead offer to send another email. */}}
                         <input type="hidden" name="uid" value="{{.User.ID}}" />
                         <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
-                        <button type="submit">Or click here.</button>
+                        <button type="submit">Or click here. Mail is not implemented yet.</button>
                     </form>
                 </div>
             </section>
