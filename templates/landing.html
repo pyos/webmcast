@@ -14,26 +14,23 @@
             h4 { opacity: 0.66; }
 
             .row {
-                min-height: 250px;
-                position: relative;
-                padding: 2em;
+                padding: 1em;
                 align-items: center;
             }
 
             .row > img {
-                width: auto;
+                flex: 0 0;
                 height: auto;
-                max-width: 350px;
-                margin-right: 2em;
+                max-width: 100%;
+                box-sizing: border-box;
                 border-radius: 2em;
             }
 
+            .row:nth-child(2n+1) { flex-direction: row-reverse; }
+            .row > * { padding: 1em; }
             .row > img + * { min-width: 200px; }
             .row > img + * > :first-child { margin-top: 0; }
             .row > img + * > :last-child { margin-bottom: 0; }
-
-            .row:nth-child(2n+1) { flex-direction: row-reverse; }
-            .row:nth-child(2n+1) > img { margin: 0 0 0 2em; }
         </style>
     </head>
     <body>
