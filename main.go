@@ -166,6 +166,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 	if err != nil && err != ErrUserNotExist {
 		return err
 	}
+	owns := auth != nil && id == auth.Login
 	stream, ok := ctx.Get(id)
 	if !ok {
 		switch _, err := ctx.GetStreamServer(id); err {
@@ -179,7 +180,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 			if err != ErrStreamOffline {
 				return err
 			}
-			return Render(w, http.StatusOK, "room.html", roomViewModel{id, nil, meta, auth})
+			return Render(w, http.StatusOK, "room.html", roomViewModel{id, owns, nil, meta, auth})
 		case ErrStreamNotExist:
 			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 		default:
@@ -192,7 +193,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		// this has to be an sql error.
 		return err
 	}
-	return Render(w, http.StatusOK, "room.html", roomViewModel{id, stream, meta, auth})
+	return Render(w, http.StatusOK, "room.html", roomViewModel{id, owns, stream, meta, auth})
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -352,6 +353,15 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 // POST /user/new-token
 //     Request a new stream token.
 //
+// POST /user/set-stream-name
+//     [XHR-only] Change the display name of the stream.
+//     All connected viewers receive an RPC event.
+//     Parameters: value string
+//
+// POST /user/set-stream-about
+//     [XHR only] Change the text in the "about" section of the stream.
+//     Parameters: value string
+//
 func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
 	switch path {
 	case "/new":
@@ -507,6 +517,41 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return err
 		}
 		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+
+	case "/set-stream-name", "/set-stream-about":
+		if r.Method != "POST" {
+			return RenderInvalidMethod(w, "POST")
+		}
+
+		auth, err := ctx.GetAuthInfo(r)
+		if err == ErrUserNotExist {
+			return RenderError(w, http.StatusForbidden, "You own no streams.")
+		}
+		if err != nil {
+			return err
+		}
+
+		value := r.FormValue("value")
+		if path == "/set-stream-name" {
+			err = ctx.SetStreamName(auth.ID, value)
+		} else {
+			err = ctx.SetStreamAbout(auth.ID, value)
+		}
+		if err != nil {
+			return err
+		}
+
+		if stream, ok := ctx.Get(auth.Login); ok {
+			if path == "/set-stream-name" {
+				stream.Chat.NewStreamName(value)
+			} else {
+				stream.Chat.NewStreamAbout(value)
+			}
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+
 	}
 
 	return RenderError(w, http.StatusNotFound, "")

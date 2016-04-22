@@ -41,6 +41,7 @@ type userConfigViewModel struct {
 
 type roomViewModel struct {
 	ID     string
+	Owned  bool
 	Stream *BroadcastContext
 	Meta   *StreamMetadata
 	User   *UserShortData

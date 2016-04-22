@@ -65,6 +65,8 @@ func NewChat(qsize int) *ChatContext {
 	return ctx
 }
 
+type chatStreamNameEvent string
+type chatStreamAboutEvent string
 type chatSetNameEvent struct {
 	user *ChatterContext
 	name string
@@ -119,7 +121,18 @@ func (c *ChatContext) handle() {
 			}
 			event.user.name = event.name
 			event.user.login = event.name
+			event.user.authed = false
 			event.user.pushName(event.name, event.name)
+
+		case chatStreamNameEvent:
+			for u := range c.Users {
+				u.pushStreamName(string(event))
+			}
+
+		case chatStreamAboutEvent:
+			for u := range c.Users {
+				u.pushStreamAbout(string(event))
+			}
 
 		case ChatMessage:
 			c.History.Push(event)
@@ -139,6 +152,14 @@ func (c *ChatContext) Connect(ws *websocket.Conn, auth *UserShortData) *ChatterC
 	}
 	c.events <- chatter
 	return chatter
+}
+
+func (c *ChatContext) NewStreamName(name string) {
+	c.events <- chatStreamNameEvent(name)
+}
+
+func (c *ChatContext) NewStreamAbout(about string) {
+	c.events <- chatStreamAboutEvent(about)
 }
 
 func (c *ChatContext) Disconnect(u *ChatterContext) {
@@ -185,4 +206,12 @@ func (ctx *ChatterContext) pushMessage(msg ChatMessage) error {
 
 func (ctx *ChatterContext) pushViewerCount() error {
 	return RPCPushEvent(ctx.socket, "Stream.ViewerCount", []interface{}{len(ctx.chat.Users)})
+}
+
+func (ctx *ChatterContext) pushStreamName(name string) error {
+	return RPCPushEvent(ctx.socket, "Stream.Name", []interface{}{name})
+}
+
+func (ctx *ChatterContext) pushStreamAbout(about string) error {
+	return RPCPushEvent(ctx.socket, "Stream.About", []interface{}{about})
 }

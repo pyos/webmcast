@@ -66,7 +66,7 @@ RPC.prototype.connect = function (event, cb) {
 };
 
 
-let View = function (root, info, stream) {
+let View = function (root, stream) {
     let rpc    = null;
     let view   = root.querySelector('video');
     let status = root.querySelector('.status');
@@ -178,9 +178,6 @@ let View = function (root, info, stream) {
     return {
         onLoad: (socket) => {
             rpc = socket;
-            rpc.connect('Stream.ViewerCount', (n) => {
-                info.querySelector('.viewers').textContent = n;
-            });
             // TODO measure connection speed, request a stream
             view.src = `/stream/${stream}`;
             view.play();
@@ -265,9 +262,38 @@ let Chat = function (root) {
 };
 
 
+let Meta = function (root, stream, owned) {
+    let meta  = root.querySelector('.meta');
+    let about = root.querySelector('.about');
+
+    if (owned) {
+        // ...
+    }
+
+    return {
+        onLoad: (rpc) => {
+            rpc.connect('Stream.ViewerCount', (n) => {
+                meta.querySelector('.viewers').textContent = n;
+            });
+
+            rpc.connect('Stream.Name', (n) => {
+                meta.querySelector('.name').textContent = n || `#${stream}`;
+            });
+
+            rpc.connect('Stream.About', (n) => {
+                about.textContent = n;
+            });
+        },
+
+        onUnload: () => {},
+    };
+};
+
+
 let stream = document.body.getAttribute('data-stream-id');
-let view   = new View(document.querySelector('.player'), document.querySelector('.meta'), stream);
+let view   = new View(document.querySelector('.player'), stream);
 let chat   = new Chat(document.querySelector('.chat'));
+let meta   = new Meta(document.body, stream, document.body.classList.contains('owned'));
 let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
                      + `${window.location.host}/stream/${encodeURIComponent(stream)}`,
-                     chat, view);
+                     chat, view, meta);
