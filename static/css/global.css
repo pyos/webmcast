@@ -106,11 +106,15 @@ canvas {
     border-bottom-width: 4px;
 }
 
-form .error {
+[data-xhrable] {
+    position: relative;
+}
+
+[data-xhrable] .error {
     color: #900;
 }
 
-form:not(.error) .error {
+[data-xhrable]:not(.error) .error {
     display: none;
 }
 

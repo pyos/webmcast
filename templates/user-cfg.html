@@ -42,7 +42,7 @@
 
             <div class="row center-block">
                 <section class="login-form user-config-form">
-                    <form method="POST" action="/user/new-token">
+                    <form method="POST" action="/user/new-token" data-xhrable>
                         <label>Your avatar is provided by Gravatar.</label>
                         <span class="notice">
                             Visit <a href="https://gravatar.com/">gravatar.com</a>
@@ -58,7 +58,7 @@
                     </form>
                 </section>
                 <section class="login-form user-config-form">
-                    <form method="POST" action="/user/cfg">
+                    <form method="POST" action="/user/cfg" data-xhrable>
                         <label for="password-old">Old password</label>
                         <input name="password-old" type="password" placeholder="Required to change anything." />
                         <label for="username">Username</label>
@@ -71,6 +71,7 @@
                         <input name="password" type="password" placeholder="Leave empty to keep the old one." />
                         <label for="about">About yourself</label>
                         <textarea name="about" rows="6">{{.User.About}}</textarea>
+                        <span class="error"></span>
                         <button type="submit">Update</button>
                     </form>
                 </section>

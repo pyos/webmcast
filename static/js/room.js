@@ -3,6 +3,7 @@
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
         if (screenfull.isFullscreen)
+            // browser support for :fullscreen is abysmal.
             screenfull.element.classList.add('is-fullscreen');
         else
             document.querySelector('.is-fullscreen').classList.remove('is-fullscreen');
@@ -10,23 +11,25 @@ if (screenfull.enabled) {
 
     document.addEventListener(screenfull.raw.fullscreenerror, () =>
         document.body.classList.add('no-fullscreen'));
-} else
+} else {
     document.body.classList.add('no-fullscreen');
+}
 
 
-let RPC = function(url, ...objects) {
+let RPC = function(url) {
     this.nextID   = 0;
     this.events   = {};
     this.requests = {};
+    this.objects  = [];
     this.socket   = new WebSocket(url);
 
     this.socket.onopen = () => {
-        for (let object of objects)
-            object.onLoad(this);
+        for (let object of this.objects)
+            object.onLoad();
     };
 
     this.socket.onclose = (ev) => {
-        for (let object of objects)
+        for (let object of this.objects)
             object.onUnload();
     };
 
@@ -66,9 +69,8 @@ RPC.prototype.connect = function (event, cb) {
 };
 
 
-let View = function (root, stream) {
-    let rpc    = null;
-    let view   = root.querySelector('video');
+let View = function (rpc, root, stream) {
+    let video  = root.querySelector('video');
     let status = root.querySelector('.status');
     let volume = root.querySelector('.volume');
 
@@ -76,8 +78,8 @@ let View = function (root, stream) {
         e.preventDefault();
         let r = volume.getBoundingClientRect();
         let x = Math.min(r.right, Math.max(r.left, e.touches ? e.touches[0].clientX : e.clientX));
-        view.volume = (x - r.left) / (r.right - r.left);
-        view.muted  = false;
+        video.volume = (x - r.left) / (r.right - r.left);
+        video.muted  = false;
     };
 
     let onVolumeChange = (v, muted) => {
@@ -98,26 +100,26 @@ let View = function (root, stream) {
 
     let onDone = () => {
         root.setAttribute('data-status',
-            view.error === null || view.error.code === 4 ? 'ended' : 'error');
-        status.textContent = view.error === null   ? 'stream ended'
-                           : view.error.code === 1 ? 'aborted'
-                           : view.error.code === 2 ? 'network error'
-                           : view.error.code === 3 ? 'decoding error'
-                           : /* view.error.code === 4 ? */ 'stream ended';
+            video.error === null || video.error.code === 4 ? 'ended' : 'error');
+        status.textContent = video.error === null   ? 'stream ended'
+                           : video.error.code === 1 ? 'aborted'
+                           : video.error.code === 2 ? 'network error'
+                           : video.error.code === 3 ? 'decoding error'
+                           : /* video.error.code === 4 ? */ 'stream ended';
     };
 
-    let onLoad = () => {
+    let onLoadStart = () => {
         root.setAttribute('data-status', 'loading');
         status.textContent = 'loading';
     };
 
-    let onPlay = () => {
+    let onLoadEnd = () => {
         root.setAttribute('data-status', 'playing');
         status.textContent = 'playing';
     };
 
     let hideCursorTimeout = null;
-    let hideCursorLater = () => {
+    let hideCursor = () => {
         showCursor();
         hideCursorTimeout = window.setTimeout(() => {
             hideCursorTimeout = null;
@@ -133,34 +135,30 @@ let View = function (root, stream) {
         hideCursorTimeout = null;
     };
 
-    view.addEventListener('loadstart',      onLoad);
-    view.addEventListener('loadedmetadata', onPlay);
-    view.addEventListener('error',          onDone);
-    view.addEventListener('ended',          onDone);
-    view.addEventListener('timeupdate', () => onTimeUpdate(view.currentTime));
-    view.addEventListener('volumechange', () => onVolumeChange(view.volume, view.muted));
+    video.addEventListener('loadstart',      onLoadStart);
+    video.addEventListener('loadedmetadata', onLoadEnd);
+    video.addEventListener('error',          onDone);
+    video.addEventListener('ended',          onDone);
+    video.addEventListener('timeupdate',     () => onTimeUpdate(video.currentTime));
+    video.addEventListener('volumechange'  , () => onVolumeChange(video.volume, video.muted));
     // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
 
-    view.addEventListener('mouseenter', hideCursorLater);
-    view.addEventListener('mouseleave', showCursor);
-    view.addEventListener('mouseenter', () =>
-        view.addEventListener('mousemove', hideCursorLater));
-    view.addEventListener('mouseleave', () =>
-        view.removeEventListener('mousemove', hideCursorLater));
+    video.addEventListener('mouseenter', hideCursor);
+    video.addEventListener('mouseleave', showCursor);
+    video.addEventListener('mouseenter', () => video.addEventListener('mousemove', hideCursor));
+    video.addEventListener('mouseleave', () => video.removeEventListener('mousemove', hideCursor));
 
+    // when styling <input type="range"> is too hard
     volume.addEventListener('mousedown',  onVolumeSelect);
     volume.addEventListener('touchstart', onVolumeSelect);
     volume.addEventListener('touchmove',  onVolumeSelect);
-    volume.addEventListener('mousedown', (e) =>
-        volume.addEventListener('mousemove', onVolumeSelect));
-    volume.addEventListener('mouseup', () =>
-        volume.removeEventListener('mousemove', onVolumeSelect));
-    volume.addEventListener('mouseleave', () =>
-        volume.removeEventListener('mousemove', onVolumeSelect));
-    onVolumeChange(view.volume, view.muted);
+    volume.addEventListener('mousedown',  () => volume.addEventListener('mousemove', onVolumeSelect));
+    volume.addEventListener('mouseup',    () => volume.removeEventListener('mousemove', onVolumeSelect));
+    volume.addEventListener('mouseleave', () => volume.removeEventListener('mousemove', onVolumeSelect));
+    onVolumeChange(video.volume, video.muted);
 
     root.querySelector('.mute').addEventListener('click', () => {
-        view.muted = !view.muted;
+        video.muted = !video.muted;
     });
 
     root.querySelector('.theatre').addEventListener('click', () =>
@@ -174,126 +172,129 @@ let View = function (root, stream) {
         screenfull.exit();
     });
 
-    onLoad();
+    onLoadStart();
     return {
-        onLoad: (socket) => {
-            rpc = socket;
+        onLoad: () => {
             // TODO measure connection speed, request a stream
-            view.src = `/stream/${stream}`;
-            view.play();
+            video.src = `/stream/${stream}`;
+            video.play();
         },
 
         onUnload: () => {
-            rpc = null;
-            view.src = '';
+            video.src = '';
         },
     };
 };
 
 
-let Chat = function (root) {
-    let form = root.querySelector('.input-form');
-    let text = form.querySelector('.input');
+let Chat = function (rpc, root) {
     let log  = root.querySelector('.log');
     let msg  = root.querySelector('.message-template');
-    let rpc  = null;
+    let form = root.querySelector('.input-form');
+    let text = root.querySelector('.input-form .input');
 
-    text.addEventListener('keydown', (ev) =>
-        (ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null));
+    let autoscroll = (domModifier) => {
+        let atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight;
+        domModifier();
+        if (atBottom)
+            log.scrollTop = log.scrollHeight;
+    };
 
-    text.addEventListener('keyup', (ev) =>
-        (ev.keyCode === 13 && !ev.shiftKey ?
-            form.dispatchEvent(new Event('submit', {cancelable: true})) : null));
+    root.querySelector('.login-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        // TODO catch errors
+        rpc.send('Chat.SetName', this.querySelector('.input').value);
+    });
 
     form.addEventListener('submit', (ev) => {
         ev.preventDefault();
-        if (rpc && text.value) {
-            rpc.send('Chat.SendMessage', text.value).then(() => {
-                log.scrollTop = log.scrollHeight;
-                text.value = '';
-                text.focus();
-            });
-        }
+        // TODO catch errors
+        rpc.send('Chat.SendMessage', text.value).then(() => {
+            log.scrollTop = log.scrollHeight;
+            text.value = '';
+            text.focus();
+        });
     });
 
-    let lform = root.querySelector('.login-form');
-    let login = lform.querySelector('.input');
+    text.addEventListener('keydown', (ev) =>
+        // do not input line breaks without shift
+        ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null);
 
-    lform.addEventListener('submit', (ev) => {
-        ev.preventDefault();
-        if (rpc && login.value) {
-            rpc.send('Chat.SetName', login.value);
-        }
+    text.addEventListener('keyup', (ev) =>
+        // send the message on Enter (but not Shift+Enter)
+        ev.keyCode === 13 && !ev.shiftKey ?
+            form.dispatchEvent(new Event('submit', {cancelable: true})) : null);
+
+    rpc.connect('Chat.Message', (name, text, login, isReal) => {
+        autoscroll(() => {
+            // TODO derive a color for the name
+            // TODO show which users are actually anonymous
+            let entry  = document.importNode(msg.content, true);
+            entry.querySelector('.name').textContent = name;
+            entry.querySelector('.text').textContent = text;
+            log.appendChild(entry);
+        });
+    });
+
+    rpc.connect('Chat.AcquiredName', (name, login) => {
+        autoscroll(() => {
+            if (name === "") {
+                root.classList.remove('logged-in');
+            } else {
+                root.classList.add('logged-in');
+                text.focus();
+            }
+        });
     });
 
     return {
-        onLoad: (socket) => {
-            rpc = socket;
-            rpc.connect('Chat.Message', (name, text, login, authed) => {
-                let rect = log.getBoundingClientRect();
-                let scroll = log.scrollTop + (rect.bottom - rect.top) >= log.scrollHeight;
-                let entry = document.importNode(msg.content, true);
-                entry.querySelector('.name').textContent = name;
-                entry.querySelector('.text').textContent = text;
-                log.appendChild(entry);
-                if (scroll)
-                    log.scrollTop = log.scrollHeight;
-            });
-
-            rpc.connect('Chat.AcquiredName', (name, login) => {
-                if (name === "") {
-                    root.classList.remove('logged-in');
-                } else {
-                    root.classList.add('logged-in');
-                    text.focus();
-                }
-                log.scrollTop = log.scrollHeight;
-            });
-
+        onLoad: () => {
             rpc.send('Chat.RequestHistory');
             root.classList.add('online');
         },
 
         onUnload: () => {
-            rpc = null;
             root.classList.remove('online');
         },
     };
 };
 
 
-let Meta = function (root, stream, owned) {
-    let meta  = root.querySelector('.meta');
-    let about = root.querySelector('.about');
+let Meta = function (rpc, meta, about, stream, owned) {
+    rpc.connect('Stream.Name', (n) => {
+        meta.querySelector('.name').textContent = n || `#${stream}`;
+    });
+
+    rpc.connect('Stream.About', (n) => {
+        about.textContent = n;
+    });
+
+    rpc.connect('Stream.ViewerCount', (n) => {
+        meta.querySelector('.viewers').textContent = n;
+    });
 
     if (owned) {
         // ...
     }
 
-    return {
-        onLoad: (rpc) => {
-            rpc.connect('Stream.ViewerCount', (n) => {
-                meta.querySelector('.viewers').textContent = n;
-            });
-
-            rpc.connect('Stream.Name', (n) => {
-                meta.querySelector('.name').textContent = n || `#${stream}`;
-            });
-
-            rpc.connect('Stream.About', (n) => {
-                about.textContent = n;
-            });
-        },
-
-        onUnload: () => {},
-    };
+    return { onLoad: () => {}, onUnload: () => {} };
 };
 
 
-let stream = document.body.getAttribute('data-stream-id');
-let view   = new View(document.querySelector('.player'), stream);
-let chat   = new Chat(document.querySelector('.chat'));
-let meta   = new Meta(document.body, stream, document.body.classList.contains('owned'));
-let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
-                     + `${window.location.host}/stream/${encodeURIComponent(stream)}`,
-                     chat, view, meta);
+let Player = function (root) {
+    let stream = root.getAttribute('data-stream-id');
+    let owned  = root.hasAttribute('data-owned');
+    let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
+                         + `${window.location.host}/stream/${encodeURIComponent(stream)}`);
+
+    rpc.objects = [
+        new View(rpc, root.querySelector('.player'), stream),
+        new Chat(rpc, root.querySelector('.chat')),
+        new Meta(rpc, root.querySelector('.meta'), root.querySelector('.about'), stream, owned),
+    ];
+
+    return rpc;
+};
+
+
+let player = new Player(document.body);
