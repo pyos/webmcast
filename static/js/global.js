@@ -168,13 +168,14 @@ let init = {
 let form = {
     enable: (e) => {
         e.removeAttribute('data-status');
-        for (let input of e.querySelectorAll(':read-write'))
+        for (let input of e.querySelectorAll(':enabled'))
             input.removeAttribute('disabled', '');
     },
 
     disable: (e) => {
         e.setAttribute('data-status', 'loading');
-        for (let input of e.querySelectorAll(':read-write'))
+        e.setAttribute('data-status-with-bg', '');
+        for (let input of e.querySelectorAll(':disabled'))
             input.setAttribute('disabled', '');
     },
 

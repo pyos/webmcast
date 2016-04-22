@@ -18,19 +18,17 @@
                 align-items: center;
             }
 
-            .row > img {
-                flex: 0 0;
-                height: auto;
-                max-width: 100%;
-                box-sizing: border-box;
+            .row img {
                 border-radius: 2em;
+                max-width: calc(100vw - 4em);
             }
 
             .row:nth-child(2n+1) { flex-direction: row-reverse; }
             .row > * { padding: 1em; }
-            .row > img + * { min-width: 200px; }
-            .row > img + * > :first-child { margin-top: 0; }
-            .row > img + * > :last-child { margin-bottom: 0; }
+            .row > :first-child { flex: 0 0; }
+            .row > :second-child { min-width: 200px; }
+            .row > :second-child > :first-child { margin-top: 0; }
+            .row > :second-child > :last-child { margin-bottom: 0; }
         </style>
     </head>
     <body>
@@ -39,7 +37,7 @@
 
             <div id="main-bg">
                 <section class="center-block row">
-                    <img src="/static/img/aware-of-dog.png" />
+                    <div><img src="/static/img/aware-of-dog.png" /></div>
                     <div>
                         <h1>watch dog.</h1>
                         <h2>Dogspotting as a Service</h2>
@@ -51,7 +49,7 @@
             <section class="center-block">
                 <div>{{/* make the next row match :nth-child(2n) */}}</div>
                 <div class="row">
-                    <img src="/static/img/observing-dog.png" />
+                    <div><img src="/static/img/observing-dog.png" /></div>
                     <div>
                         <h2>1. Observe the dog</h2>
                         <h3>Mount a camera onto a sentry station and point it
@@ -59,7 +57,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <img src="/static/img/mettaton.png" />
+                    <div><img src="/static/img/mettaton.png" /></div>
                     <div>
                         <h2>2. Broadcast the dog</h2>
                         <h3>Use cutting-edge opensource software to encode the video
@@ -67,7 +65,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <img />
+                    <div><img /></div>
                     <div>
                         <h2>3. Watch the dog</h2>
                         <h3>View the stream over the 'net (short for internet)

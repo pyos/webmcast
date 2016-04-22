@@ -21,6 +21,28 @@ html, body {
     overflow: hidden;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
+a {
+    color: #a168ad;
+    text-decoration: none;
+}
+
+a:hover {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+img,
+svg,
+video,
+audio,
+canvas {
+    vertical-align: middle;  /* https://github.com/h5bp/html5-boilerplate/issues/440 */
+}
+
 .content {
     flex: 1;
 }
@@ -84,28 +106,6 @@ html, body {
     border-bottom-width: 4px;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    font-weight: normal;
-}
-
-a {
-    color: #a168ad;
-    text-decoration: none;
-}
-
-a:hover {
-    cursor: pointer;
-    text-decoration: underline;
-}
-
-img,
-svg,
-video,
-audio,
-canvas {
-    vertical-align: middle;  /* https://github.com/h5bp/html5-boilerplate/issues/440 */
-}
-
 form .error {
     color: #900;
 }
@@ -119,10 +119,10 @@ input[type="text"],
 input[type="email"],
 input[type="password"] {
     -webkit-appearance: none;
-    box-sizing: border-box;
     margin: 0;
     height: 2em;
     padding: 0.33em;
+    box-sizing: border-box;
     vertical-align: middle;
     font: inherit;
     color: #444;
@@ -133,7 +133,6 @@ input[type="password"] {
 }
 
 textarea {
-    width: 100%;
     height: auto;
 }
 
@@ -159,8 +158,14 @@ form.error textarea,
 form.error input[type="text"],
 form.error input[type="email"],
 form.error input[type="password"] {
-    background: #fff0f0;
-    border-color: #e6a5a5;
+    background: #fff8f8;
+    border-color: #dcb0a3;
+}
+
+input::-moz-focus-inner,
+button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
 }
 
 button {
@@ -175,7 +180,7 @@ button {
     vertical-align: middle;
     min-height: 2.5em;
     border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 4px;
+    border-radius: 6px;
     background-color: #f7d358;
 }
 
@@ -185,7 +190,7 @@ button:not(:disabled) {
 
 button:focus {
     outline: none;
-    border-color: rgba(0,0,0,0.21);
+    box-shadow: 0 0 10px #f7d358;
 }
 
 button:active {
@@ -198,19 +203,27 @@ button:disabled {
     background-color: #fafafa;
 }
 
-input::-moz-focus-inner,
-button::-moz-focus-inner {
-    border: 0;
-    padding: 0;
+button.alt {
+    color: #eee;
+    border: none;
+    background-color: #a168ad;
+}
+
+button.alt:focus {
+    box-shadow: 0 0 5px #a168ad;
+}
+
+button.alt:active {
+    background-color: #91489d;
 }
 
 a.button {
     width: 1.5em;
     padding: 0.5em;
-    display: inline-block;
-    vertical-align: middle;
     color: inherit;
     cursor: pointer;
+    display: inline-block;
+    vertical-align: middle;
     transition: text-shadow 0.1s ease-in-out;
 }
 
@@ -231,47 +244,23 @@ nav {
     align-items: center;
 }
 
-nav .brand {
+nav > .brand {
     color: inherit;
     font-size: 1.2em;
     font-weight: bold;
 }
 
-nav .brand ~ * {
-    margin-left: 1.66em;
-}
-
-nav .search {
+nav > .spacer {
     flex: 1;
 }
 
-nav .signup {
+nav > :not(:first-child) {
+    margin-left: 1.66em;
+}
+
+nav > button {
     margin-top: -0.5em;
     margin-bottom: -0.5em;
-    padding: 0.5em;
-    color: #fff;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    background: #a168ad;
-}
-
-nav .signup:hover {
-    text-decoration: none;
-}
-
-nav .signup:focus {
-    outline: 0;
-    border-color: #666;
-}
-
-nav .signup:active {
-    background: #91489d;
-}
-
-@media (max-width: 50em) {
-    nav .search input {
-        display: none;
-    }
 }
 
 footer {
@@ -280,9 +269,6 @@ footer {
 }
 
 .modal-bg {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
     position: absolute;
     top: 0;
     left: 0;
@@ -293,14 +279,14 @@ footer {
 }
 
 .modal {
-    flex: 1;
+    margin: 0 auto;
+    max-width: 30em;
     overflow: hidden;
     position: relative;
     background: #fff;
-    max-width: 30em;
 }
 
-.modal > [data-scrollbar] {
+.modal > * {
     max-height: 100vh;
 }
 
@@ -385,16 +371,7 @@ footer {
     z-index: 2;
 }
 
-[data-status="loading"]:before {
-    animation: spin 0.66s infinite linear;
-    border: 0.1em solid rgba(255,255,255,0.2);
-    border-radius: 50%;
-    border-top-color: currentColor;
-    box-sizing: border-box;
-    content: '';
-}
-
-[data-status="loading"].with-bg:after {
+[data-status][data-status-with-bg]:after {
     display: block;
     content: '';
     position: absolute;
@@ -406,6 +383,15 @@ footer {
     background: rgba(255,255,255,0.7);
 }
 
+[data-status="loading"]:before {
+    animation: spin 0.66s infinite linear;
+    border: 0.1em solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    box-sizing: border-box;
+    content: '';
+}
+
 @keyframes spin {
     0%   {transform: rotate(0deg);}
     100% {transform: rotate(359deg);}
@@ -415,26 +401,25 @@ footer {
     padding: 2em;
 }
 
-.login-form > *,
-.login-form form > * {
+.login-form > form > * {
     display: block;
-    margin: 1em 0 0 0;
 }
 
-.login-form > :first-child,
-.login-form form > :first-child,
-.login-form form > label + * {
-    margin-top: 0;
+.login-form > :not(label) + *,
+.login-form > form > :not(label) + * {
+    margin-top: 1em;
 }
 
 .login-form label {
     font-weight: bold;
+    margin-bottom: 0;
 }
 
 .login-form .notice {
     color: #888;
 }
 
+.user-config-form textarea,
 .user-config-form input[type="text"],
 .user-config-form input[type="password"],
 .user-config-form input[type="email"] {
