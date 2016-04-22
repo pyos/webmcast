@@ -1,235 +1,206 @@
 'use strict';
+// dammit, chrome, you were supposed to have the best standards support...
+NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
 
 
-let initDocument = (d) => {
-    Array.from(d.querySelectorAll('[data-scrollbar]')).map(attachFloatingScrollbar);
-    Array.from(d.querySelectorAll('[data-tabs]')).map(attachTabBar);
-    return d;
-};
-
-
-let nativeScrollbarWidth = (() => {
+const nativeScrollbarWidth = (() => {
     let e = document.createElement('div');
-    e.style.position = 'absolute';
-    e.style.top      = '-200px';
+    e.style.position = 'fixed';
     e.style.width    = '100px';
     e.style.height   = '100px';
     e.style.overflow = 'scroll';
     document.body.appendChild(e);
     let r = e.offsetWidth - e.clientWidth;
-    e.remove();
+    document.body.removeChild(e);
     return r;
 })();
 
 
-let attachFloatingScrollbar = (e) => {
-    if (nativeScrollbarWidth === 0)
-        return;  // native scrollbar is already floating
+let init = {
+    all: (e) => {
+        for (let f in init) if (init.hasOwnProperty(f) && f != 'all')
+            for (let c of e.querySelectorAll(f))
+                init[f](c);
+        return e;
+    },
 
-    let track = document.createElement('div');
-    let thumb = document.createElement('div');
-    thumb.classList.add('thumb');
-    track.classList.add('track');
-    track.classList.add('hide');
-    track.appendChild(thumb);
+    '[data-scrollbar]': (e) => {
+        if (nativeScrollbarWidth === 0 || e.style.marginRight !== '')
+            return;  // native scrollbar is already floating
 
-    let timeout = null;
-    let show = () => {
-        thumb.style.height =  `${e.clientHeight / e.scrollHeight * track.clientHeight}px`;
-        thumb.style.top    =  `${e.scrollTop    / e.scrollHeight * track.clientHeight}px`;
-        track.style.top    =  `${e.scrollTop}px`;
-        track.style.bottom = `-${e.scrollTop}px`;
-        if (e.scrollHeight > e.clientHeight) {
-            if (timeout !== null)
-                window.clearTimeout(timeout);
-            timeout = window.setTimeout(() => track.classList.add('hide'), 1000);
-            track.classList.remove('hide');
-            e.style.overflowY   = 'scroll';
-            e.style.marginRight = `-${nativeScrollbarWidth}px`;
-        } else {
-            timeout = null;
-            e.style.overflowY   = 'hidden';
-            e.style.marginRight = '0';
-        }
-    };
+        let timer = null;
+        let track = document.createElement('div');
+        let thumb = document.createElement('div');
+        thumb.classList.add('thumb');
+        track.classList.add('track');
+        track.classList.add('hide');
+        track.appendChild(thumb);
 
-    e.appendChild(track);
-    e.addEventListener('scroll',    show);
-    e.addEventListener('mousemove', show);
-    show();
-};
-
-
-let attachTabBar = (e) => {
-    let bar  = document.createElement('div');
-    let tabs = {};
-    let btns = {};
-    bar.classList.add('tabbar');
-
-    let onSelect = () => {
-        let active = e.getAttribute('data-tabs');
-        for (let id in tabs) {
-            if (id === active) {
-                btns[id].classList.add('active');
-                tabs[id].removeAttribute('hidden');
-            } else {
-                btns[id].classList.remove('active');
-                tabs[id].setAttribute('hidden', '1');
+        let show = () => {
+            thumb.style.height =  `${e.clientHeight / e.scrollHeight * track.clientHeight}px`;
+            thumb.style.top    =  `${e.scrollTop    / e.scrollHeight * track.clientHeight}px`;
+            track.style.top    =  `${e.scrollTop}px`;
+            track.style.bottom = `-${e.scrollTop}px`;
+            if (e.scrollHeight > e.clientHeight) {
+                window.clearTimeout(timer);
+                track.classList.remove('hide');
+                timer = window.setTimeout(() => track.classList.add('hide'), 1000);
             }
+        };
+
+        e.style.overflowY   = 'scroll';
+        e.style.marginRight = `${-nativeScrollbarWidth}px`;
+        e.appendChild(track);
+        e.addEventListener('scroll',    show);
+        e.addEventListener('mousemove', show);
+        show();
+    },
+
+    '[data-tabs]': (e) => {
+        let bar = document.createElement('div');
+        bar.classList.add('tabbar');
+        bar.addEventListener('click', (ev) =>
+            e.setAttribute('data-tabs', ev.target.getAttribute('data-tab')));
+
+        let tabs = {};
+        for (let tab of e.querySelectorAll('[data-tab]')) {
+            if (tab.parentElement.parentElement !== e)
+                continue;
+            tabs[tab.getAttribute('data-tab')] = {t: tab.parentElement, b: tab};
+            bar.appendChild(tab);
         }
-    };
 
-    let setThisActive = function () {
-        e.setAttribute('data-tabs', this.getAttribute('data-tab'));
-    };
+        new MutationObserver(() => {
+            for (let id in tabs) {
+                tabs[id].b.classList.remove('active');
+                tabs[id].t.setAttribute('hidden', '');
+            }
+            let active = e.getAttribute('data-tabs');
+            tabs[active].b.classList.add('active');
+            tabs[active].t.removeAttribute('hidden');
+        }).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
 
-    for (let tab of Array.from(e.querySelectorAll('[data-tab]'))) {
-        if (tab.parentElement.parentElement !== e)
-            continue;
-        tab.addEventListener('click', setThisActive);
-        tabs[tab.getAttribute('data-tab')] = tab.parentElement;
-        btns[tab.getAttribute('data-tab')] = tab;
-        bar.appendChild(tab);
-    }
+        e.insertBefore(bar, e.childNodes[0]);
+        e.setAttribute('data-tabs', e.getAttribute('data-tabs'));
+    },
 
-    new MutationObserver(onSelect).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
-    e.insertBefore(bar, e.childNodes[0]);
-    onSelect();
-};
+    '[data-tab-trigger]': (e) => {
+        e.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            for (let p = e.parentElement; p !== null; p = p.parentElement)
+                if (p.hasAttribute('data-tabs'))
+                    return p.setAttribute('data-tabs', e.getAttribute('data-tab-trigger'));
+        });
+    },
 
+    '[data-modal]': (e) => {
+        let parent = e.parentNode;
+        let outer  = document.createElement('div');
+        let inner  = document.createElement('div');
+        let scroll = document.createElement('div');
+        let close  = document.createElement('a');
+        outer.classList.add('modal-bg');
+        inner.classList.add('modal');
+        close.classList.add('button');
+        close.classList.add('close');
+        scroll.setAttribute('data-scrollbar', '');
+        scroll.appendChild(e);
+        parent.appendChild(outer);
+        inner.appendChild(scroll);
+        inner.appendChild(close);
+        outer.appendChild(inner);
+        outer.addEventListener('click', (e) => e.target === e.currentTarget ? outer.remove() : 1);
+        close.addEventListener('click', (e) => outer.remove());
+        // if the [data-scrollbar] initializer has already ran, this element would be left
+        // uninitialized. good thing that particular initializer is idempotent...
+        init['[data-scrollbar]'](scroll);
+    },
 
-let showModal = (e) => {
-    let outer  = document.createElement('div');
-    let inner  = document.createElement('div');
-    let scroll = document.createElement('div');
-    let close  = document.createElement('a');
-    outer.classList.add('modal-bg');
-    inner.classList.add('modal');
-    close.classList.add('button');
-    close.classList.add('close');
-    scroll.setAttribute('data-scrollbar', '1');
-    scroll.appendChild(e);
-    inner.appendChild(scroll);
-    inner.appendChild(close);
-    outer.appendChild(inner);
-
-    let onFocusChange = (ev) => {
-        for (let t = ev.target; t !== null; t = t.parentElement)
-            if (t === outer)
+    'body': (e) => {
+        e.addEventListener('focusin', (ev) => {
+            // focus must not escape modal dialogs.
+            let modals = e.querySelectorAll('.modal-bg');
+            if (modals.length === 0)
                 return;
-        ev.target.blur();  // FIXME should somehow set focus to the dialog instead
-    };
+            for (let t = ev.target; t !== null; t = t.parentElement)
+                if (t === modals[modals.length - 1])
+                    return;
+            ev.target.blur();
+        });
+    },
 
-    let onClose = () => {
-        outer.remove();
-        document.body.removeEventListener('focusin', onFocusChange);
-    };
+    'nav .login': (e) => {
+        e.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            document.body.appendChild(init.all(document.importNode(
+                document.querySelector('#login-template').content, true)));
+        });
+    },
 
-    document.body.appendChild(initDocument(outer));
-    document.body.addEventListener('focusin', onFocusChange);
-    outer.addEventListener('click', (e) =>
-        e.target === e.currentTarget || e.target === close ? onClose() : null);
+    'nav .signup': (e) => {
+        e.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            let it = document.importNode(document.querySelector('#login-template').content, true);
+            it.firstElementChild.setAttribute('data-tabs', 'signup');
+            document.body.appendChild(init.all(it));
+        });
+    },
 
-    let randomFocusable = e.querySelector('a, input, button, textarea');
-    if (randomFocusable) {
-        randomFocusable.focus();
-        randomFocusable.blur();
-    }
-
-    return onClose;
+    'form[data-xhrable]': (e) => {
+        e.addEventListener('submit', (ev) => {
+            ev.preventDefault();
+            form.submit(e).then((xhr) => {
+                if (xhr.status === 204)
+                    window.location.reload();
+                else
+                    window.location = xhr.responseURL;
+            }).catch((xhr, isNetworkError) => {
+                e.classList.add('error');
+                e.querySelector('.error').textContent =
+                    isNetworkError ? 'Could not connect to server.'
+                                   : xhr.response.getElementById('message').textContent;
+            });
+        });
+    },
 };
 
 
-let showLoginForm = (showSignup) => {
-    let template = document.querySelector('template#login-form');
-    if (template === null)
-        return;
+let form = {
+    enable: (e) => {
+        e.removeAttribute('data-status');
+        for (let input of e.querySelectorAll(':read-write'))
+            input.removeAttribute('disabled', '');
+    },
 
-    let it = initDocument(document.importNode(template.content, true)).firstElementChild;
-    if (showSignup)
-        it.setAttribute('data-tabs', 'signup');
+    disable: (e) => {
+        e.setAttribute('data-status', 'loading');
+        for (let input of e.querySelectorAll(':read-write'))
+            input.setAttribute('disabled', '');
+    },
 
-    it.querySelector('.go-to-restore').addEventListener('click', (ev) => {
-        ev.preventDefault();
-        it.setAttribute('data-tabs', 'restore');
-    });
-
-    let closeModal = showModal(it);
-
-    let enableForm = function () {
-        it.removeAttribute('data-status');
-        for (let i of Array.from(this.querySelectorAll(':read-write')))
-            i.removeAttribute('disabled', '');
-    };
-
-    let disableForm = function () {
-        it.setAttribute('data-status', 'loading');
-        for (let i of Array.from(this.querySelectorAll(':read-write')))
-            i.setAttribute('disabled', '');
-    };
-
-    let submitForm = function (ev) {
-        ev.preventDefault();
+    submit: (e) => new Promise((resolve, reject) => {
         let xhr = new XMLHttpRequest();
 
         xhr.onload = (ev) => {
-            console.log(xhr);
-            if (xhr.status === 204) {
-                // ...?
-                window.location.reload();
-            } else if (xhr.status >= 400) {
-                this.classList.add('error');
-                this.querySelector('.error').textContent =
-                    xhr.response.getElementById('message').textContent;
-            } else {
-                // ...?
-                window.location = xhr.responseURL;
-            }
-            enableForm.call(this);
+            form.enable(e);
+            if (xhr.status >= 400)
+                reject(xhr, false);
+            else
+                resolve(xhr);
         };
 
         xhr.onerror = (ev) => {
-            this.classList.add('error');
-            this.querySelector('.error').textContent = 'Could not connect to server.';
-            enableForm.call(this);
+            form.enable(e);
+            reject(xhr, true);
         };
 
         xhr.responseType = 'document';
-        xhr.open(this.getAttribute('method'), this.getAttribute('action'));
+        xhr.open(e.getAttribute('method'), e.getAttribute('action'));
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.send(new FormData(this));
-        disableForm.call(this);
-    };
-
-    for (let form of Array.from(it.querySelectorAll('form')))
-        form.addEventListener('submit', submitForm);
-    return closeModal;
+        xhr.send(new FormData(e));
+        form.disable(e);
+    }),
 };
 
 
-let initNavBar = (e) => {
-    let onUserSwap = () => {
-        let user = e.getAttribute('data-user');
-        if (user !== null) {
-            e.querySelector('.username').textContent = user;
-        }
-    };
-
-    new MutationObserver(onUserSwap).observe(e,
-        {attributes: true, attributeFilter: ['data-user']});
-    onUserSwap();
-
-    e.querySelector('.login').addEventListener('click', (ev) => {
-        ev.preventDefault();
-        showLoginForm(false);
-    });
-
-    e.querySelector('.signup').addEventListener('click', (ev) => {
-        ev.preventDefault();
-        showLoginForm(true);
-    });
-};
-
-
-initDocument(document);
-initNavBar(document.querySelector('nav'));
+init.all(document);

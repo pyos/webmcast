@@ -245,13 +245,6 @@ nav .search {
     flex: 1;
 }
 
-nav[data-user] .login,
-nav[data-user] .signup,
-nav:not([data-user]) .userinfo,
-nav:not([data-user]) .logout {
-    display: none;
-}
-
 nav .signup {
     margin-top: -0.5em;
     margin-bottom: -0.5em;
