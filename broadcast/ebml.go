@@ -16,7 +16,7 @@ const (
 	EBMLTrackNumberTag     = 0xD7
 	EBMLTrackUIDTag        = 0x73C5
 	EBMLTrackTypeTag       = 0x83
-	EBMLFlagEnabledTag     = 0x88
+	EBMLFlagEnabledTag     = 0xB9
 	EBMLFlagDefaultTag     = 0x88
 	EBMLFlagForcedTag      = 0x55AA
 	EBMLFlagLacingTag      = 0x9C
