@@ -1,4 +1,4 @@
-package main
+package templates
 
 import (
 	"fmt"
@@ -31,20 +31,23 @@ func (ts *templateSet) Get(name string) (*template.Template, error) {
 	return nil, fmt.Errorf("template not found: %s", name)
 }
 
-type landingViewModel struct {
-	User *UserShortData
-}
+var bufpool = bpool.NewBufferPool(64)
+var templates = templateSet{root: "templates"}
 
-type userConfigViewModel struct {
-	User *UserMetadata
-}
-
-type roomViewModel struct {
-	ID     string
-	Owned  bool
-	Stream *BroadcastContext
-	Meta   *StreamMetadata
-	User   *UserShortData
+func Page(w http.ResponseWriter, code int, template string, data interface{}) error {
+	tpl, err := templates.Get(template)
+	if err != nil {
+		return err
+	}
+	buf := bufpool.Get()
+	defer bufpool.Put(buf)
+	if err = tpl.Execute(buf, data); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "text/html; encoding=utf-8")
+	w.WriteHeader(code)
+	buf.WriteTo(w)
+	return nil
 }
 
 type errorViewModel struct {
@@ -88,31 +91,12 @@ func (e errorViewModel) DisplayComment() string {
 	}
 }
 
-var bufpool = bpool.NewBufferPool(64)
-var templates = templateSet{root: "templates"}
-
-func Render(w http.ResponseWriter, code int, template string, data interface{}) error {
-	tpl, err := templates.Get(template)
-	if err != nil {
-		return err
-	}
-	buf := bufpool.Get()
-	defer bufpool.Put(buf)
-	if err = tpl.Execute(buf, data); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "text/html; encoding=utf-8")
-	w.WriteHeader(code)
-	buf.WriteTo(w)
-	return nil
-}
-
-func RenderError(w http.ResponseWriter, code int, message string) error {
+func Error(w http.ResponseWriter, code int, message string) error {
 	w.Header().Set("Cache-Control", "no-cache")
-	return Render(w, code, "error.html", errorViewModel{code, message})
+	return Page(w, code, "error.html", errorViewModel{code, message})
 }
 
-func RenderInvalidMethod(w http.ResponseWriter, methods string) error {
+func InvalidMethod(w http.ResponseWriter, methods string) error {
 	w.Header().Set("Allow", methods)
-	return RenderError(w, http.StatusMethodNotAllowed, "")
+	return Error(w, http.StatusMethodNotAllowed, "")
 }

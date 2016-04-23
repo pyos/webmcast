@@ -1,30 +1,27 @@
-package main
+package broadcast
 
 import (
 	"sync"
 	"time"
 )
 
-type Context struct {
+type Set struct {
 	mutex   sync.RWMutex // protects `streams`
-	streams map[string]*BroadcastContext
+	streams map[string]*Single
 	// There is a timeout after releasing a stream during which it is possible
 	// to reacquire the same object and continue broadcasting. Once the timeout
 	// elapses, the stream is closed for good.
 	Timeout time.Duration
 	// When a stream is actually closed, this function is called as a notification.
 	OnStreamClose func(id string)
-	// How many messages to transmit on a `Chat.RequestHistory` RPC call.
-	ChatHistory int
 }
 
-type BroadcastContext struct {
+type Single struct {
 	Broadcast
 	closing            bool
 	closingStateChange chan bool
 
 	Created time.Time
-	Chat    *ChatContext
 	// These values are for the whole stream, so they include audio and muxing overhead.
 	// The latter is negligible, however, and the former is normally about 64k,
 	// so also negligible. Or at least predictable.
@@ -37,17 +34,16 @@ type BroadcastContext struct {
 
 // Acquire a stream for writing. Only one "writable" reference can be held;
 // until it is closed, this function will return an error.
-func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
+func (ctx *Set) Acquire(id string) (*Single, bool) {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
 	if ctx.streams == nil {
-		ctx.streams = make(map[string]*BroadcastContext)
+		ctx.streams = make(map[string]*Single)
 	}
 	stream, ok := ctx.streams[id]
 	if !ok {
-		v := &BroadcastContext{
+		v := &Single{
 			Broadcast:          NewBroadcast(),
-			Chat:               NewChat(ctx.ChatHistory),
 			Created:            time.Now().UTC(),
 			closingStateChange: make(chan bool),
 		}
@@ -63,7 +59,7 @@ func (ctx *Context) Acquire(id string) (*BroadcastContext, bool) {
 }
 
 // Acquire a stream for reading. There is no limit on the number of concurrent readers.
-func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
+func (ctx *Set) Get(id string) (*Single, bool) {
 	if ctx.streams == nil {
 		return nil, false
 	}
@@ -73,7 +69,7 @@ func (ctx *Context) Get(id string) (*BroadcastContext, bool) {
 	return stream, ok
 }
 
-func (stream *BroadcastContext) monitor(ctx *Context, id string) {
+func (stream *Single) monitor(ctx *Set, id string) {
 	ticker := time.NewTicker(time.Second)
 	ticksWhileOffline := 0 * time.Second
 
@@ -88,7 +84,6 @@ func (stream *BroadcastContext) monitor(ctx *Context, id string) {
 					defer ctx.mutex.Unlock()
 					delete(ctx.streams, id)
 					ticker.Stop()
-					stream.Chat.Close()
 					stream.Broadcast.Close()
 					if ctx.OnStreamClose != nil {
 						ctx.OnStreamClose(id)
@@ -106,12 +101,12 @@ func (stream *BroadcastContext) monitor(ctx *Context, id string) {
 	}
 }
 
-func (stream *BroadcastContext) Write(data []byte) (int, error) {
+func (stream *Single) Write(data []byte) (int, error) {
 	stream.Rate.unit += float64(len(data))
 	return stream.Broadcast.Write(data)
 }
 
-func (stream *BroadcastContext) Close() error {
+func (stream *Single) Close() error {
 	stream.closingStateChange <- true
 	return nil
 }

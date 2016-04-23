@@ -1,4 +1,4 @@
-package main
+package database
 
 import "database/sql"
 
@@ -30,7 +30,7 @@ create table if not exists users (
     primary key (id), unique (name), unique (email)
 );`
 
-func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
+func NewSQLDatabase(localhost string, driver string, server string) (Interface, error) {
 	db, err := sql.Open(driver, server)
 	if err == nil {
 		wrapped := &SQLDatabase{*db, localhost, make(map[string]string)}
@@ -43,10 +43,10 @@ func NewSQLDatabase(localhost string, driver string, server string) (Database, e
 }
 
 func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
-	if err := validateUsername(name); err != nil {
+	if err := ValidateUsername(name); err != nil {
 		return nil, err
 	}
-	if err := validateEmail(email); err != nil {
+	if err := ValidateEmail(email); err != nil {
 		return nil, err
 	}
 	hash, err := generatePwHash(password)
@@ -146,7 +146,7 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 	params := make([]interface{}, 0, 6)
 
 	if name != "" {
-		if err := validateUsername(name); err != nil {
+		if err := ValidateUsername(name); err != nil {
 			return "", err
 		}
 		query += "name = ?, "
@@ -159,7 +159,7 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 	}
 
 	if email != "" {
-		if err := validateEmail(email); err != nil {
+		if err := ValidateEmail(email); err != nil {
 			return "", err
 		}
 		token = makeToken(defaultTokenLength)
@@ -287,7 +287,10 @@ func (d *SQLDatabase) GetStreamServer(user string) (string, error) {
 	}
 	if server.String == d.localhost {
 		// it should have been offline??
-		return "", ErrStreamActive
+		if _, err = d.Exec(`update users set stream_server = null where name = ?`, user); err != nil {
+			return "", err
+		}
+		return "", ErrStreamOffline
 	}
 	if !server.Valid {
 		return "", ErrStreamOffline

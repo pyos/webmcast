@@ -1,4 +1,4 @@
-package main
+package broadcast
 
 const (
 	EBMLVoidTag            = 0xEC

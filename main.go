@@ -16,6 +16,11 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"./broadcast"
+	"./chat"
+	"./database"
+	"./templates"
 )
 
 var (
@@ -26,6 +31,23 @@ var (
 	// default interface & port to bind on
 	iface = ":8000"
 )
+
+type landingViewModel struct {
+	User *database.UserShortData
+}
+
+type userConfigViewModel struct {
+	User *database.UserMetadata
+}
+
+type roomViewModel struct {
+	ID     string
+	Owned  bool
+	Stream *broadcast.Single
+	Meta   *database.StreamMetadata
+	User   *database.UserShortData
+	Chat   *chat.Context
+}
 
 // a bunch of net/http hacks first. this structure wraps a filesystem interface
 // used to serve static files and disallows any accesses to directories,
@@ -70,16 +92,24 @@ func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code 
 // to normally owner-less streams in a broadcasting context. implements `http.Handler`.
 type HTTPContext struct {
 	cookieCodec *securecookie.SecureCookie
-	Database
-	Context
+	chats       map[string]*chat.Context
+	database.Interface
+	broadcast.Set
 }
 
-func NewHTTPContext(d Database, c Context) *HTTPContext {
-	// NOTE go vet complains about passing a mutex in `Context` by value.
+func NewHTTPContext(d database.Interface) *HTTPContext {
+	// NOTE go vet complains about passing a mutex in `Set` by value.
 	//      this is fine; the mutex must not be held while creating a context anyway.
-	ctx := &HTTPContext{Database: d, Context: c}
-	ctx.cookieCodec = securecookie.New(secretKey, nil)
+	ctx := &HTTPContext{
+		cookieCodec: securecookie.New(secretKey, nil),
+		chats:       make(map[string]*chat.Context),
+		Interface:   d,
+	}
 	ctx.OnStreamClose = func(id string) {
+		if chat, ok := ctx.chats[id]; ok {
+			chat.Close()
+			delete(ctx.chats, id)
+		}
 		if err := ctx.StopStream(id); err != nil {
 			log.Println("Error stopping the stream: ", err)
 		}
@@ -90,7 +120,7 @@ func NewHTTPContext(d Database, c Context) *HTTPContext {
 func (ctx *HTTPContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := ctx.ServeHTTPUnsafe(w, r); err != nil {
 		log.Println("error rendering template", r.URL.Path, err.Error())
-		if err = RenderError(w, http.StatusInternalServerError, ""); err != nil {
+		if err = templates.Error(w, http.StatusInternalServerError, ""); err != nil {
 			log.Println("error rendering error", err.Error())
 			http.Error(w, "Error while rendering error message.", http.StatusInternalServerError)
 		}
@@ -103,13 +133,13 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	}
 	if r.URL.Path == "/" {
 		if r.Method != "GET" {
-			return RenderInvalidMethod(w, "GET")
+			return templates.InvalidMethod(w, "GET")
 		}
 		auth, err := ctx.GetAuthInfo(r)
-		if err != nil && err != ErrUserNotExist {
+		if err != nil && err != database.ErrUserNotExist {
 			return err
 		}
-		return Render(w, http.StatusOK, "landing.html", landingViewModel{auth})
+		return templates.Page(w, http.StatusOK, "landing.html", landingViewModel{auth})
 	}
 	if !strings.ContainsRune(r.URL.Path[1:], '/') {
 		return ctx.Player(w, r, r.URL.Path[1:])
@@ -120,21 +150,21 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	if strings.HasPrefix(r.URL.Path, "/user/") {
 		return ctx.UserControl(w, r, r.URL.Path[5:])
 	}
-	return RenderError(w, http.StatusNotFound, "")
+	return templates.Error(w, http.StatusNotFound, "")
 }
 
 // read the id of the logged-in user from a secure session cookie.
 // returns an ErrUserNotFound if there is no cookie, the cookie is invalid,
 // or the user has since been removed from the database. all other errors
 // are sql-related and are unrecoverable. probably.
-func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*UserShortData, error) {
+func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*database.UserShortData, error) {
 	var uid int64
 	if cookie, err := r.Cookie("uid"); err == nil {
 		if err = ctx.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
 			return ctx.GetUserShort(uid)
 		}
 	}
-	return nil, ErrUserNotExist
+	return nil, database.ErrUserNotExist
 }
 
 // write a secure session cookie containing the specified user id to be read
@@ -159,11 +189,11 @@ func (ctx *HTTPContext) SetAuthInfo(w http.ResponseWriter, id int64) error {
 //
 func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string) error {
 	if r.Method != "GET" {
-		return RenderInvalidMethod(w, "GET")
+		return templates.InvalidMethod(w, "GET")
 	}
 
 	auth, err := ctx.GetAuthInfo(r)
-	if err != nil && err != ErrUserNotExist {
+	if err != nil && err != database.ErrUserNotExist {
 		return err
 	}
 	owns := auth != nil && id == auth.Login
@@ -171,18 +201,19 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 	if !ok {
 		switch _, err := ctx.GetStreamServer(id); err {
 		case nil:
-			return ErrStreamNotExist
-		case ErrStreamNotHere:
+			return database.ErrStreamNotExist
+		case database.ErrStreamNotHere:
 			// TODO redirect
-			return RenderError(w, http.StatusNotFound, "This stream is not here.")
-		case ErrStreamOffline:
+			return templates.Error(w, http.StatusNotFound, "This stream is not here.")
+		case database.ErrStreamOffline:
 			meta, err := ctx.GetStreamMetadata(id)
-			if err != ErrStreamOffline {
+			if err != database.ErrStreamOffline {
 				return err
 			}
-			return Render(w, http.StatusOK, "room.html", roomViewModel{id, owns, nil, meta, auth})
-		case ErrStreamNotExist:
-			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+			return templates.Page(w, http.StatusOK, "room.html",
+				roomViewModel{id, owns, nil, meta, auth, nil})
+		case database.ErrStreamNotExist:
+			return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
 		default:
 			return err
 		}
@@ -193,7 +224,8 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		// this has to be an sql error.
 		return err
 	}
-	return Render(w, http.StatusOK, "room.html", roomViewModel{id, owns, stream, meta, auth})
+	return templates.Page(w, http.StatusOK, "room.html",
+		roomViewModel{id, owns, stream, meta, auth, ctx.chats[id]})
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -232,7 +264,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 	switch r.Method {
 	case "GET":
 		if r.URL.RawQuery != "" {
-			return RenderError(w, http.StatusBadRequest, "POST or PUT, don't GET.")
+			return templates.Error(w, http.StatusBadRequest, "POST or PUT, don't GET.")
 		}
 
 		stream, ok := ctx.Get(id)
@@ -241,14 +273,14 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 			case nil:
 				// this is a server-side error. this stream is supposed to be
 				// on this server, but somehow it is not.
-				return ErrStreamNotExist
-			case ErrStreamNotHere:
+				return database.ErrStreamNotExist
+			case database.ErrStreamNotHere:
 				// TODO redirect
-				return RenderError(w, http.StatusNotFound, "This stream is not here.")
-			case ErrStreamOffline:
-				return RenderError(w, http.StatusNotFound, "Stream offline.")
-			case ErrStreamNotExist:
-				return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+				return templates.Error(w, http.StatusNotFound, "This stream is not here.")
+			case database.ErrStreamOffline:
+				return templates.Error(w, http.StatusNotFound, "Stream offline.")
+			case database.ErrStreamNotExist:
+				return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
 			default:
 				return err
 			}
@@ -258,11 +290,16 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 			for i := range upgrade {
 				if strings.ToLower(upgrade[i]) == "websocket" {
 					auth, err := ctx.GetAuthInfo(r)
-					if err != nil && err != ErrUserNotExist {
+					if err != nil && err != database.ErrUserNotExist {
 						return err
 					}
 					websocket.Handler(func(ws *websocket.Conn) {
-						stream.RunRPC(ws, auth)
+						c, ok := ctx.chats[id]
+						if !ok {
+							c = chat.New(20)
+							ctx.chats[id] = c
+						}
+						c.RunRPC(ws, auth)
 					}).ServeHTTP(w, r)
 					return nil
 				}
@@ -295,19 +332,19 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 		err := ctx.StartStream(id, r.URL.RawQuery)
 		switch err {
 		case nil:
-		case ErrInvalidToken:
-			return RenderError(w, http.StatusForbidden, "Invalid token.")
-		case ErrStreamNotExist:
-			return RenderError(w, http.StatusNotFound, "Invalid stream ID.")
-		case ErrStreamNotHere:
-			return RenderError(w, http.StatusForbidden, "The stream is on another server.")
+		case database.ErrInvalidToken:
+			return templates.Error(w, http.StatusForbidden, "Invalid token.")
+		case database.ErrStreamNotExist:
+			return templates.Error(w, http.StatusNotFound, "Invalid stream ID.")
+		case database.ErrStreamNotHere:
+			return templates.Error(w, http.StatusForbidden, "The stream is on another server.")
 		default:
 			return err
 		}
 
 		stream, ok := ctx.Acquire(id)
 		if !ok {
-			return RenderError(w, http.StatusForbidden, "Stream ID already taken.")
+			return templates.Error(w, http.StatusForbidden, "Stream ID already taken.")
 		}
 		defer stream.Close()
 
@@ -317,7 +354,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 			if n != 0 {
 				if _, err := stream.Write(buffer[:n]); err != nil {
 					stream.Reset()
-					return RenderError(w, http.StatusBadRequest, err.Error())
+					return templates.Error(w, http.StatusBadRequest, err.Error())
 				}
 			}
 			if err != nil {
@@ -327,7 +364,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 		}
 	}
 
-	return RenderInvalidMethod(w, "GET, POST, PUT")
+	return templates.InvalidMethod(w, "GET, POST, PUT")
 }
 
 // POST /user/new
@@ -367,7 +404,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 	case "/new":
 		switch r.Method {
 		case "GET":
-			return Render(w, http.StatusOK, "noscript-user-new.html", nil)
+			return templates.Page(w, http.StatusOK, "noscript-user-new.html", nil)
 
 		case "POST":
 			username := strings.TrimSpace(r.FormValue("username"))
@@ -375,10 +412,10 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			email := r.FormValue("email")
 
 			switch user, err := ctx.NewUser(username, email, []byte(password)); err {
-			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
-				return RenderError(w, http.StatusBadRequest, err.Error())
-			case ErrNotSupported:
-				return RenderError(w, http.StatusNotImplemented, "Authentication is disabled.")
+			case database.ErrInvalidUsername, database.ErrInvalidPassword, database.ErrInvalidEmail, database.ErrUserNotUnique:
+				return templates.Error(w, http.StatusBadRequest, err.Error())
+			case database.ErrNotSupported:
+				return templates.Error(w, http.StatusNotImplemented, "Authentication is disabled.")
 			case nil:
 				if err = ctx.SetAuthInfo(w, user.ID); err != nil {
 					return err
@@ -389,14 +426,14 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 				return err
 			}
 		}
-		return RenderInvalidMethod(w, "GET, POST")
+		return templates.InvalidMethod(w, "GET, POST")
 
 	case "/login":
 		switch r.Method {
 		case "GET":
 			_, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
-				return Render(w, http.StatusOK, "noscript-user-login.html", nil)
+			if err == database.ErrUserNotExist {
+				return templates.Page(w, http.StatusOK, "noscript-user-login.html", nil)
 			}
 			if err == nil {
 				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
@@ -405,29 +442,29 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 		case "POST":
 			uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
-			if err == ErrUserNotExist {
-				return RenderError(w, http.StatusForbidden, "Invalid username/password.")
+			if err == database.ErrUserNotExist {
+				return templates.Error(w, http.StatusForbidden, "Invalid username/password.")
 			}
 			if err = ctx.SetAuthInfo(w, uid); err != nil {
 				return err
 			}
 			return redirectBack(w, r, "/", http.StatusSeeOther)
 		}
-		return RenderInvalidMethod(w, "GET, POST")
+		return templates.InvalidMethod(w, "GET, POST")
 
 	case "/restore":
 		switch r.Method {
 		case "GET":
-			return Render(w, http.StatusOK, "noscript-user-restore.html", nil)
+			return templates.Page(w, http.StatusOK, "noscript-user-restore.html", nil)
 
 		case "POST":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+			return templates.Error(w, http.StatusNotImplemented, "There is no UI yet.")
 		}
-		return RenderInvalidMethod(w, "GET, POST")
+		return templates.InvalidMethod(w, "GET, POST")
 
 	case "/logout": // TODO some protection against XSS?
 		if r.Method != "GET" {
-			return RenderInvalidMethod(w, "GET")
+			return templates.InvalidMethod(w, "GET")
 		}
 		ctx.SetAuthInfo(w, -1) // should not fail
 		return redirectBack(w, r, "/", http.StatusSeeOther)
@@ -436,7 +473,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		switch r.Method {
 		case "GET":
 			user, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
+			if err == database.ErrUserNotExist {
 				http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 				return nil
 			}
@@ -447,14 +484,14 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			if err != nil {
 				return err
 			}
-			return Render(w, http.StatusOK, "user-cfg.html", userConfigViewModel{userFull})
+			return templates.Page(w, http.StatusOK, "user-cfg.html", userConfigViewModel{userFull})
 
 		case "POST":
 			//     Parameters: password-old string,
 			//                 username, displayname, email, password, about string optional
 			user, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
-				return RenderError(w, http.StatusForbidden, "Must be logged in.")
+			if err == database.ErrUserNotExist {
+				return templates.Error(w, http.StatusForbidden, "Must be logged in.")
 			}
 			if err != nil {
 				return err
@@ -462,8 +499,8 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			switch err = user.CheckPassword([]byte(r.FormValue("password-old"))); err {
 			default:
 				return err
-			case ErrUserNotExist:
-				return RenderError(w, http.StatusForbidden, "Invalid old password.")
+			case database.ErrUserNotExist:
+				return templates.Error(w, http.StatusForbidden, "Invalid old password.")
 			case nil:
 			}
 
@@ -474,22 +511,22 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			switch err {
 			default:
 				return err
-			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
-				return RenderError(w, http.StatusBadRequest, err.Error())
-			case ErrStreamActive:
-				return RenderError(w, http.StatusForbidden, "Stop streaming first.")
+			case database.ErrInvalidUsername, database.ErrInvalidPassword, database.ErrInvalidEmail, database.ErrUserNotUnique:
+				return templates.Error(w, http.StatusBadRequest, err.Error())
+			case database.ErrStreamActive:
+				return templates.Error(w, http.StatusForbidden, "Stop streaming first.")
 			case nil:
 				return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 			}
 		}
-		return RenderInvalidMethod(w, "GET")
+		return templates.InvalidMethod(w, "GET")
 
 	case "/new-token":
 		if r.Method != "POST" {
-			return RenderInvalidMethod(w, "POST")
+			return templates.InvalidMethod(w, "POST")
 		}
 		user, err := ctx.GetAuthInfo(r)
-		if err == ErrUserNotExist {
+		if err == database.ErrUserNotExist {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return nil
 		}
@@ -503,15 +540,15 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	case "/activate":
 		if r.Method != "GET" {
-			return RenderInvalidMethod(w, "GET")
+			return templates.InvalidMethod(w, "GET")
 		}
 		uid, err := strconv.ParseInt(r.FormValue("uid"), 10, 64)
 		if err != nil {
-			return RenderError(w, http.StatusBadRequest, "Invalid user ID.")
+			return templates.Error(w, http.StatusBadRequest, "Invalid user ID.")
 		}
 		err = ctx.ActivateUser(uid, r.FormValue("token"))
-		if err == ErrInvalidToken {
-			return RenderError(w, http.StatusBadRequest, "Invalid activation token.")
+		if err == database.ErrInvalidToken {
+			return templates.Error(w, http.StatusBadRequest, "Invalid activation token.")
 		}
 		if err != nil {
 			return err
@@ -520,12 +557,12 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	case "/set-stream-name", "/set-stream-about":
 		if r.Method != "POST" {
-			return RenderInvalidMethod(w, "POST")
+			return templates.InvalidMethod(w, "POST")
 		}
 
 		auth, err := ctx.GetAuthInfo(r)
-		if err == ErrUserNotExist {
-			return RenderError(w, http.StatusForbidden, "You own no streams.")
+		if err == database.ErrUserNotExist {
+			return templates.Error(w, http.StatusForbidden, "You own no streams.")
 		}
 		if err != nil {
 			return err
@@ -541,11 +578,11 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return err
 		}
 
-		if stream, ok := ctx.Get(auth.Login); ok {
+		if chat, ok := ctx.chats[auth.Login]; ok {
 			if path == "/set-stream-name" {
-				stream.Chat.NewStreamName(value)
+				chat.NewStreamName(value)
 			} else {
-				stream.Chat.NewStreamAbout(value)
+				chat.NewStreamAbout(value)
 			}
 		}
 
@@ -554,7 +591,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	}
 
-	return RenderError(w, http.StatusNotFound, "")
+	return templates.Error(w, http.StatusNotFound, "")
 }
 
 func main() {
@@ -564,13 +601,14 @@ func main() {
 		iface = os.Args[1]
 	}
 
-	db, err := NewSQLDatabase(iface, "sqlite3", "development.db")
+	db, err := database.NewSQLDatabase(iface, "sqlite3", "development.db")
 	if err != nil {
 		log.Fatal("Could not connect to the database: ", err)
 	}
 	defer db.Close()
 
-	ctx := NewHTTPContext(db, Context{Timeout: time.Second * 10, ChatHistory: 20})
+	ctx := NewHTTPContext(db)
+	ctx.Timeout = 10 * time.Second
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	mux.Handle("/", ctx)

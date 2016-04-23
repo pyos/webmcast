@@ -1,9 +1,14 @@
-package main
+package chat
 
 import (
+	"encoding/json"
 	"errors"
+	"github.com/powerman/rpc-codec/jsonrpc2"
 	"golang.org/x/net/websocket"
+	"net/rpc"
 	"strings"
+
+	"../database"
 )
 
 type ChatMessage struct {
@@ -18,7 +23,7 @@ type ChatMessageQueue struct {
 	start int
 }
 
-type ChatContext struct {
+type Context struct {
 	events  chan interface{}
 	Users   map[*ChatterContext]int // A hash set. Values are ignored.
 	Names   map[string]*ChatterContext
@@ -30,7 +35,7 @@ type ChatterContext struct {
 	login  string
 	authed bool
 	socket *websocket.Conn
-	chat   *ChatContext
+	chat   *Context
 }
 
 func (q *ChatMessageQueue) Push(x ChatMessage) {
@@ -54,8 +59,8 @@ func (q *ChatMessageQueue) Iterate(f func(x ChatMessage) error) error {
 	return nil
 }
 
-func NewChat(qsize int) *ChatContext {
-	ctx := &ChatContext{
+func New(qsize int) *Context {
+	ctx := &Context{
 		events:  make(chan interface{}),
 		Users:   make(map[*ChatterContext]int),
 		Names:   make(map[string]*ChatterContext),
@@ -72,7 +77,7 @@ type chatSetNameEvent struct {
 	name string
 }
 
-func (c *ChatContext) handle() {
+func (c *Context) handle() {
 	closed := false
 	for genericEvent := range c.events {
 		switch event := genericEvent.(type) {
@@ -143,7 +148,7 @@ func (c *ChatContext) handle() {
 	}
 }
 
-func (c *ChatContext) Connect(ws *websocket.Conn, auth *UserShortData) *ChatterContext {
+func (c *Context) Connect(ws *websocket.Conn, auth *database.UserShortData) *ChatterContext {
 	chatter := &ChatterContext{socket: ws, chat: c}
 	if auth != nil {
 		chatter.name = auth.Name
@@ -154,25 +159,56 @@ func (c *ChatContext) Connect(ws *websocket.Conn, auth *UserShortData) *ChatterC
 	return chatter
 }
 
-func (c *ChatContext) NewStreamName(name string) {
+func (c *Context) NewStreamName(name string) {
 	c.events <- chatStreamNameEvent(name)
 }
 
-func (c *ChatContext) NewStreamAbout(about string) {
+func (c *Context) NewStreamAbout(about string) {
 	c.events <- chatStreamAboutEvent(about)
 }
 
-func (c *ChatContext) Disconnect(u *ChatterContext) {
+func (c *Context) Disconnect(u *ChatterContext) {
 	c.events <- u
 }
 
-func (c *ChatContext) Close() {
+func (c *Context) Close() {
 	c.events <- nil
+}
+
+func (chat *Context) RunRPC(ws *websocket.Conn, user *database.UserShortData) {
+	chatter := chat.Connect(ws, user)
+	defer chat.Disconnect(chatter)
+
+	server := rpc.NewServer()
+	server.RegisterName("Chat", chatter)
+	server.ServeCodec(jsonrpc2.NewServerCodec(ws, server))
+}
+
+type RPCSingleStringArg struct {
+	First string
+}
+
+func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
+	fields := []interface{}{&x.First}
+	expect := len(fields)
+	if err := json.Unmarshal(buf, &fields); err != nil {
+		return err
+	}
+	if len(fields) != expect {
+		return errors.New("invalid number of arguments")
+	}
+	return nil
+}
+
+func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
+	return websocket.JSON.Send(ws, map[string]interface{}{
+		"jsonrpc": "2.0", "method": name, "params": args,
+	})
 }
 
 func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := strings.TrimSpace(args.First)
-	if err := validateUsername(name); err != nil {
+	if err := database.ValidateUsername(name); err != nil {
 		return err
 	}
 	ctx.chat.events <- chatSetNameEvent{ctx, name}

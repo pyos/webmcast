@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"crypto/md5"
@@ -8,7 +8,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"strings"
-	"unicode"
 )
 
 var (
@@ -42,25 +41,6 @@ func gravatarURL(email string, size int) string {
 	hash := md5.Sum([]byte(strings.ToLower(email)))
 	hexhash := hex.EncodeToString(hash[:])
 	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
-}
-
-func validateUsername(name string) error {
-	if len(name) == 0 || len(name) > 32 {
-		return ErrInvalidUsername
-	}
-	for _, c := range name {
-		if !unicode.IsGraphic(c) {
-			return ErrInvalidUsername
-		}
-	}
-	return nil
-}
-
-func validateEmail(email string) error {
-	if !strings.ContainsRune(email, '@') || len(email) < 3 || len(email) > 255 {
-		return ErrInvalidEmail
-	}
-	return nil
 }
 
 func generatePwHash(password []byte) ([]byte, error) {
@@ -111,7 +91,7 @@ func (s *StreamMetadata) GravatarURL(size int) string {
 	return gravatarURL(s.Email, size)
 }
 
-type Database interface {
+type Interface interface {
 	Close() error
 	// Create a new user entry. Display name = name, activation token is generated randomly.
 	NewUser(name string, email string, password []byte) (*UserMetadata, error)

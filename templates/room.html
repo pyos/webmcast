@@ -46,7 +46,7 @@
                 </div>
                 <div>
                     <h2 class="viewers" title="Viewers">
-                        {{ if .Stream }}{{len .Stream.Chat.Users}}{{ else }}0{{ end }}
+                        {{ if .Chat }}{{len .Chat.Users}}{{ else }}0{{ end }}
                     </h2>
                 </div>
             </header>

@@ -1,8 +1,8 @@
-package main
+package database
 
 type AnonDatabase int
 
-func NewAnonDatabase() Database {
+func NewAnonDatabase() Interface {
 	return AnonDatabase(0)
 }
 
