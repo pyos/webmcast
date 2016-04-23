@@ -564,7 +564,7 @@ func main() {
 		iface = os.Args[1]
 	}
 
-	db, err := NewSQLDatabase(iface, "sqlite3", ":memory:")
+	db, err := NewSQLDatabase(iface, "sqlite3", "development.db")
 	if err != nil {
 		log.Fatal("Could not connect to the database: ", err)
 	}
