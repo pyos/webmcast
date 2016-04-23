@@ -14,43 +14,32 @@ type SQLDatabase struct {
 
 var SQLDatabaseSchema = `
 create table if not exists users (
-    id                integer  not null,
-    activated         integer  not null,
-    activation_token  text     not null,
-    name              text     not null,
-    email             text     not null,
-    display_name      text     not null,
-    about             text     not null,
-    password          blob     not null,
+    id                integer      not null,
+    activated         integer      not null,
+    activation_token  varchar(64)  not null,
+    name              varchar(256) not null,
+    email             varchar(256) not null,
+    display_name      varchar(256) not null,
+    about             text         not null,
+    password          varchar(256) not null,
+    stream_name       varchar(256) not null,
+    stream_about      text         not null,
+    stream_token      varchar(64)  not null,
+    stream_server     varchar(128),
 
     primary key (id), unique (name), unique (email)
-);
-
-create table if not exists streams (
-    id      integer  not null,
-    name    text     not null,
-    about   text     not null,
-    token   text     not null,
-    server  text,
-
-    primary key (id)
 );`
 
 func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
 	db, err := sql.Open(driver, server)
-	if err != nil {
-		return nil, err
-	}
-	wrapped := &SQLDatabase{*db, localhost, make(map[string]string)}
-	if err = wrapped.Ping(); err != nil {
+	if err == nil {
+		wrapped := &SQLDatabase{*db, localhost, make(map[string]string)}
+		if _, err = wrapped.Exec(SQLDatabaseSchema); err == nil {
+			return wrapped, nil
+		}
 		wrapped.Close()
-		return nil, err
 	}
-	if _, err = wrapped.Exec(SQLDatabaseSchema); err != nil {
-		wrapped.Close()
-		return nil, err
-	}
-	return wrapped, nil
+	return nil, err
 }
 
 func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
@@ -67,10 +56,7 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 	activationToken := makeToken(defaultTokenLength)
 	streamToken := makeToken(defaultTokenLength)
 	r, err := d.Exec(
-		`begin;
-		 insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?);
-		 insert into streams values (NULL, "", "", ?, NULL);
-		 commit;`,
+		`insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?, "", "", ?, NULL);`,
 		activationToken, name, email, name, hash, streamToken,
 	)
 	if err != nil {
@@ -141,9 +127,8 @@ func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
 func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 	meta := UserMetadata{UserShortData: UserShortData{ID: id}}
 	err := d.QueryRow(
-		`select users.name, password, email, display_name, users.about,
-		        activated, activation_token, streams.token from users, streams
-		 where users.id = ? and streams.id = users.id`,
+		`select name, password, email, display_name, about, activated,
+		        activation_token, stream_token from users where users.id = ?`,
 		id,
 	).Scan(
 		&meta.Login, &meta.PwHash, &meta.Email, &meta.Name, &meta.About,
@@ -191,7 +176,7 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 		params = append(params, hash)
 	}
 
-	query += "about = ? where id in (select id from streams where id = ? and server is null)"
+	query += "about = ? where id = ? and stream_server is null"
 	params = append(params, about, id)
 
 	r, err := d.Exec(query, params...)
@@ -216,12 +201,12 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 }
 
 func (d *SQLDatabase) SetStreamName(id int64, name string) error {
-	_, err := d.Exec(`update streams set name = ? where id = ?`, name, id)
+	_, err := d.Exec(`update users set stream_name = ? where id = ?`, name, id)
 	return err
 }
 
 func (d *SQLDatabase) SetStreamAbout(id int64, about string) error {
-	_, err := d.Exec(`update streams set about = ? where id = ?`, about, id)
+	_, err := d.Exec(`update users set stream_about = ? where id = ?`, about, id)
 	return err
 }
 
@@ -229,7 +214,7 @@ func (d *SQLDatabase) NewStreamToken(id int64) error {
 	// TODO invalidate token cache on all nodes
 	//      damn, it appears I ran into the most difficult problem...
 	token := makeToken(defaultTokenLength)
-	_, err := d.Exec(`update streams set token = ? where id = ?`, token, id)
+	_, err := d.Exec(`update users set stream_token = ? where id = ?`, token, id)
 	return err
 }
 
@@ -254,14 +239,16 @@ func (d *SQLDatabase) StartStream(user string, token string) error {
 	}
 
 	_, err = d.Exec(
-		`update streams set server = ? where id = ? and server is null and token = ?`,
+		`update users set stream_server = ? where id = ? and stream_server is null and stream_token = ?`,
 		d.localhost, id, token,
 	)
 	if err != nil {
 		return err
 	}
 
-	err = d.QueryRow(`select token, server from streams where id = ?`, id).Scan(&expect, &server)
+	err = d.QueryRow(
+		`select stream_token, stream_server from users where id = ?`, id,
+	).Scan(&expect, &server)
 	if err != nil {
 		return err
 	}
@@ -277,10 +264,7 @@ func (d *SQLDatabase) StartStream(user string, token string) error {
 }
 
 func (d *SQLDatabase) StopStream(user string) error {
-	_, err := d.Exec(
-		`update streams set server = NULL where id in (select id from users where name = ?)`,
-		user,
-	)
+	_, err := d.Exec(`update users set stream_server = NULL where name = ?`, user)
 	if err != nil {
 		return err
 	}
@@ -294,10 +278,7 @@ func (d *SQLDatabase) GetStreamServer(user string) (string, error) {
 	}
 
 	var server sql.NullString
-	err := d.QueryRow(
-		`select server from streams where id in (select id from users where name = ?)`,
-		user,
-	).Scan(&server)
+	err := d.QueryRow(`select stream_server from users where name = ?`, user).Scan(&server)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", ErrStreamNotExist
@@ -318,9 +299,8 @@ func (d *SQLDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.QueryRow(
-		`select display_name, users.about, email, streams.name, streams.about, streams.server
-		 from   users, streams
-		 where  users.name = ? and streams.id = users.id`,
+		`select display_name, about, email, stream_name, stream_about, stream_server
+		 from users where users.name = ?`,
 		user,
 	).Scan(&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &meta.About, &server)
 	if err == sql.ErrNoRows {
