@@ -568,10 +568,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Could not connect to the database: ", err)
 	}
+	defer db.Close()
 
 	ctx := NewHTTPContext(db, Context{Timeout: time.Second * 10, ChatHistory: 20})
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	mux.Handle("/", ctx)
-	http.ListenAndServe(iface, mux)
+	log.Fatal(http.ListenAndServe(iface, mux))
 }

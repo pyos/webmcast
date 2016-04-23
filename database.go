@@ -57,7 +57,7 @@ func validateUsername(name string) error {
 }
 
 func validateEmail(email string) error {
-	if !strings.ContainsRune(email, '@') || len(email) < 3 {
+	if !strings.ContainsRune(email, '@') || len(email) < 3 || len(email) > 255 {
 		return ErrInvalidEmail
 	}
 	return nil
@@ -112,6 +112,7 @@ func (s *StreamMetadata) GravatarURL(size int) string {
 }
 
 type Database interface {
+	Close() error
 	// Create a new user entry. Display name = name, activation token is generated randomly.
 	NewUser(name string, email string, password []byte) (*UserMetadata, error)
 	// Authenticate a user.

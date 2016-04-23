@@ -6,6 +6,10 @@ func NewAnonDatabase() Database {
 	return AnonDatabase(0)
 }
 
+func (d AnonDatabase) Close() error {
+	return nil
+}
+
 func (d AnonDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
 	return nil, ErrNotSupported
 }
