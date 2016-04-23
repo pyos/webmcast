@@ -164,7 +164,7 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 .chat {
     width: 20em;
     display: flex;
-    z-index: 1;
+    z-index: 128;
     position: relative;
     flex-direction: column;
     background: #f3f3f3;
