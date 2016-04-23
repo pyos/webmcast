@@ -25,12 +25,12 @@ type ChatMessageQueue struct {
 
 type Context struct {
 	events  chan interface{}
-	Users   map[*ChatterContext]int // A hash set. Values are ignored.
-	Names   map[string]*ChatterContext
+	Users   map[*chatter]int // A hash set. Values are ignored.
+	Names   map[string]*chatter
 	History ChatMessageQueue
 }
 
-type ChatterContext struct {
+type chatter struct {
 	name   string
 	login  string
 	authed bool
@@ -62,8 +62,8 @@ func (q *ChatMessageQueue) Iterate(f func(x ChatMessage) error) error {
 func New(qsize int) *Context {
 	ctx := &Context{
 		events:  make(chan interface{}),
-		Users:   make(map[*ChatterContext]int),
-		Names:   make(map[string]*ChatterContext),
+		Users:   make(map[*chatter]int),
+		Names:   make(map[string]*chatter),
 		History: ChatMessageQueue{make([]ChatMessage, 0, qsize), 0},
 	}
 	go ctx.handle()
@@ -73,7 +73,7 @@ func New(qsize int) *Context {
 type chatStreamNameEvent string
 type chatStreamAboutEvent string
 type chatSetNameEvent struct {
-	user *ChatterContext
+	user *chatter
 	name string
 }
 
@@ -90,7 +90,7 @@ func (c *Context) handle() {
 				return // else must handle pending events first
 			}
 
-		case *ChatterContext:
+		case *chatter:
 			if _, exists := c.Users[event]; exists {
 				delete(c.Users, event)
 				if event.login != "" {
@@ -148,8 +148,8 @@ func (c *Context) handle() {
 	}
 }
 
-func (c *Context) Connect(ws *websocket.Conn, auth *database.UserShortData) *ChatterContext {
-	chatter := &ChatterContext{socket: ws, chat: c}
+func (c *Context) Connect(ws *websocket.Conn, auth *database.UserShortData) *chatter {
+	chatter := &chatter{socket: ws, chat: c}
 	if auth != nil {
 		chatter.name = auth.Name
 		chatter.login = auth.Login
@@ -167,7 +167,7 @@ func (c *Context) NewStreamAbout(about string) {
 	c.events <- chatStreamAboutEvent(about)
 }
 
-func (c *Context) Disconnect(u *ChatterContext) {
+func (c *Context) Disconnect(u *chatter) {
 	c.events <- u
 }
 
@@ -206,7 +206,7 @@ func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 	})
 }
 
-func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := strings.TrimSpace(args.First)
 	if err := database.ValidateUsername(name); err != nil {
 		return err
@@ -215,7 +215,7 @@ func (ctx *ChatterContext) SetName(args *RPCSingleStringArg, _ *interface{}) err
 	return nil
 }
 
-func (ctx *ChatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
+func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
 	if ctx.login == "" {
 		return errors.New("must obtain a name first")
 	}
@@ -227,27 +227,27 @@ func (ctx *ChatterContext) SendMessage(args *RPCSingleStringArg, _ *interface{})
 	return nil
 }
 
-func (ctx *ChatterContext) RequestHistory(_ *interface{}, _ *interface{}) error {
+func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return ctx.chat.History.Iterate(ctx.pushMessage)
 }
 
-func (ctx *ChatterContext) pushName(name, login string) error {
+func (ctx *chatter) pushName(name, login string) error {
 	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", []interface{}{name, login})
 }
 
-func (ctx *ChatterContext) pushMessage(msg ChatMessage) error {
+func (ctx *chatter) pushMessage(msg ChatMessage) error {
 	return RPCPushEvent(ctx.socket, "Chat.Message",
 		[]interface{}{msg.name, msg.text, msg.login, msg.authed})
 }
 
-func (ctx *ChatterContext) pushViewerCount() error {
+func (ctx *chatter) pushViewerCount() error {
 	return RPCPushEvent(ctx.socket, "Stream.ViewerCount", []interface{}{len(ctx.chat.Users)})
 }
 
-func (ctx *ChatterContext) pushStreamName(name string) error {
+func (ctx *chatter) pushStreamName(name string) error {
 	return RPCPushEvent(ctx.socket, "Stream.Name", []interface{}{name})
 }
 
-func (ctx *ChatterContext) pushStreamAbout(about string) error {
+func (ctx *chatter) pushStreamAbout(about string) error {
 	return RPCPushEvent(ctx.socket, "Stream.About", []interface{}{about})
 }

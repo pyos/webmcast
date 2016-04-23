@@ -32,23 +32,6 @@ var (
 	iface = ":8000"
 )
 
-type landingViewModel struct {
-	User *database.UserShortData
-}
-
-type userConfigViewModel struct {
-	User *database.UserMetadata
-}
-
-type roomViewModel struct {
-	ID     string
-	Owned  bool
-	Stream *broadcast.Single
-	Meta   *database.StreamMetadata
-	User   *database.UserShortData
-	Chat   *chat.Context
-}
-
 // a bunch of net/http hacks first. this structure wraps a filesystem interface
 // used to serve static files and disallows any accesses to directories,
 // returning 404 instead of listing contents.
@@ -139,7 +122,7 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 		if err != nil && err != database.ErrUserNotExist {
 			return err
 		}
-		return templates.Page(w, http.StatusOK, "landing.html", landingViewModel{auth})
+		return templates.Page(w, http.StatusOK, templates.Landing{auth})
 	}
 	if !strings.ContainsRune(r.URL.Path[1:], '/') {
 		return ctx.Player(w, r, r.URL.Path[1:])
@@ -197,7 +180,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		return err
 	}
 	owns := auth != nil && id == auth.Login
-	stream, ok := ctx.Get(id)
+	stream, ok := ctx.Readable(id)
 	if !ok {
 		switch _, err := ctx.GetStreamServer(id); err {
 		case nil:
@@ -210,8 +193,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 			if err != database.ErrStreamOffline {
 				return err
 			}
-			return templates.Page(w, http.StatusOK, "room.html",
-				roomViewModel{id, owns, nil, meta, auth, nil})
+			return templates.Page(w, http.StatusOK, templates.Room{id, owns, nil, meta, auth, nil})
 		case database.ErrStreamNotExist:
 			return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
 		default:
@@ -224,8 +206,7 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		// this has to be an sql error.
 		return err
 	}
-	return templates.Page(w, http.StatusOK, "room.html",
-		roomViewModel{id, owns, stream, meta, auth, ctx.chats[id]})
+	return templates.Page(w, http.StatusOK, templates.Room{id, owns, stream, meta, auth, ctx.chats[id]})
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -267,7 +248,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 			return templates.Error(w, http.StatusBadRequest, "POST or PUT, don't GET.")
 		}
 
-		stream, ok := ctx.Get(id)
+		stream, ok := ctx.Readable(id)
 		if !ok {
 			switch _, err := ctx.GetStreamServer(id); err {
 			case nil:
@@ -308,11 +289,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 
 		header := w.Header()
 		header.Set("Cache-Control", "no-cache")
-		if stream.HasVideo {
-			header.Set("Content-Type", "video/webm")
-		} else {
-			header.Set("Content-Type", "audio/webm")
-		}
+		header.Set("Content-Type", "video/webm")
 		w.WriteHeader(http.StatusOK)
 
 		ch := make(chan []byte, 60)
@@ -342,7 +319,7 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 			return err
 		}
 
-		stream, ok := ctx.Acquire(id)
+		stream, ok := ctx.Writable(id)
 		if !ok {
 			return templates.Error(w, http.StatusForbidden, "Stream ID already taken.")
 		}
@@ -404,7 +381,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 	case "/new":
 		switch r.Method {
 		case "GET":
-			return templates.Page(w, http.StatusOK, "noscript-user-new.html", nil)
+			return templates.Page(w, http.StatusOK, templates.UserSignup(0))
 
 		case "POST":
 			username := strings.TrimSpace(r.FormValue("username"))
@@ -433,7 +410,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		case "GET":
 			_, err := ctx.GetAuthInfo(r)
 			if err == database.ErrUserNotExist {
-				return templates.Page(w, http.StatusOK, "noscript-user-login.html", nil)
+				return templates.Page(w, http.StatusOK, templates.UserLogin(0))
 			}
 			if err == nil {
 				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
@@ -455,7 +432,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 	case "/restore":
 		switch r.Method {
 		case "GET":
-			return templates.Page(w, http.StatusOK, "noscript-user-restore.html", nil)
+			return templates.Page(w, http.StatusOK, templates.UserRestore(0))
 
 		case "POST":
 			return templates.Error(w, http.StatusNotImplemented, "There is no UI yet.")
@@ -484,7 +461,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			if err != nil {
 				return err
 			}
-			return templates.Page(w, http.StatusOK, "user-cfg.html", userConfigViewModel{userFull})
+			return templates.Page(w, http.StatusOK, templates.UserConfig{userFull})
 
 		case "POST":
 			//     Parameters: password-old string,

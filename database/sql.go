@@ -53,8 +53,8 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 	if err != nil {
 		return nil, err
 	}
-	activationToken := makeToken(defaultTokenLength)
-	streamToken := makeToken(defaultTokenLength)
+	activationToken := makeToken(tokenLength)
+	streamToken := makeToken(tokenLength)
 	r, err := d.Exec(
 		`insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?, "", "", ?, NULL);`,
 		activationToken, name, email, name, hash, streamToken,
@@ -162,7 +162,7 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 		if err := ValidateEmail(email); err != nil {
 			return "", err
 		}
-		token = makeToken(defaultTokenLength)
+		token = makeToken(tokenLength)
 		query += "activated = 0, activation_token = ?, email = ?, "
 		params = append(params, token, email)
 	}
@@ -213,7 +213,7 @@ func (d *SQLDatabase) SetStreamAbout(id int64, about string) error {
 func (d *SQLDatabase) NewStreamToken(id int64) error {
 	// TODO invalidate token cache on all nodes
 	//      damn, it appears I ran into the most difficult problem...
-	token := makeToken(defaultTokenLength)
+	token := makeToken(tokenLength)
 	_, err := d.Exec(`update users set stream_token = ? where id = ?`, token, id)
 	return err
 }

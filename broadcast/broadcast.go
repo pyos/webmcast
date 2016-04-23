@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type broadcastViewer struct {
+type viewer struct {
 	// This function may return `false` to signal that it cannot write any more data.
 	// The stream will resynchronize at next keyframe.
 	write func(data []byte) bool
@@ -22,14 +22,14 @@ type broadcastViewer struct {
 }
 
 type Broadcast struct {
-	Closed   bool // When set to `true`, all viewers receive an empty bytearray as a notification.
+	Closed   bool
 	HasVideo bool
 	HasAudio bool
 	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
 	Height   uint // Hopefully, there's only one video track in the file.
 
 	vlock   sync.Mutex // protects `viewers`. not RWMutex because there's only one reader.
-	viewers map[chan<- []byte]*broadcastViewer
+	viewers map[chan<- []byte]*viewer
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
@@ -43,7 +43,7 @@ type Broadcast struct {
 }
 
 func NewBroadcast() Broadcast {
-	return Broadcast{viewers: make(map[chan<- []byte]*broadcastViewer)}
+	return Broadcast{viewers: make(map[chan<- []byte]*viewer)}
 }
 
 func (cast *Broadcast) Close() error {
@@ -68,7 +68,7 @@ func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
 	}
 
 	cast.vlock.Lock()
-	cast.viewers[ch] = &broadcastViewer{write, skipHeaders, false, 0}
+	cast.viewers[ch] = &viewer{write, skipHeaders, false, 0}
 	cast.vlock.Unlock()
 }
 

@@ -22,17 +22,15 @@ var (
 	ErrStreamNotExist  = errors.New("Unknown stream.")
 	ErrStreamNotHere   = errors.New("Stream is online on another server.")
 	ErrStreamOffline   = errors.New("Stream is offline.")
-)
 
-var (
-	randomTokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	defaultTokenLength  = 30
+	tokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	tokenLength   = 30
 )
 
 func makeToken(length int) string {
 	xs := make([]byte, length)
 	for i := 0; i < length; i++ {
-		xs[i] = randomTokenAlphabet[rand.Intn(len(randomTokenAlphabet))]
+		xs[i] = tokenAlphabet[rand.Intn(len(tokenAlphabet))]
 	}
 	return string(xs)
 }
