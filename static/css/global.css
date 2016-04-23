@@ -207,17 +207,21 @@ button:disabled {
     background-color: #fafafa;
 }
 
-button.alt {
+a.text-button {
+    display: inline-block;
+    padding: 0.5em 1em;
     color: #eee;
-    border: none;
+    border-radius: 6px;
     background-color: #a168ad;
 }
 
-button.alt:focus {
+a.text-button:focus {
+    outline: 0;
     box-shadow: 0 0 5px #a168ad;
+    text-decoration: none;
 }
 
-button.alt:active {
+a.text-button:active {
     background-color: #91489d;
 }
 
@@ -262,7 +266,8 @@ nav > :not(:first-child) {
     margin-left: 1.66em;
 }
 
-nav > button {
+nav > button,
+nav > a.text-button {
     margin-top: -0.5em;
     margin-bottom: -0.5em;
 }
