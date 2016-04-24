@@ -39,7 +39,9 @@ func (d anonymous) SetUserMetadata(id int64, name string, displayName string, em
 }
 
 func (d anonymous) StartStream(id string, token string) error {
-	d[id] = &StreamMetadata{}
+	if _, ok := d[id]; !ok {
+		d[id] = &StreamMetadata{StreamTrackInfo: StreamTrackInfo{HasVideo: true, HasAudio: true}}
+	}
 	return nil
 }
 
@@ -48,7 +50,7 @@ func (d anonymous) SetStreamName(id string, name string) error {
 		info.Name = name
 		return nil
 	}
-	return ErrNotSupported
+	return ErrStreamNotExist
 }
 
 func (d anonymous) SetStreamAbout(id string, about string) error {
@@ -56,12 +58,12 @@ func (d anonymous) SetStreamAbout(id string, about string) error {
 		info.About = about
 		return nil
 	}
-	return ErrNotSupported
+	return ErrStreamNotExist
 }
 
 func (d anonymous) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
-	if stored, ok := d[id]; ok {
-		stored.StreamTrackInfo = *info
+	if item, ok := d[id]; ok {
+		item.StreamTrackInfo = *info
 		return nil
 	}
 	return ErrStreamNotExist
