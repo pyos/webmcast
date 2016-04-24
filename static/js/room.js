@@ -69,7 +69,7 @@ RPC.prototype.connect = function (event, cb) {
 };
 
 
-let View = function (rpc, root, stream) {
+let View = function (rpc, root, uri) {
     let video  = root.querySelector('video');
     let status = root.querySelector('.status');
     let volume = root.querySelector('.volume');
@@ -176,7 +176,7 @@ let View = function (rpc, root, stream) {
     return {
         onLoad: () => {
             // TODO measure connection speed, request a stream
-            video.src = `/stream/${stream}`;
+            video.src = uri;
             video.play();
         },
 
@@ -283,16 +283,18 @@ let Meta = function (rpc, meta, about, stream, owned) {
 
 let Player = function (root) {
     let stream = root.getAttribute('data-stream-id');
+    let server = root.getAttribute('data-server');
     let owned  = root.hasAttribute('data-owned');
-    let rpc    = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://`
-                         + `${window.location.host}/stream/${encodeURIComponent(stream)}`);
 
+    let uri = ( server    === ''  ? window.location.host
+              : server[0] === ':' ? window.location.hostname + server
+              : server ) + '/' + encodeURIComponent(stream);
+    let rpc = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://` + uri);
     rpc.objects = [
-        new View(rpc, root.querySelector('.player'), stream),
+        new View(rpc, root.querySelector('.player'), window.location.protocol + '//' + uri),
         new Chat(rpc, root.querySelector('.chat')),
         new Meta(rpc, root.querySelector('.meta'), root.querySelector('.about'), stream, owned),
     ];
-
     return rpc;
 };
 

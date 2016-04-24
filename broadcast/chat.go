@@ -1,4 +1,4 @@
-package chat
+package main
 
 import (
 	"encoding/json"
@@ -8,8 +8,15 @@ import (
 	"net/rpc"
 	"strings"
 
-	"../database"
+	"../common"
 )
+
+type Chat struct {
+	events  chan interface{}
+	Users   map[*chatter]int // A hash set. Values are ignored.
+	Names   map[string]*chatter
+	History ChatMessageQueue
+}
 
 type ChatMessage struct {
 	name   string
@@ -23,19 +30,12 @@ type ChatMessageQueue struct {
 	start int
 }
 
-type Context struct {
-	events  chan interface{}
-	Users   map[*chatter]int // A hash set. Values are ignored.
-	Names   map[string]*chatter
-	History ChatMessageQueue
-}
-
 type chatter struct {
 	name   string
 	login  string
 	authed bool
 	socket *websocket.Conn
-	chat   *Context
+	chat   *Chat
 }
 
 func (q *ChatMessageQueue) Push(x ChatMessage) {
@@ -59,8 +59,8 @@ func (q *ChatMessageQueue) Iterate(f func(x ChatMessage) error) error {
 	return nil
 }
 
-func New(qsize int) *Context {
-	ctx := &Context{
+func NewChat(qsize int) *Chat {
+	ctx := &Chat{
 		events:  make(chan interface{}),
 		Users:   make(map[*chatter]int),
 		Names:   make(map[string]*chatter),
@@ -70,14 +70,12 @@ func New(qsize int) *Context {
 	return ctx
 }
 
-type chatStreamNameEvent string
-type chatStreamAboutEvent string
 type chatSetNameEvent struct {
 	user *chatter
 	name string
 }
 
-func (c *Context) handle() {
+func (c *Chat) handle() {
 	closed := false
 	for genericEvent := range c.events {
 		switch event := genericEvent.(type) {
@@ -129,16 +127,6 @@ func (c *Context) handle() {
 			event.user.authed = false
 			event.user.pushName(event.name, event.name)
 
-		case chatStreamNameEvent:
-			for u := range c.Users {
-				u.pushStreamName(string(event))
-			}
-
-		case chatStreamAboutEvent:
-			for u := range c.Users {
-				u.pushStreamAbout(string(event))
-			}
-
 		case ChatMessage:
 			c.History.Push(event)
 			for u := range c.Users {
@@ -148,7 +136,7 @@ func (c *Context) handle() {
 	}
 }
 
-func (c *Context) Connect(ws *websocket.Conn, auth *database.UserShortData) *chatter {
+func (c *Chat) Connect(ws *websocket.Conn, auth *common.UserShortData) *chatter {
 	chatter := &chatter{socket: ws, chat: c}
 	if auth != nil {
 		chatter.name = auth.Name
@@ -159,23 +147,15 @@ func (c *Context) Connect(ws *websocket.Conn, auth *database.UserShortData) *cha
 	return chatter
 }
 
-func (c *Context) NewStreamName(name string) {
-	c.events <- chatStreamNameEvent(name)
-}
-
-func (c *Context) NewStreamAbout(about string) {
-	c.events <- chatStreamAboutEvent(about)
-}
-
-func (c *Context) Disconnect(u *chatter) {
+func (c *Chat) Disconnect(u *chatter) {
 	c.events <- u
 }
 
-func (c *Context) Close() {
+func (c *Chat) Close() {
 	c.events <- nil
 }
 
-func (chat *Context) RunRPC(ws *websocket.Conn, user *database.UserShortData) {
+func (chat *Chat) RunRPC(ws *websocket.Conn, user *common.UserShortData) {
 	chatter := chat.Connect(ws, user)
 	defer chat.Disconnect(chatter)
 
@@ -208,7 +188,7 @@ func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 
 func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := strings.TrimSpace(args.First)
-	if err := database.ValidateUsername(name); err != nil {
+	if err := common.ValidateUsername(name); err != nil {
 		return err
 	}
 	ctx.chat.events <- chatSetNameEvent{ctx, name}
@@ -242,12 +222,4 @@ func (ctx *chatter) pushMessage(msg ChatMessage) error {
 
 func (ctx *chatter) pushViewerCount() error {
 	return RPCPushEvent(ctx.socket, "Stream.ViewerCount", []interface{}{len(ctx.chat.Users)})
-}
-
-func (ctx *chatter) pushStreamName(name string) error {
-	return RPCPushEvent(ctx.socket, "Stream.Name", []interface{}{name})
-}
-
-func (ctx *chatter) pushStreamAbout(about string) error {
-	return RPCPushEvent(ctx.socket, "Stream.About", []interface{}{about})
 }

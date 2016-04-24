@@ -1,8 +1,8 @@
-package database
+package common
 
 type anonymous map[string]*StreamMetadata
 
-func NewAnonDatabase() Interface {
+func NewAnonDatabase() Database {
 	return make(anonymous)
 }
 

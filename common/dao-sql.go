@@ -1,4 +1,4 @@
-package database
+package common
 
 import "database/sql"
 
@@ -33,7 +33,7 @@ create table if not exists users (
     primary key (id), unique (name), unique (email)
 );`
 
-func NewSQLDatabase(localhost string, driver string, server string) (Interface, error) {
+func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
 	db, err := sql.Open(driver, server)
 	if err == nil {
 		wrapped := &sqlImpl{*db, localhost, make(map[string]string)}

@@ -1,13 +1,13 @@
 package templates
 
-import "../database"
+import "../common"
 
 type Room struct {
 	ID     string
 	Owned  bool
 	Online bool
-	Meta   *database.StreamMetadata
-	User   *database.UserShortData
+	Meta   *common.StreamMetadata
+	User   *common.UserShortData
 }
 
 func (_ Room) TemplateFile() string {

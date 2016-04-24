@@ -1,11 +1,11 @@
-package broadcast
+package main
 
 import (
 	"errors"
 	"sync"
 	"time"
 
-	"../database"
+	"../common"
 )
 
 const (
@@ -141,18 +141,18 @@ func (t ebmlTag) Skip(data []byte) []byte {
 	return data[uint64(t.Consumed)+t.Length:]
 }
 
-type Set struct {
+type BroadcastSet struct {
 	mutex   sync.Mutex // protects `streams`
 	streams map[string]*Broadcast
 	// How long to keep a stream alive after a call to `Close`.
 	Timeout time.Duration
 
 	OnStreamClose     func(id string)
-	OnStreamTrackInfo func(id string, info *database.StreamTrackInfo)
+	OnStreamTrackInfo func(id string, info *common.StreamTrackInfo)
 }
 
 type Broadcast struct {
-	database.StreamTrackInfo
+	common.StreamTrackInfo
 	onTrackInfo func()
 
 	closing time.Duration
@@ -194,7 +194,7 @@ type viewer struct {
 	seenKeyframes uint32
 }
 
-func (ctx *Set) Readable(id string) (*Broadcast, bool) {
+func (ctx *BroadcastSet) Readable(id string) (*Broadcast, bool) {
 	if ctx.streams == nil {
 		return nil, false
 	}
@@ -204,7 +204,7 @@ func (ctx *Set) Readable(id string) (*Broadcast, bool) {
 	return cast, ok
 }
 
-func (ctx *Set) Writable(id string) (*Broadcast, bool) {
+func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 	ctx.mutex.Lock()
 	defer ctx.mutex.Unlock()
 	if ctx.streams == nil {

@@ -1,12 +1,12 @@
 package templates
 
-import "../database"
+import "../common"
 
 type UserLogin int
 type UserSignup int
 type UserRestore int
 type UserConfig struct {
-	User *database.UserMetadata
+	User *common.UserMetadata
 }
 
 func (_ UserLogin) TemplateFile() string {

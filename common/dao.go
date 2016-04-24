@@ -1,4 +1,4 @@
-package database
+package common
 
 import (
 	"crypto/md5"
@@ -99,7 +99,7 @@ func (s *StreamMetadata) GravatarURL(size int) string {
 	return gravatarURL(s.Email, size)
 }
 
-type Interface interface {
+type Database interface {
 	Close() error
 	// Create a new user entry. Display name = name, activation token is generated randomly.
 	NewUser(name string, email string, password []byte) (*UserMetadata, error)

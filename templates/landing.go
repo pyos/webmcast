@@ -1,9 +1,9 @@
 package templates
 
-import "../database"
+import "../common"
 
 type Landing struct {
-	User *database.UserShortData
+	User *common.UserShortData
 }
 
 func (_ Landing) TemplateFile() string {

@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
-    <body data-stream-id="{{.ID}}" {{if .Owned}}data-owned{{end}}>
+    <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}" {{if .Owned}}data-owned{{end}}>
         <article class="content" data-scrollbar>
             {{ template "nav.html" . }}
 
