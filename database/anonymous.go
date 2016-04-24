@@ -1,9 +1,9 @@
 package database
 
-type anonymous int
+type anonymous map[string]*StreamMetadata
 
 func NewAnonDatabase() Interface {
-	return anonymous(0)
+	return make(anonymous)
 }
 
 func (d anonymous) Close() error {
@@ -30,34 +30,58 @@ func (d anonymous) ActivateUser(id int64, token string) error {
 	return ErrUserNotExist
 }
 
-func (d anonymous) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
-	return "", ErrNotSupported
-}
-
-func (d anonymous) SetStreamName(id int64, name string) error {
-	return ErrNotSupported
-}
-
-func (d anonymous) SetStreamAbout(id int64, about string) error {
-	return ErrNotSupported
-}
-
 func (d anonymous) NewStreamToken(id int64) error {
 	return ErrNotSupported
 }
 
-func (d anonymous) StartStream(user string, token string) error {
+func (d anonymous) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
+	return "", ErrNotSupported
+}
+
+func (d anonymous) StartStream(id string, token string) error {
+	d[id] = &StreamMetadata{}
 	return nil
 }
 
-func (d anonymous) StopStream(user string) error {
-	return nil
+func (d anonymous) SetStreamName(id string, name string) error {
+	if info, ok := d[id]; ok {
+		info.Name = name
+		return nil
+	}
+	return ErrNotSupported
 }
 
-func (d anonymous) GetStreamServer(user string) (string, error) {
+func (d anonymous) SetStreamAbout(id string, about string) error {
+	if info, ok := d[id]; ok {
+		info.About = about
+		return nil
+	}
+	return ErrNotSupported
+}
+
+func (d anonymous) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
+	if stored, ok := d[id]; ok {
+		stored.StreamTrackInfo = *info
+		return nil
+	}
+	return ErrStreamNotExist
+}
+
+func (d anonymous) GetStreamServer(id string) (string, error) {
+	if info, ok := d[id]; ok {
+		return info.Server, nil
+	}
 	return "", ErrStreamNotExist
 }
 
-func (d anonymous) GetStreamMetadata(user string) (*StreamMetadata, error) {
-	return &StreamMetadata{}, nil
+func (d anonymous) GetStreamMetadata(id string) (*StreamMetadata, error) {
+	if info, ok := d[id]; ok {
+		return info, nil
+	}
+	return nil, ErrStreamNotExist
+}
+
+func (d anonymous) StopStream(id string) error {
+	delete(d, id)
+	return nil
 }

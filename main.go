@@ -97,6 +97,11 @@ func NewHTTPContext(d database.Interface) *HTTPContext {
 			log.Println("Error stopping the stream: ", err)
 		}
 	}
+	ctx.OnStreamTrackInfo = func(id string, info *database.StreamTrackInfo) {
+		if err := ctx.SetStreamTrackInfo(id, info); err != nil {
+			log.Println("Error setting stream metadata: ", err)
+		}
+	}
 	return ctx
 }
 
@@ -179,34 +184,20 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 	if err != nil && err != database.ErrUserNotExist {
 		return err
 	}
-	owns := auth != nil && id == auth.Login
-	stream, ok := ctx.Readable(id)
-	if !ok {
-		switch _, err := ctx.GetStreamServer(id); err {
-		case nil:
-			return database.ErrStreamNotExist
-		case database.ErrStreamNotHere:
-			// TODO redirect
-			return templates.Error(w, http.StatusNotFound, "This stream is not here.")
-		case database.ErrStreamOffline:
-			meta, err := ctx.GetStreamMetadata(id)
-			if err != database.ErrStreamOffline {
-				return err
-			}
-			return templates.Page(w, http.StatusOK, templates.Room{id, owns, nil, meta, auth, nil})
-		case database.ErrStreamNotExist:
-			return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
-		default:
-			return err
-		}
-	}
+
+	owned := auth != nil && id == auth.Login
+	online := true
 	meta, err := ctx.GetStreamMetadata(id)
-	if err != nil {
-		// since we know the stream exists (it is on this server),
-		// this has to be an sql error.
+	switch err {
+	default:
 		return err
+	case database.ErrStreamNotExist:
+		return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
+	case database.ErrStreamOffline:
+		online = false
+	case nil:
 	}
-	return templates.Page(w, http.StatusOK, templates.Room{id, owns, stream, meta, auth, ctx.chats[id]})
+	return templates.Page(w, http.StatusOK, templates.Room{id, owned, online, meta, auth, ctx.chats[id]})
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -547,9 +538,9 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 		value := r.FormValue("value")
 		if path == "/set-stream-name" {
-			err = ctx.SetStreamName(auth.ID, value)
+			err = ctx.SetStreamName(auth.Login, value)
 		} else {
-			err = ctx.SetStreamAbout(auth.ID, value)
+			err = ctx.SetStreamAbout(auth.Login, value)
 		}
 		if err != nil {
 			return err

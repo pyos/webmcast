@@ -12,16 +12,11 @@
             {{ template "nav.html" . }}
 
             <section class="player-block section-highlight">
-            {{ if not .Stream }}
-                <div class="player has-video" data-status="error">
-                    <svg width="853" height="480"></svg>
-            {{- else -}}
-                <div class="player{{- if .Stream.HasVideo}} has-video{{end -}}
-                                  {{- if .Stream.HasAudio}} has-audio{{end -}}" data-status="error">
+                <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
+                                  {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
                         so instead we enforce the size of this element with an empty image. */ -}}
-                    <svg width="{{.Stream.Width}}" height="{{.Stream.Height}}"></svg>
-            {{- end -}}
+                    <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                     <video></video><div class="controls">
                         <a class="button mute" title="Mute"></a>
                         <div class="volume" title="Volume"><div class="slider"></div></div>
@@ -38,9 +33,7 @@
                 <div>
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
                     <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                {{ if .Stream }}
-                    <h2 class="created">{{.Stream.Created.Format "02.01.2006, 15:04:05 MST"}}</h2>
-                {{- else -}}
+                {{ if not .Online }}
                     <h2 class="offline">is now offline.</h2>
                 {{- end -}}
                 </div>

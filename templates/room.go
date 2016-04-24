@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"../broadcast"
 	"../chat"
 	"../database"
 )
@@ -9,7 +8,7 @@ import (
 type Room struct {
 	ID     string
 	Owned  bool
-	Stream *broadcast.Broadcast
+	Online bool
 	Meta   *database.StreamMetadata
 	User   *database.UserShortData
 	Chat   *chat.Context

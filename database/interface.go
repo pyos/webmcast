@@ -60,6 +60,14 @@ type StreamMetadata struct {
 	Email     string
 	About     string
 	Server    string
+	StreamTrackInfo
+}
+
+type StreamTrackInfo struct {
+	HasVideo bool
+	HasAudio bool
+	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
+	Height   uint // Hopefully, there's only one video track in the file.
 }
 
 func hashPassword(password []byte) ([]byte, error) {
@@ -102,21 +110,16 @@ type Interface interface {
 	// TODO something for password recovery.
 	// Allow a user to create streams.
 	ActivateUser(id int64, token string) error
+	NewStreamToken(id int64) error
 	// An empty string in any field keeps the old value. Except for `about`,
 	// which is set to an empty string. Changing the email address resets activation
 	// status, in which case a new activation token is returned.
 	SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error)
-	// stream id = user id
-	SetStreamName(id int64, name string) error
-	SetStreamAbout(id int64, about string) error
-	NewStreamToken(id int64) error
-	// Mark a stream as active on the current server.
-	StartStream(user string, token string) error
-	// Mark a stream as offline.
-	StopStream(user string) error
-	// Retrieve the string identifying the owner of the stream.
-	// Clients talking to the wrong server may be redirected there, for example.
-	// Unless the result is the current server, an ErrStreamNotHere is also returned.
+	StartStream(id string, token string) error
+	SetStreamName(id string, name string) error
+	SetStreamAbout(id string, about string) error
+	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
 	GetStreamServer(user string) (string, error)
 	GetStreamMetadata(user string) (*StreamMetadata, error)
+	StopStream(id string) error
 }

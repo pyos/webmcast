@@ -4,6 +4,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"../database"
 )
 
 const (
@@ -144,19 +146,17 @@ type Set struct {
 	streams map[string]*Broadcast
 	// How long to keep a stream alive after a call to `Close`.
 	Timeout time.Duration
-	// Called when the stream actually is actually closed (<=> timeout has elapsed.)
-	OnStreamClose func(id string)
+
+	OnStreamClose     func(id string)
+	OnStreamTrackInfo func(id string, info *database.StreamTrackInfo)
 }
 
 type Broadcast struct {
-	Created  time.Time
-	closing  time.Duration
-	Closed   bool
-	HasVideo bool
-	HasAudio bool
-	Width    uint // Dimensions of the video track that came last in the `Tracks` tag.
-	Height   uint // Hopefully, there's only one video track in the file.
+	database.StreamTrackInfo
+	onTrackInfo func()
 
+	closing time.Duration
+	Closed  bool
 	vlock   sync.Mutex // protects `viewers`. not RWMutex because there's only one reader.
 	viewers map[chan<- []byte]*viewer
 	buffer  []byte
@@ -217,11 +217,19 @@ func (ctx *Set) Writable(id string) (*Broadcast, bool) {
 		cast.closing = -1
 		return cast, true
 	}
+	emitInfo := false
 	cast := NewBroadcast()
+	cast.onTrackInfo = func() {
+		emitInfo = true
+	}
 	ctx.streams[id] = &cast
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		for range ticker.C {
+			if emitInfo {
+				emitInfo = false
+				ctx.OnStreamTrackInfo(id, &cast.StreamTrackInfo)
+			}
 			if cast.closing >= 0 {
 				if cast.closing += time.Second; cast.closing > ctx.Timeout {
 					ctx.mutex.Lock()
@@ -253,7 +261,6 @@ func (ctx *Set) Writable(id string) (*Broadcast, bool) {
 
 func NewBroadcast() Broadcast {
 	return Broadcast{
-		Created: time.Now().UTC(),
 		closing: -1,
 		viewers: make(map[chan<- []byte]*viewer),
 	}
@@ -436,6 +443,9 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 			cast.tracks = append(cast.tracks, buf...)
+			if cast.onTrackInfo != nil {
+				cast.onTrackInfo()
+			}
 
 		case ebmlTagTracks:
 			cast.tracks = append(cast.tracks, buf...)
