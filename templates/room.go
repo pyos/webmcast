@@ -1,9 +1,6 @@
 package templates
 
-import (
-	"../chat"
-	"../database"
-)
+import "../database"
 
 type Room struct {
 	ID     string
@@ -11,7 +8,6 @@ type Room struct {
 	Online bool
 	Meta   *database.StreamMetadata
 	User   *database.UserShortData
-	Chat   *chat.Context
 }
 
 func (_ Room) TemplateFile() string {

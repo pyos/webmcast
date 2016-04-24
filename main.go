@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -75,6 +76,7 @@ func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code 
 // to normally owner-less streams in a broadcasting context. implements `http.Handler`.
 type HTTPContext struct {
 	cookieCodec *securecookie.SecureCookie
+	chatLock    sync.Mutex
 	chats       map[string]*chat.Context
 	database.Interface
 	broadcast.Set
@@ -89,10 +91,12 @@ func NewHTTPContext(d database.Interface) *HTTPContext {
 		Interface:   d,
 	}
 	ctx.OnStreamClose = func(id string) {
+		ctx.chatLock.Lock()
 		if chat, ok := ctx.chats[id]; ok {
 			chat.Close()
 			delete(ctx.chats, id)
 		}
+		ctx.chatLock.Unlock()
 		if err := ctx.StopStream(id); err != nil {
 			log.Println("Error stopping the stream: ", err)
 		}
@@ -185,19 +189,18 @@ func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string
 		return err
 	}
 
-	owned := auth != nil && id == auth.Login
-	online := true
-	meta, err := ctx.GetStreamMetadata(id)
+	tpl := templates.Room{ID: id, Owned: auth != nil && id == auth.Login, Online: true, User: auth}
+	tpl.Meta, err = ctx.GetStreamMetadata(id)
 	switch err {
 	default:
 		return err
 	case database.ErrStreamNotExist:
 		return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
 	case database.ErrStreamOffline:
-		online = false
+		tpl.Online = false
 	case nil:
 	}
-	return templates.Page(w, http.StatusOK, templates.Room{id, owned, online, meta, auth, ctx.chats[id]})
+	return templates.Page(w, http.StatusOK, tpl)
 }
 
 // POST /stream/<name> or PUT /stream/<name>
@@ -266,11 +269,13 @@ func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string
 						return err
 					}
 					websocket.Handler(func(ws *websocket.Conn) {
+						ctx.chatLock.Lock()
 						c, ok := ctx.chats[id]
 						if !ok {
 							c = chat.New(20)
 							ctx.chats[id] = c
 						}
+						ctx.chatLock.Unlock()
 						c.RunRPC(ws, auth)
 					}).ServeHTTP(w, r)
 					return nil

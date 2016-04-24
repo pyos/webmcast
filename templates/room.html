@@ -33,14 +33,10 @@
                 <div>
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
                     <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                {{ if not .Online }}
-                    <h2 class="offline">is now offline.</h2>
-                {{- end -}}
+                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{- end -}}
                 </div>
                 <div>
-                    <h2 class="viewers" title="Viewers">
-                        {{ if .Chat }}{{len .Chat.Users}}{{ else }}0{{ end }}
-                    </h2>
+                    <h2 class="viewers" title="Viewers">???</h2>
                 </div>
             </header>
 
