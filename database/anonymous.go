@@ -1,63 +1,63 @@
 package database
 
-type AnonDatabase int
+type anonymous int
 
 func NewAnonDatabase() Interface {
-	return AnonDatabase(0)
+	return anonymous(0)
 }
 
-func (d AnonDatabase) Close() error {
+func (d anonymous) Close() error {
 	return nil
 }
 
-func (d AnonDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
+func (d anonymous) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
 	return nil, ErrNotSupported
 }
 
-func (d AnonDatabase) GetUserID(name string, password []byte) (int64, error) {
+func (d anonymous) GetUserID(name string, password []byte) (int64, error) {
 	return 0, ErrUserNotExist
 }
 
-func (d AnonDatabase) GetUserShort(id int64) (*UserShortData, error) {
+func (d anonymous) GetUserShort(id int64) (*UserShortData, error) {
 	return nil, ErrUserNotExist
 }
 
-func (d AnonDatabase) GetUserFull(id int64) (*UserMetadata, error) {
+func (d anonymous) GetUserFull(id int64) (*UserMetadata, error) {
 	return nil, ErrUserNotExist
 }
 
-func (d AnonDatabase) ActivateUser(id int64, token string) error {
+func (d anonymous) ActivateUser(id int64, token string) error {
 	return ErrUserNotExist
 }
 
-func (d AnonDatabase) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
+func (d anonymous) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (d AnonDatabase) SetStreamName(id int64, name string) error {
+func (d anonymous) SetStreamName(id int64, name string) error {
 	return ErrNotSupported
 }
 
-func (d AnonDatabase) SetStreamAbout(id int64, about string) error {
+func (d anonymous) SetStreamAbout(id int64, about string) error {
 	return ErrNotSupported
 }
 
-func (d AnonDatabase) NewStreamToken(id int64) error {
+func (d anonymous) NewStreamToken(id int64) error {
 	return ErrNotSupported
 }
 
-func (d AnonDatabase) StartStream(user string, token string) error {
+func (d anonymous) StartStream(user string, token string) error {
 	return nil
 }
 
-func (d AnonDatabase) StopStream(user string) error {
+func (d anonymous) StopStream(user string) error {
 	return nil
 }
 
-func (d AnonDatabase) GetStreamServer(user string) (string, error) {
+func (d anonymous) GetStreamServer(user string) (string, error) {
 	return "", ErrStreamNotExist
 }
 
-func (d AnonDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
+func (d anonymous) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	return &StreamMetadata{}, nil
 }

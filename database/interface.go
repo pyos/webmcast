@@ -22,7 +22,9 @@ var (
 	ErrStreamNotExist  = errors.New("Unknown stream.")
 	ErrStreamNotHere   = errors.New("Stream is online on another server.")
 	ErrStreamOffline   = errors.New("Stream is offline.")
+)
 
+const (
 	tokenAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	tokenLength   = 30
 )
@@ -33,19 +35,6 @@ func makeToken(length int) string {
 		xs[i] = tokenAlphabet[rand.Intn(len(tokenAlphabet))]
 	}
 	return string(xs)
-}
-
-func gravatarURL(email string, size int) string {
-	hash := md5.Sum([]byte(strings.ToLower(email)))
-	hexhash := hex.EncodeToString(hash[:])
-	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
-}
-
-func generatePwHash(password []byte) ([]byte, error) {
-	if len(password) < 4 || len(password) > 128 {
-		return []byte{}, ErrInvalidPassword
-	}
-	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 }
 
 type UserShortData struct {
@@ -73,12 +62,25 @@ type StreamMetadata struct {
 	Server    string
 }
 
+func hashPassword(password []byte) ([]byte, error) {
+	if len(password) < 4 || len(password) > 128 {
+		return []byte{}, ErrInvalidPassword
+	}
+	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+}
+
 func (u *UserShortData) CheckPassword(password []byte) error {
 	err := bcrypt.CompareHashAndPassword(u.PwHash, password)
 	if err == bcrypt.ErrMismatchedHashAndPassword {
 		return ErrUserNotExist
 	}
 	return err
+}
+
+func gravatarURL(email string, size int) string {
+	hash := md5.Sum([]byte(strings.ToLower(email)))
+	hexhash := hex.EncodeToString(hash[:])
+	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
 }
 
 func (u *UserShortData) GravatarURL(size int) string {

@@ -2,7 +2,7 @@ package database
 
 import "database/sql"
 
-type SQLDatabase struct {
+type sqlImpl struct {
 	sql.DB
 	// The string written to `streams.server` of streams owned by this server.
 	localhost string
@@ -12,7 +12,7 @@ type SQLDatabase struct {
 	streamTokenCache map[string]string
 }
 
-var SQLDatabaseSchema = `
+const sqlSchema = `
 create table if not exists users (
     id                integer      not null,
     activated         integer      not null,
@@ -26,15 +26,14 @@ create table if not exists users (
     stream_about      text         not null,
     stream_token      varchar(64)  not null,
     stream_server     varchar(128),
-
     primary key (id), unique (name), unique (email)
 );`
 
 func NewSQLDatabase(localhost string, driver string, server string) (Interface, error) {
 	db, err := sql.Open(driver, server)
 	if err == nil {
-		wrapped := &SQLDatabase{*db, localhost, make(map[string]string)}
-		if _, err = wrapped.Exec(SQLDatabaseSchema); err == nil {
+		wrapped := &sqlImpl{*db, localhost, make(map[string]string)}
+		if _, err = wrapped.Exec(sqlSchema); err == nil {
 			return wrapped, nil
 		}
 		wrapped.Close()
@@ -42,27 +41,31 @@ func NewSQLDatabase(localhost string, driver string, server string) (Interface, 
 	return nil, err
 }
 
-func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
+func (d *sqlImpl) userExists(name string, email string) bool {
+	var i int
+	err := d.QueryRow("select 1 from users where name = ? or email = ?", name, email).Scan(&i)
+	return err == sql.ErrNoRows
+}
+
+func (d *sqlImpl) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
 	if err := ValidateUsername(name); err != nil {
 		return nil, err
 	}
 	if err := ValidateEmail(email); err != nil {
 		return nil, err
 	}
-	hash, err := generatePwHash(password)
+	hash, err := hashPassword(password)
 	if err != nil {
 		return nil, err
 	}
 	activationToken := makeToken(tokenLength)
 	streamToken := makeToken(tokenLength)
 	r, err := d.Exec(
-		`insert into users   values (NULL, 0, ?, ?, ?, ?, "", ?, "", "", ?, NULL);`,
+		`insert into users values (NULL, 0, ?, ?, ?, ?, "", ?, "", "", ?, NULL);`,
 		activationToken, name, email, name, hash, streamToken,
 	)
 	if err != nil {
-		var i int
-		q := d.QueryRow(`select 1 from users where name = ? or email = ?`, name, email)
-		if q.Scan(&i) != sql.ErrNoRows {
+		if d.userExists(name, email) {
 			return nil, ErrUserNotUnique
 		}
 		return nil, err
@@ -70,7 +73,6 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 
 	uid, err := r.LastInsertId()
 	if err != nil {
-		// FIXME uh...
 		return nil, err
 	}
 
@@ -79,27 +81,22 @@ func (d *SQLDatabase) NewUser(name string, email string, password []byte) (*User
 	}, nil
 }
 
-func (d *SQLDatabase) ActivateUser(id int64, token string) error {
-	r, err := d.Exec(
-		`update users set activated = 1 where id = ? and activation_token = ?`,
-		id, token,
-	)
+func (d *sqlImpl) ActivateUser(id int64, token string) error {
+	r, err := d.Exec("update users set activated = 1 where id = ? and activation_token = ?", id, token)
 	if err != nil {
 		return err
 	}
-
 	changed, err := r.RowsAffected()
 	if err != nil {
 		return err
 	}
-
 	if changed != 1 {
 		return ErrInvalidToken
 	}
 	return nil
 }
 
-func (d *SQLDatabase) GetUserID(name string, password []byte) (int64, error) {
+func (d *sqlImpl) GetUserID(name string, password []byte) (int64, error) {
 	var meta UserShortData
 	err := d.QueryRow(
 		`select id, password from users where name = ?`, name,
@@ -113,7 +110,7 @@ func (d *SQLDatabase) GetUserID(name string, password []byte) (int64, error) {
 	return meta.ID, meta.CheckPassword(password)
 }
 
-func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
+func (d *sqlImpl) GetUserShort(id int64) (*UserShortData, error) {
 	meta := UserShortData{ID: id}
 	err := d.QueryRow(
 		`select name, password, display_name, email from users where users.id = ?`, id,
@@ -124,7 +121,7 @@ func (d *SQLDatabase) GetUserShort(id int64) (*UserShortData, error) {
 	return &meta, err
 }
 
-func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
+func (d *sqlImpl) GetUserFull(id int64) (*UserMetadata, error) {
 	meta := UserMetadata{UserShortData: UserShortData{ID: id}}
 	err := d.QueryRow(
 		`select name, password, email, display_name, about, activated,
@@ -140,7 +137,7 @@ func (d *SQLDatabase) GetUserFull(id int64) (*UserMetadata, error) {
 	return &meta, err
 }
 
-func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
+func (d *sqlImpl) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
 	token := ""
 	query := "update users set "
 	params := make([]interface{}, 0, 6)
@@ -168,7 +165,7 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 	}
 
 	if len(password) != 0 {
-		hash, err := generatePwHash(password)
+		hash, err := hashPassword(password)
 		if err != nil {
 			return "", err
 		}
@@ -181,12 +178,8 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 
 	r, err := d.Exec(query, params...)
 	if err != nil {
-		if name != "" || email != "" {
-			var i int
-			q := d.QueryRow(`select 1 from users where name = ? or email = ?`, name, email)
-			if q.Scan(&i) != sql.ErrNoRows {
-				return "", ErrUserNotUnique
-			}
+		if (name != "" || email != "") && d.userExists(name, email) {
+			return "", ErrUserNotUnique
 		}
 		return "", err
 	}
@@ -200,17 +193,17 @@ func (d *SQLDatabase) SetUserMetadata(id int64, name string, displayName string,
 	return token, err
 }
 
-func (d *SQLDatabase) SetStreamName(id int64, name string) error {
+func (d *sqlImpl) SetStreamName(id int64, name string) error {
 	_, err := d.Exec(`update users set stream_name = ? where id = ?`, name, id)
 	return err
 }
 
-func (d *SQLDatabase) SetStreamAbout(id int64, about string) error {
+func (d *sqlImpl) SetStreamAbout(id int64, about string) error {
 	_, err := d.Exec(`update users set stream_about = ? where id = ?`, about, id)
 	return err
 }
 
-func (d *SQLDatabase) NewStreamToken(id int64) error {
+func (d *sqlImpl) NewStreamToken(id int64) error {
 	// TODO invalidate token cache on all nodes
 	//      damn, it appears I ran into the most difficult problem...
 	token := makeToken(tokenLength)
@@ -218,7 +211,7 @@ func (d *SQLDatabase) NewStreamToken(id int64) error {
 	return err
 }
 
-func (d *SQLDatabase) StartStream(user string, token string) error {
+func (d *sqlImpl) StartStream(user string, token string) error {
 	if expect, ok := d.streamTokenCache[user]; ok {
 		if expect != token {
 			return ErrInvalidToken
@@ -226,33 +219,24 @@ func (d *SQLDatabase) StartStream(user string, token string) error {
 		return nil
 	}
 
-	var id int64
-	var expect string
-	var server sql.NullString
-
-	err := d.QueryRow(`select id from users where name = ? and activated = 1`, user).Scan(&id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return ErrStreamNotExist
-		}
-		return err
-	}
-
-	_, err = d.Exec(
-		`update users set stream_server = ? where id = ? and stream_server is null and stream_token = ?`,
-		d.localhost, id, token,
+	_, err := d.Exec(
+		`update users set stream_server = ? where name = ? and activated = 1 and stream_server is null and stream_token = ?`,
+		d.localhost, user, token,
 	)
 	if err != nil {
 		return err
 	}
 
-	err = d.QueryRow(
-		`select stream_token, stream_server from users where id = ?`, id,
-	).Scan(&expect, &server)
+	var expect string
+	var server sql.NullString
+	var activated = true
+	err = d.QueryRow(`select stream_token, stream_server, activated from users where name = ?`, user).Scan(&expect, &server, &activated)
+	if err == sql.ErrNoRows || !activated {
+		return ErrStreamNotExist
+	}
 	if err != nil {
 		return err
 	}
-
 	if expect != token {
 		return ErrInvalidToken
 	}
@@ -263,16 +247,13 @@ func (d *SQLDatabase) StartStream(user string, token string) error {
 	return nil
 }
 
-func (d *SQLDatabase) StopStream(user string) error {
-	_, err := d.Exec(`update users set stream_server = NULL where name = ?`, user)
-	if err != nil {
-		return err
-	}
+func (d *sqlImpl) StopStream(user string) error {
 	delete(d.streamTokenCache, user)
-	return nil
+	_, err := d.Exec(`update users set stream_server = NULL where name = ?`, user)
+	return err
 }
 
-func (d *SQLDatabase) GetStreamServer(user string) (string, error) {
+func (d *sqlImpl) GetStreamServer(user string) (string, error) {
 	if _, ok := d.streamTokenCache[user]; ok {
 		return d.localhost, nil
 	}
@@ -298,7 +279,7 @@ func (d *SQLDatabase) GetStreamServer(user string) (string, error) {
 	return server.String, ErrStreamNotHere
 }
 
-func (d *SQLDatabase) GetStreamMetadata(user string) (*StreamMetadata, error) {
+func (d *sqlImpl) GetStreamMetadata(user string) (*StreamMetadata, error) {
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.QueryRow(
