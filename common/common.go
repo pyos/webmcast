@@ -1,32 +1,49 @@
 package common
 
 import (
-	"flag"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/securecookie"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var (
-	DefaultInterface = ":8000"
+type Context struct {
+	Database
 	// the key used to sign client-side secure session cookies.
 	// should probably be changed in production, but not random
 	// so that cookies stay valid across nodes/app restarts.
-	CookieCodec = securecookie.New([]byte("12345678901234567890123456789012"), nil)
+	SecureKey   []byte
+	cookieCodec *securecookie.SecureCookie
 	// how long to keep a stream online after the broadcaster has disconnected.
 	// if the stream does not resume within this time, all clients get dropped.
-	StreamKeepAlive = 10 * time.Second
-)
-
-func CreateDatabase(iface string) Database {
-	d, err := NewSQLDatabase(iface, "sqlite3", "development.db")
-	if err != nil {
-		panic(err.Error())
-	}
-	return d
+	StreamKeepAlive time.Duration
 }
 
-func init() {
-	flag.StringVar(&DefaultInterface, "iface", ":8000", "[network]:port to bind on")
+func (c *Context) GetAuthInfo(r *http.Request) (*UserShortData, error) {
+	if c.cookieCodec == nil {
+		c.cookieCodec = securecookie.New(c.SecureKey, nil)
+	}
+	var uid int64
+	if cookie, err := r.Cookie("uid"); err == nil {
+		if err = c.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
+			return c.GetUserShort(uid)
+		}
+	}
+	return nil, ErrUserNotExist
+}
+
+func (c *Context) SetAuthInfo(w http.ResponseWriter, id int64) error {
+	if id == -1 {
+		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
+	} else {
+		enc, err := c.cookieCodec.Encode("uid", id)
+		if err != nil {
+			return err
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name: "uid", Value: enc, Path: "/", HttpOnly: true, MaxAge: 31536000,
+		})
+	}
+	return nil
 }

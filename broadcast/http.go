@@ -30,10 +30,9 @@
 //          May be emitted automatically at the start of a connection if already logged in.
 //        * `Chat.Message(user string, text string)`: a broadcasted text message.
 //
-package main
+package broadcast
 
 import (
-	"flag"
 	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
@@ -41,18 +40,18 @@ import (
 	"sync"
 
 	"../common"
-	"../templates"
 )
 
 type HTTPContext struct {
 	BroadcastSet
 	chatLock sync.Mutex
 	chats    map[string]*Chat
-	common.Database
+	context  *common.Context
 }
 
-func NewHTTPContext(d common.Database) *HTTPContext {
-	ctx := &HTTPContext{chats: make(map[string]*Chat), Database: d}
+func NewHTTPContext(c *common.Context) *HTTPContext {
+	ctx := &HTTPContext{chats: make(map[string]*Chat), context: c}
+	ctx.Timeout = c.StreamKeepAlive
 	ctx.OnStreamClose = func(id string) {
 		ctx.chatLock.Lock()
 		if chat, ok := ctx.chats[id]; ok {
@@ -60,12 +59,12 @@ func NewHTTPContext(d common.Database) *HTTPContext {
 			delete(ctx.chats, id)
 		}
 		ctx.chatLock.Unlock()
-		if err := ctx.StopStream(id); err != nil {
+		if err := ctx.context.StopStream(id); err != nil {
 			log.Println("Error stopping the stream: ", err)
 		}
 	}
 	ctx.OnStreamTrackInfo = func(id string, info *common.StreamTrackInfo) {
-		if err := ctx.SetStreamTrackInfo(id, info); err != nil {
+		if err := ctx.context.SetStreamTrackInfo(id, info); err != nil {
 			log.Println("Error setting stream metadata: ", err)
 		}
 	}
@@ -73,136 +72,115 @@ func NewHTTPContext(d common.Database) *HTTPContext {
 }
 
 func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/" {
-		return templates.Error(w, http.StatusBadRequest, "This is not an UI node.")
+	switch {
+	case r.URL.Path == "/":
+		http.Error(w, "This is not an UI node.", http.StatusBadRequest)
+	case strings.ContainsRune(r.URL.Path[1:], '/'):
+		http.Error(w, "", http.StatusNotFound)
+	case r.Method == "GET":
+		return ctx.watch(w, r, r.URL.Path[1:])
+	case r.Method == "POST" || r.Method == "PUT":
+		return ctx.stream(w, r, r.URL.Path[1:])
+	default:
+		w.Header().Set("Allow", "GET, PUT, POST")
+		http.Error(w, "Invalid HTTP method.", http.StatusMethodNotAllowed)
 	}
-	if !strings.ContainsRune(r.URL.Path[1:], '/') {
-		return ctx.Stream(w, r, r.URL.Path[1:])
-	}
-	return templates.Error(w, http.StatusNotFound, "")
+	return nil
 }
 
-func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*common.UserShortData, error) {
-	var uid int64
-	if cookie, err := r.Cookie("uid"); err == nil {
-		if err = common.CookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
-			return ctx.GetUserShort(uid)
-		}
-	}
-	return nil, common.ErrUserNotExist
-}
-
-func (ctx *HTTPContext) Stream(w http.ResponseWriter, r *http.Request, id string) error {
-	switch r.Method {
-	case "GET":
-		if r.URL.RawQuery != "" {
-			return templates.Error(w, http.StatusBadRequest, "POST or PUT, don't GET.")
-		}
-
-		stream, ok := ctx.Readable(id)
-		if !ok {
-			switch _, err := ctx.GetStreamServer(id); err {
-			case nil:
-				// this is a server-side error. this stream is supposed to be
-				// on this server, but somehow it is not.
-				return common.ErrStreamNotExist
-			case common.ErrStreamNotHere:
-				// TODO redirect
-				return templates.Error(w, http.StatusNotFound, "This stream is not here.")
-			case common.ErrStreamOffline:
-				return templates.Error(w, http.StatusNotFound, "Stream offline.")
-			case common.ErrStreamNotExist:
-				return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
-			default:
-				return err
-			}
-		}
-
-		if upgrade, ok := r.Header["Upgrade"]; ok {
-			for i := range upgrade {
-				if strings.ToLower(upgrade[i]) == "websocket" {
-					auth, err := ctx.GetAuthInfo(r)
-					if err != nil && err != common.ErrUserNotExist {
-						return err
-					}
-					websocket.Handler(func(ws *websocket.Conn) {
-						ctx.chatLock.Lock()
-						chat, ok := ctx.chats[id]
-						if !ok {
-							chat = NewChat(20)
-							ctx.chats[id] = chat
-						}
-						ctx.chatLock.Unlock()
-						chat.RunRPC(ws, auth)
-					}).ServeHTTP(w, r)
-					return nil
-				}
-			}
-		}
-
-		header := w.Header()
-		header.Set("Cache-Control", "no-cache")
-		header.Set("Content-Type", "video/webm")
-		w.WriteHeader(http.StatusOK)
-
-		ch := make(chan []byte, 60)
-		defer close(ch)
-
-		stream.Connect(ch, false)
-		defer stream.Disconnect(ch)
-
-		for chunk := range ch {
-			if _, err := w.Write(chunk); err != nil || stream.Closed {
-				break
-			}
-		}
-		return nil
-
-	case "PUT", "POST":
-		err := ctx.StartStream(id, r.URL.RawQuery)
-		switch err {
-		case nil:
-		case common.ErrInvalidToken:
-			return templates.Error(w, http.StatusForbidden, "Invalid token.")
-		case common.ErrStreamNotExist:
-			return templates.Error(w, http.StatusNotFound, "Invalid stream ID.")
+func (ctx *HTTPContext) watch(w http.ResponseWriter, r *http.Request, id string) error {
+	stream, ok := ctx.Readable(id)
+	if !ok {
+		switch _, err := ctx.context.GetStreamServer(id); err {
 		case common.ErrStreamNotHere:
-			return templates.Error(w, http.StatusForbidden, "The stream is on another server.")
+			http.Error(w, "This stream is not here.", http.StatusNotFound)
+		case common.ErrStreamOffline, nil:
+			http.Error(w, "Stream offline.", http.StatusNotFound)
+		case common.ErrStreamNotExist:
+			http.Error(w, "Invalid stream name.", http.StatusNotFound)
 		default:
 			return err
 		}
+		return nil
+	}
 
-		stream, ok := ctx.Writable(id)
-		if !ok {
-			return templates.Error(w, http.StatusForbidden, "Stream ID already taken.")
-		}
-		defer stream.Close()
-
-		buffer := [16384]byte{}
-		for {
-			n, err := r.Body.Read(buffer[:])
-			if n != 0 {
-				if _, err := stream.Write(buffer[:n]); err != nil {
-					stream.Reset()
-					return templates.Error(w, http.StatusBadRequest, err.Error())
+	if upgrade, ok := r.Header["Upgrade"]; ok {
+		for i := range upgrade {
+			if strings.ToLower(upgrade[i]) == "websocket" {
+				auth, err := ctx.context.GetAuthInfo(r)
+				if err != nil && err != common.ErrUserNotExist {
+					return err
 				}
-			}
-			if err != nil {
-				w.WriteHeader(http.StatusNoContent)
+				websocket.Handler(func(ws *websocket.Conn) {
+					ctx.chatLock.Lock()
+					chat, ok := ctx.chats[id]
+					if !ok {
+						chat = NewChat(20)
+						ctx.chats[id] = chat
+					}
+					ctx.chatLock.Unlock()
+					chat.RunRPC(ws, auth)
+				}).ServeHTTP(w, r)
 				return nil
 			}
 		}
 	}
 
-	return templates.InvalidMethod(w, "GET, POST, PUT")
+	header := w.Header()
+	header.Set("Cache-Control", "no-cache")
+	header.Set("Content-Type", "video/webm")
+	w.WriteHeader(http.StatusOK)
+
+	ch := make(chan []byte, 60)
+	defer close(ch)
+
+	stream.Connect(ch, false)
+	defer stream.Disconnect(ch)
+
+	for chunk := range ch {
+		if _, err := w.Write(chunk); err != nil || stream.Closed {
+			break
+		}
+	}
+	return nil
 }
 
-func main() {
-	flag.Parse()
-	ctx := NewHTTPContext(common.CreateDatabase(common.DefaultInterface))
-	ctx.Timeout = common.StreamKeepAlive
-	mux := http.NewServeMux()
-	mux.Handle("/static/", templates.StaticHandler("."))
-	mux.Handle("/", templates.UnsafeHandler{ctx})
-	log.Fatal(http.ListenAndServe(common.DefaultInterface, mux))
+func (ctx *HTTPContext) stream(w http.ResponseWriter, r *http.Request, id string) error {
+	switch err := ctx.context.StartStream(id, r.URL.RawQuery); err {
+	case common.ErrInvalidToken:
+		http.Error(w, "Invalid token.", http.StatusForbidden)
+		return nil
+	case common.ErrStreamNotExist:
+		http.Error(w, "Invalid stream ID.", http.StatusNotFound)
+		return nil
+	case common.ErrStreamNotHere:
+		http.Error(w, "The stream is on another server.", http.StatusBadRequest)
+		return nil
+	default:
+		return err
+	case nil:
+	}
+
+	stream, ok := ctx.Writable(id)
+	if !ok {
+		http.Error(w, "Stream ID already taken.", http.StatusForbidden)
+		return nil
+	}
+	defer stream.Close()
+
+	buffer := [16384]byte{}
+	for {
+		n, err := r.Body.Read(buffer[:])
+		if n != 0 {
+			if _, err := stream.Write(buffer[:n]); err != nil {
+				stream.Reset()
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return nil
+			}
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}
+	}
 }

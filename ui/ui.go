@@ -32,43 +32,26 @@
 //     [XHR only] Change the text in the "about" section of the stream.
 //     Parameters: value string
 //
-package main
+package ui
 
 import (
-	"flag"
-	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
-	"./common"
-	"./templates"
+	"../common"
+	"../templates"
 )
 
-func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
-	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" && code == http.StatusSeeOther {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	} else {
-		ref := r.Referer()
-		if ref == "" {
-			ref = fallback
-		}
-		http.Redirect(w, r, ref, code)
-	}
-	return nil
+type HTTPContext struct {
+	*common.Context
 }
 
-type HTTPContext struct {
-	common.Database
+func NewHTTPContext(c *common.Context) *HTTPContext {
+	return &HTTPContext{c}
 }
 
 func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == "HEAD" {
-		r.Method = "GET"
-	}
 	if r.URL.Path == "/" {
 		if r.Method != "GET" {
 			return templates.InvalidMethod(w, "GET")
@@ -88,27 +71,16 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	return templates.Error(w, http.StatusNotFound, "")
 }
 
-func (ctx *HTTPContext) GetAuthInfo(r *http.Request) (*common.UserShortData, error) {
-	var uid int64
-	if cookie, err := r.Cookie("uid"); err == nil {
-		if err = common.CookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
-			return ctx.GetUserShort(uid)
-		}
-	}
-	return nil, common.ErrUserNotExist
-}
-
-func (ctx *HTTPContext) SetAuthInfo(w http.ResponseWriter, id int64) error {
-	if id == -1 {
-		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
+func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" && code == http.StatusSeeOther {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	} else {
-		enc, err := common.CookieCodec.Encode("uid", id)
-		if err != nil {
-			return err
+		ref := r.Referer()
+		if ref == "" {
+			ref = fallback
 		}
-		http.SetCookie(w, &http.Cookie{
-			Name: "uid", Value: enc, Path: "/", HttpOnly: true, MaxAge: 31536000,
-		})
+		http.Redirect(w, r, ref, code)
 	}
 	return nil
 }
@@ -322,13 +294,4 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 	}
 
 	return templates.Error(w, http.StatusNotFound, "")
-}
-
-func main() {
-	flag.Parse()
-	rand.Seed(time.Now().UTC().UnixNano())
-	mux := http.NewServeMux()
-	mux.Handle("/static/", templates.StaticHandler("."))
-	mux.Handle("/", templates.UnsafeHandler{&HTTPContext{common.CreateDatabase(common.DefaultInterface)}})
-	log.Fatal(http.ListenAndServe(common.DefaultInterface, mux))
 }
