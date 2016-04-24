@@ -9,7 +9,7 @@ import (
 type Room struct {
 	ID     string
 	Owned  bool
-	Stream *broadcast.SetItem
+	Stream *broadcast.Broadcast
 	Meta   *database.StreamMetadata
 	User   *database.UserShortData
 	Chat   *chat.Context
