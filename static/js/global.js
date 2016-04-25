@@ -111,7 +111,7 @@ let init = {
         outer.appendChild(inner);
         outer.addEventListener('click', (e) => e.target === e.currentTarget ? outer.remove() : 1);
         close.addEventListener('click', (e) => outer.remove());
-        // if the [data-scrollbar] initializer has already ran, this element would be left
+        // if the [data-scrollbar] initializer has already run, this element would be left
         // uninitialized. good thing that particular initializer is idempotent...
         init['[data-scrollbar]'](scroll);
     },
