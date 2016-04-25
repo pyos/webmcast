@@ -7,10 +7,9 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
-    <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}" {{if .Owned}}data-owned{{end}}>
+    <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
         <article class="content" data-scrollbar>
             {{ template "nav.html" . }}
-
             <section class="player-block section-highlight">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
                                   {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
@@ -27,26 +26,41 @@
                     </div>
                 </div>
             </section>
-
             <header class="meta center-block">
                 <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
                 <div>
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
                     <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{- end -}}
+                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
+                    {{ if .Owned }}
+                        <template class="edit-name-template">
+                            <form method="POST" action="/user/set-stream-name">
+                                <input type="text" name="value" />
+                                <button type="submit">Save</button>
+                            </form>
+                        </template>
+                        <h2 class="edit"><a href="#">Edit name</a></h2>
+                    {{ end }}
                 </div>
                 <div>
-                    <h2 class="viewers" title="Viewers">???</h2>
+                    {{ if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end }}
                 </div>
             </header>
-
             <section class="about center-block">
-                {{.Meta.About}}
+                <p class="source">{{.Meta.About}}</p>
+                {{ if .Owned }}
+                    <template class="edit-about-template">
+                        <form method="POST" action="/user/set-stream-about">
+                            <textarea name="value" cols="40" rows="6"></textarea>
+                            <button type="submit">Save</button>
+                            <button type="reset">Cancel</button>
+                        </form>
+                    </template>
+                    <p class="edit"><a href="#">Edit description</a></p>
+                {{ end }}
             </section>
-
             {{ template "footer.html" }}
         </article>
-
         <aside class="chat">
             <h1>{{.ID}}</h1>
             <ul class="log" data-scrollbar>

@@ -1,4 +1,4 @@
-'use strict'; /* global screenfull */
+'use strict'; /* global screenfull, form */
 
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
@@ -260,21 +260,43 @@ let Chat = function (rpc, root) {
 };
 
 
-let Meta = function (rpc, meta, about, stream, owned) {
-    rpc.connect('Stream.Name', (n) => {
-        meta.querySelector('.name').textContent = n || `#${stream}`;
-    });
-
-    rpc.connect('Stream.About', (n) => {
-        about.textContent = n;
-    });
-
+let Meta = function (rpc, meta, about, stream) {
     rpc.connect('Stream.ViewerCount', (n) => {
         meta.querySelector('.viewers').textContent = n;
     });
 
-    if (owned) {
-        // ...
+    let insertEditForm = (elem, template, defaultValue) => {
+        let t = document.importNode(template, true);
+        let f = t.querySelector('form');
+        let i = f.querySelector('input, textarea');
+        f.addEventListener('reset', () => f.remove());
+        f.addEventListener('submit', (ev) => {
+            ev.preventDefault();
+            form.submit(f).then(() => {
+                elem.textContent = i.value || defaultValue;
+                f.remove();
+            });
+        });
+        elem.parentElement.insertBefore(f, elem);
+        i.value = elem.textContent;
+        i.focus();
+    };
+
+    let edit = meta.querySelector('.edit');
+    if (edit) {
+        edit.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            insertEditForm(
+                meta.querySelector('.name'),
+                meta.querySelector('.edit-name-template').content, '#' + stream);
+        });
+
+        about.querySelector('.edit').addEventListener('click', (ev) => {
+            ev.preventDefault();
+            insertEditForm(
+                about.querySelector('.source'),
+                about.querySelector('.edit-about-template').content, '');
+        });
     }
 
     return { onLoad: () => {}, onUnload: () => {} };
@@ -293,7 +315,7 @@ let Player = function (root) {
     rpc.objects = [
         new View(rpc, root.querySelector('.player'), window.location.protocol + '//' + uri),
         new Chat(rpc, root.querySelector('.chat')),
-        new Meta(rpc, root.querySelector('.meta'), root.querySelector('.about'), stream, owned),
+        new Meta(rpc, root.querySelector('.meta'), root.querySelector('.about'), stream),
     ];
     return rpc;
 };

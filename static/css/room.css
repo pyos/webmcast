@@ -143,12 +143,12 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     }
 }
 
-.meta .creator:before {
-    content: 'by ';
+.edit {
+    font-style: italic;
 }
 
-.meta .created:before {
-    content: 'on ';
+.meta .creator:before {
+    content: 'by ';
 }
 
 .meta .viewers:before {
@@ -157,8 +157,32 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     margin-right: 0.5em;
 }
 
+.meta form input,
+.meta form button {
+    min-height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
+}
+
 .about {
     padding: 0 2em;
+}
+
+.about > :first-child {
+    margin-top: 0;
+}
+
+.about > :last-child {
+    margin-bottom: 0;
+}
+
+.about > form > textarea {
+    display: block;
+    margin-bottom: 1em;
+}
+
+.meta form + .name,
+.meta form ~ .edit,
+.about > form ~ * {
+    display: none;
 }
 
 .chat {
