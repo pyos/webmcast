@@ -1,3 +1,4 @@
+// asd
 package main
 
 import (
@@ -53,29 +54,36 @@ func (ctx UnsafeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	bind := flag.String("bind", ":8000", "[network]:port to bind on")
-	addr := flag.String("addr", "", "Public address of this node (enables root mode)")
+	addr := flag.String("addr", "", "The public address of this server, which will run in pure retransmission mode.")
+	ui_mode := flag.Bool("ui", false, "Run in pure ui node. Required to use ephemeral storage.")
+	devnull := flag.Bool("ephemeral", false, "Use a process-local in-memory userless database. Can only be enabled in joint mode.")
 	flag.Parse()
 
-	d, err := common.NewSQLDatabase(*addr, "sqlite3", "development.db")
-	if err != nil {
-		log.Fatal("could not connect to database:", d)
+	if *devnull && (*ui_mode || *addr != "") {
+		log.Print("-ephemeral cannot be used with -ui or -addr")
+		log.Fatal("These modes require coordination through a persistent database.")
 	}
 
 	ctx := common.Context{
-		Database:        d,
 		SecureKey:       []byte("12345678901234567890123456789012"),
 		StreamKeepAlive: 10 * time.Second,
 	}
-
-	var handler UnsafeHandlerIface
-	if *addr != "" {
-		handler = broadcast.NewHTTPContext(&ctx)
+	if *devnull {
+		ctx.Database = common.NewAnonDatabase()
 	} else {
-		handler = ui.NewHTTPContext(&ctx)
+		var err error
+		if ctx.Database, err = common.NewSQLDatabase(*addr, "sqlite3", "development.db"); err != nil {
+			log.Fatal("Could not connect to database: ", err)
+		}
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
-	mux.Handle("/", UnsafeHandler{handler})
+	if *addr != "" || !*ui_mode {
+		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{broadcast.NewHTTPContext(&ctx)}))
+	}
+	if *addr == "" {
+		mux.Handle("/", UnsafeHandler{ui.NewHTTPContext(&ctx)})
+	}
 	log.Fatal(http.ListenAndServe(*bind, mux))
 }

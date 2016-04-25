@@ -288,7 +288,7 @@ let Player = function (root) {
 
     let uri = ( server    === ''  ? window.location.host
               : server[0] === ':' ? window.location.hostname + server
-              : server ) + '/' + encodeURIComponent(stream);
+              : server ) + '/stream/' + encodeURIComponent(stream);
     let rpc = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://` + uri);
     rpc.objects = [
         new View(rpc, root.querySelector('.player'), window.location.protocol + '//' + uri),
