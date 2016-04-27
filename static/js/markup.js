@@ -2,130 +2,108 @@
 
 
 let markup = {
-    blocks: [
-        { k: 'code',   e: /^ {4}|^\t/g            },
-        { k: 'rule',   e: /^\s*(?:[*-]\s*){3,}$/g },
-        { k: 'ol',     e: /^\s*\d+\.\s+/g         },
-        { k: 'ul',     e: /^\s*[*+-]\s+/g         },
-        { k: 'h3',     e: /^\s*###\s*/g           },
-        { k: 'h2',     e: /^\s*##\s*/g            },
-        { k: 'h1',     e: /^\s*#\s*/g             },
-        { k: 'table',  e: /^\s*\|/g               },
-        { k: 'quote',  e: /^\s*>/g                },
-        { k: null,     e: /^\s*$/g                },
-        { k: 'p',      e: /^\s*/g                 },
+    blockRe: [
+        { 'pre':   /^ {4}|^\t/g            },
+        { 'rule':  /^\s*(?:[*-]\s*){3,}$/g },
+        { 'ol':    /^\s*\d+\.\s+/g         },
+        { 'ul':    /^\s*[*+-]\s+/g         },
+        { 'h3':    /^\s*###\s*/g           },
+        { 'h2':    /^\s*##\s*/g            },
+        { 'h1':    /^\s*#\s*/g             },
+        { 'quote': /^\s*>/g                },
+        { 'break': /^\s*$/g                },
+        { 'p':     /^\s*/g                 },
     ],
 
-    inline: [
-        { k: 'code',      e: /(`+)(.+?)\1/g          },  // -> 2
-        { k: 'bold',      e: /\*\*((?:\\?.)+?)\*\*/g },  // -> 1
-        { k: 'italic',    e: /\*((?:\\?.)+?)\*/g     },  // -> 1
-        { k: 'strike',    e: /~~((?:\\?.)+?)~~/g     },  // -> 1
-        { k: 'invert',    e: /%%((?:\\?.)+?)%%/g     },  // -> 1
-        { k: 'hyperlink', e: /\b[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+/g },  // -> 0
-        { k: 'namedlink', e: /\[(.*?)\]\(((?:[^()]+|\(.*?\)|[^)])*)\)/g },  // -> (1 = text, 2 = href)
-        { k: 'text',      e: /[\w-]*[^\W_-]\s*/g     },  // -> 0
-        { k: 'escape',    e: /\\?(.)/g               },  // -> 1
+    blockFn: {
+        'break': _ => '',
+        'rule':  _ => '<hr/>',
+        'quote': x => '<blockquote>' + markup.parse(x.join('\n'))  + '</blockquote>',
+        'pre':   x => '<pre>'        + markup.escape(x.join('\n')) + '</pre>',
+        'p':     x => '<p>'          + markup.inline(x.join('\n')) + '</p>',
+        'h1':    x => '<h1>'         + x.map(markup.inline).join('</h1><h1>') + '</h1>',
+        'h2':    x => '<h2>'         + x.map(markup.inline).join('</h2><h2>') + '</h2>',
+        'h3':    x => '<h3>'         + x.map(markup.inline).join('</h3><h3>') + '</h3>',
+        'ol':    x => '<ol><li>'     + x.map(markup.inline).join('</li><li>') + '</li></ol>',
+        'ul':    x => '<ul><li>'     + x.map(markup.inline).join('</li><li>') + '</li></ul>',
+    },
+
+    inlineRe: [
+        { 'code':    /(`+)(.+?)\1/g          },
+        { 'bold':    /\*\*((?:\\?.)+?)\*\*/g },
+        { 'italic':  /\*((?:\\?.)+?)\*/g     },
+        { 'strike':  /~~((?:\\?.)+?)~~/g     },
+        { 'spoiler': /%%((?:\\?.)+?)%%/g     },
+        { 'link':    /\b(([a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+))/g },
+        { 'link':    /\[(.*?)\]\(((?:[^()]+|\(.*?\)|[^)])*)\)/g },
+        { 'text':    /\\?([\w-]*[^\W_-]\s*|.)/g },
     ],
+
+    inlineFn: {
+        'code':    (m, a, b) => '<code>'                 + markup.inlineSafe(b) + '</code>',
+        'bold':    (m, a)    => '<b>'                    + markup.inlineSafe(a) + '</b>',
+        'italic':  (m, a)    => '<i>'                    + markup.inlineSafe(a) + '</i>',
+        'strike':  (m, a)    => '<del>'                  + markup.inlineSafe(a) + '</del>',
+        'spoiler': (m, a)    => '<span class="spoiler">' + markup.inlineSafe(a) + '</span>',
+        'link':    (m, a, b) => `<a href="${b}" target="_blank">${a}</a>`,
+        'text':    (m, a)    => a,
+    },
 
     parse: (text) => {
-        let nl = /$/gm;
-        let out = '';
-        let key = null;
-        let lines = [];
-        let trimmed = [];
-
-        for (; text !== ""; text = text.substr(nl.lastIndex + 1)) {
-            nl.lastIndex = 0;
-            nl.test(text);
-            let line = text.substr(0, nl.lastIndex);
-
-            for (let b of markup.blocks) {
-                b.e.lastIndex = 0;
-                let groups = b.e.exec(line);
-                if (groups === null)
+        let key = 'break';
+        let block = [];
+        let result = '';
+        for (let line of text.split('\n')) {
+            for (let r of markup.blockRe) {
+                let k; for (k in r) {}
+                r[k].lastIndex = 0;
+                if (!r[k].test(line))
                     continue;
-
-                if (b.k !== key) {
-                    out += markup.group(key, lines, trimmed);
-                    key = b.k;
-                    lines = [];
-                    trimmed = [];
+                if (k !== key) {
+                    result += markup.blockFn[key](block);
+                    key = k;
+                    block = [];
                 }
-
-                lines.push(line);
-                trimmed.push(line.substr(b.e.lastIndex));
+                block.push(line.substr(r[k].lastIndex));
                 break;
             }
         }
-
-        return out + markup.group(key, lines, trimmed);
+        return result + markup.blockFn[key](block);
     },
 
-    group: (key, lines, trimmed) => {
-        if (key === null || lines.length === 0)
-            return '';
-        if (key === 'quote')
-            return '<blockquote>' + markup.parse(trimmed.join('\n')) + '</blockquote>';
-        if (key === 'code')
-            return '<pre>' + markup.escape(trimmed.join('\n')) + '</pre>';
-        if (key === 'ul' || key == 'ol')
-            return '<' + key + '><li>' + trimmed.map(x => markup.parseInline(markup.escape(x))).join('</li><li>') + '</li></' + key + '>';
-        if (key === 'table')
-            return '<table>' + trimmed.map(x => '<tr><td>' + x.replace(/\|\s*$/, '').replace(/\|/g, '</td><td>') + '</td></tr>').join('') + '</table>';
-        return '<' + key + '>' + markup.parseInline(markup.escape(trimmed.join('\n'))) + '</' + key + '>';
-    },
+    escape: (x) =>
+        x.replace(/[&<>"]/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[x]),
 
-    'escape': (x) => {
-        return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    },
+    inline: (x) =>
+        markup.inlineSafe(markup.escape(x)),
 
-    parseInline: (x) => {
-        let out = '';
+    inlineSafe: (x) => {
+        let result = '';
         while (x !== "") {
-            let best = {start: x.length};
+            let best = {key: 'text', start: x.length, end: x.length, groups: ['']};
 
-            for (let i of markup.inline) {
-                i.e.lastIndex = 0;
-                let groups = i.e.exec(x);
-                if (groups !== null && i.e.lastIndex - groups[0].length < best.start) {
-                    best = {key: i.k, start: i.e.lastIndex - groups[0].length, end: i.e.lastIndex, groups};
-                }
+            for (let i of markup.inlineRe) {
+                let key; for (key in i) {}
+                i[key].lastIndex = 0;
+                let groups = i[key].exec(x);
+                if (groups !== null && i[key].lastIndex - groups[0].length < best.start)
+                    best = {key, start: i[key].lastIndex - groups[0].length, end: i[key].lastIndex, groups};
             }
 
-            out += x.substr(0, best.start);
-            if (best.key === 'text')
-                out += best.groups[0];
-            else if (best.key === 'escape')
-                out += best.groups[1];
-            else if (best.key === 'bold')
-                out += '<strong>' + markup.parseInline(best.groups[1]) + '</strong>';
-            else if (best.key === 'italic')
-                out += '<em>' + markup.parseInline(best.groups[1]) + '</em>';
-            else if (best.key === 'invert')
-                out += '<span class="spoiler">' + markup.parseInline(best.groups[1]) + '</span>';
-            else if (best.key === 'strike')
-                out += '<del>' + markup.parseInline(best.groups[1]) + '</del>';
-            else if (best.key === 'code')
-                out += '<code>' + best.groups[2] + '</code>';
-            else if (best.key === 'hyperlink')
-                out += '<a href="' + best.groups[0] + '" target="_blank">' + best.groups[0] + '</a>';
-            else if (best.key === 'namedlink')
-                out += '<a href="' + best.groups[2] + '" target="_blank">' + best.groups[1] + '</a>';
-            else
-                out += x.substr(best.start, best.end);
+            result += x.substr(0, best.start) + markup.inlineFn[best.key](...best.groups);
             x = x.substr(best.end);
         }
-        return out + x;
+        return result;
     },
 };
 
 
 init['[data-markup]'] = (e) => {
-    let marked = document.createElement('div');
-    marked.setAttribute('data-markup-html', '');
-    marked.innerHTML = markup.parse(e.textContent);
-    new MutationObserver(() => { marked.innerHTML = markup.parse(e.textContent); })
-        .observe(e, {childList: true, characterData: true});
-    e.parentElement.insertBefore(marked, e);
+    let r = document.createElement('div');
+    r.setAttribute('data-markup-html', '');
+    r.innerHTML = markup.parse(e.textContent);
+    new MutationObserver(() => {
+        r.innerHTML = markup.parse(e.textContent);
+    }).observe(e, {childList: true, characterData: true});
+    e.parentElement.insertBefore(r, e);
 };
