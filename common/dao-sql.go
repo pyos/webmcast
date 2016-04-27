@@ -1,6 +1,9 @@
 package common
 
-import "database/sql"
+import (
+	"database/sql"
+	"sync"
+)
 
 type sqlImpl struct {
 	sql.DB
@@ -9,41 +12,45 @@ type sqlImpl struct {
 	// Security tokens of active streams owned by this server.
 	// Some broadcasting software (*cough* gstreamer *cough*) wraps each frame
 	// in a separate request, which may or may not overload the database...
-	streamTokenCache map[string]string
+	streamTokenLock sync.RWMutex
+	streamTokens    map[string]string
 }
 
 const sqlSchema = `
 create table if not exists users (
-    id                integer      not null,
-    activated         integer      not null default 0,
-    activation_token  varchar(64)  not null,
-    name              varchar(256) not null,
-    email             varchar(256) not null,
-    display_name      varchar(256) not null,
-    about             text         not null default "",
-    password          varchar(256) not null,
-    stream_name       varchar(256) not null default "",
-    stream_token      varchar(64)  not null,
-    stream_server     varchar(128),
-    stream_has_video  integer default 1,
-    stream_has_audio  integer default 1,
-    stream_w          integer default 0,
-    stream_h          integer default 0,
-    primary key (id), unique (name), unique (email)
+    id           integer      not null primary key,
+    actoken      varchar(64),
+    sectoken     varchar(64)  not null,
+    name         varchar(256) not null,
+    login        varchar(256) not null,
+    email        varchar(256) not null,
+    pwhash       varchar(256) not null,
+    about        text         not null default "",
+    unique(login), unique(email)
 );
 
-create table if not exists description_panels (
-    id        integer      not null,
-    user      integer      not null,
-    contents  text         not null,
-    image     varchar(256) not null default "",
-    primary key (id)
+create table if not exists streams (
+    id         integer      not null primary key,
+    user       integer      not null,
+    video      boolean      not null default 1,
+    audio      boolean      not null default 1,
+    width      integer      not null default 0,
+    height     integer      not null default 0,
+    name       varchar(256) not null default "",
+    server     varchar(128)
+);
+
+create table if not exists panels (
+    id        integer      not null primary key,
+    stream    integer      not null,
+    text      text         not null,
+    image     varchar(256) not null default ""
 );`
 
 func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
 	db, err := sql.Open(driver, server)
 	if err == nil {
-		wrapped := &sqlImpl{*db, localhost, make(map[string]string)}
+		wrapped := &sqlImpl{*db, localhost, sync.RWMutex{}, make(map[string]string)}
 		if _, err = wrapped.Exec(sqlSchema); err == nil {
 			return wrapped, nil
 		}
@@ -52,14 +59,13 @@ func NewSQLDatabase(localhost string, driver string, server string) (Database, e
 	return nil, err
 }
 
-func (d *sqlImpl) userExists(name string, email string) bool {
+func (d *sqlImpl) userExists(login string, email string) bool {
 	var i int
-	err := d.QueryRow("select 1 from users where name = ? or email = ?", name, email).Scan(&i)
-	return err != sql.ErrNoRows
+	return d.QueryRow("select 1 from users where login = ? or email = ?", login, email).Scan(&i) != sql.ErrNoRows
 }
 
-func (d *sqlImpl) NewUser(name string, email string, password []byte) (*UserMetadata, error) {
-	if err := ValidateUsername(name); err != nil {
+func (d *sqlImpl) NewUser(login string, email string, password []byte) (*UserData, error) {
+	if err := ValidateUsername(login); err != nil {
 		return nil, err
 	}
 	if err := ValidateEmail(email); err != nil {
@@ -69,110 +75,81 @@ func (d *sqlImpl) NewUser(name string, email string, password []byte) (*UserMeta
 	if err != nil {
 		return nil, err
 	}
-	activationToken := makeToken(tokenLength)
-	streamToken := makeToken(tokenLength)
+	token := makeToken(tokenLength)
 	r, err := d.Exec(
-		`insert into users(activation_token, name, email, display_name, password, stream_token)
-		 values (?, ?, ?, ?, ?, ?);`,
-		activationToken, name, email, name, hash, streamToken,
+		"insert into users(actoken, sectoken, name, login, email, pwhash) values(?, ?, ?, ?, ?, ?)",
+		token, token, login, login, email, hash,
 	)
 	if err != nil {
-		if d.userExists(name, email) {
+		if d.userExists(login, email) {
 			return nil, ErrUserNotUnique
 		}
 		return nil, err
 	}
 
 	uid, err := r.LastInsertId()
-	if err != nil {
-		return nil, err
+	if err == nil {
+		_, err = d.Exec("insert into streams(user) values(?)", uid)
 	}
-
-	return &UserMetadata{
-		UserShortData{uid, name, email, name, hash}, "", false, activationToken, streamToken,
-	}, nil
+	return &UserData{uid, login, email, login, hash, "", false, token, token}, err
 }
 
 func (d *sqlImpl) ActivateUser(id int64, token string) error {
-	r, err := d.Exec("update users set activated = 1 where id = ? and activation_token = ?", id, token)
+	r, err := d.Exec("update users set actoken = NULL where id = ? and actoken = ?", id, token)
 	if err != nil {
 		return err
 	}
 	changed, err := r.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
+	if err == nil && changed != 1 {
 		return ErrInvalidToken
 	}
-	return nil
-}
-
-func (d *sqlImpl) NewStreamToken(id int64) error {
-	// TODO invalidate token cache on all nodes
-	//      damn, it appears I ran into the most difficult problem...
-	token := makeToken(tokenLength)
-	_, err := d.Exec(`update users set stream_token = ? where id = ?`, token, id)
 	return err
 }
 
-func (d *sqlImpl) GetUserID(name string, password []byte) (int64, error) {
-	var meta UserShortData
-	err := d.QueryRow(
-		`select id, password from users where name = ?`, name,
-	).Scan(&meta.ID, &meta.PwHash)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, ErrUserNotExist
-		}
-		return 0, err
-	}
-	return meta.ID, meta.CheckPassword(password)
-}
-
-func (d *sqlImpl) GetUserShort(id int64) (*UserShortData, error) {
-	meta := UserShortData{ID: id}
-	err := d.QueryRow(
-		`select name, password, display_name, email from users where users.id = ?`, id,
-	).Scan(&meta.Login, &meta.PwHash, &meta.Name, &meta.Email)
+func (d *sqlImpl) GetUserID(login string, password []byte) (int64, error) {
+	var u UserData
+	err := d.QueryRow("select id, pwhash from users where login = ?", login).Scan(&u.ID, &u.PwHash)
 	if err == sql.ErrNoRows {
-		return nil, ErrUserNotExist
+		err = ErrUserNotExist
+	} else if err == nil {
+		err = u.CheckPassword(password)
 	}
-	return &meta, err
+	return u.ID, err
 }
 
-func (d *sqlImpl) GetUserFull(id int64) (*UserMetadata, error) {
-	meta := UserMetadata{UserShortData: UserShortData{ID: id}}
+func (d *sqlImpl) GetUserFull(id int64) (*UserData, error) {
+	var actoken sql.NullString
+	u := UserData{ID: id}
 	err := d.QueryRow(
-		`select name, password, email, display_name, about, activated,
-		        activation_token, stream_token from users where users.id = ?`,
-		id,
+		"select name, login, email, pwhash, about, actoken, sectoken from users where id = ?", id,
 	).Scan(
-		&meta.Login, &meta.PwHash, &meta.Email, &meta.Name, &meta.About,
-		&meta.Activated, &meta.ActivationToken, &meta.StreamToken,
+		&u.Name, &u.Login, &u.Email, &u.PwHash, &u.About, &actoken, &u.StreamToken,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotExist
 	}
-	return &meta, err
+	if u.Activated = !actoken.Valid; actoken.Valid {
+		u.ActivationToken = actoken.String
+	}
+	return &u, err
 }
 
-func (d *sqlImpl) SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error) {
+func (d *sqlImpl) SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error) {
 	token := ""
 	query := "update users set "
-	params := make([]interface{}, 0, 6)
+	params := make([]interface{}, 0, 7)
 
 	if name != "" {
-		if err := ValidateUsername(name); err != nil {
-			return "", err
-		}
 		query += "name = ?, "
 		params = append(params, name)
 	}
 
-	if displayName != "" {
-		query += "display_name = ?, "
-		params = append(params, displayName)
+	if login != "" {
+		if err := ValidateUsername(login); err != nil {
+			return "", err
+		}
+		query += "login = ?, "
+		params = append(params, login)
 	}
 
 	if email != "" {
@@ -180,7 +157,7 @@ func (d *sqlImpl) SetUserMetadata(id int64, name string, displayName string, ema
 			return "", err
 		}
 		token = makeToken(tokenLength)
-		query += "activated = 0, activation_token = ?, email = ?, "
+		query += "actoken = ?, email = ?, "
 		params = append(params, token, email)
 	}
 
@@ -193,7 +170,7 @@ func (d *sqlImpl) SetUserMetadata(id int64, name string, displayName string, ema
 		params = append(params, hash)
 	}
 
-	query += "about = ? where id = ? and stream_server is null"
+	query += "about = ? where id = ? and not exists(select 1 from streams where user = users.id and server is not null)"
 	params = append(params, about, id)
 
 	r, err := d.Exec(query, params...)
@@ -204,27 +181,50 @@ func (d *sqlImpl) SetUserMetadata(id int64, name string, displayName string, ema
 		return "", err
 	}
 	rows, err := r.RowsAffected()
-	if err != nil {
-		return "", err
-	}
-	if rows != 1 {
+	if err == nil && rows != 1 {
 		return "", ErrStreamActive
 	}
 	return token, err
 }
 
+func errOf(_ interface{}, err error) error {
+	return err
+}
+
+func (d *sqlImpl) NewStreamToken(id int64) error {
+	// TODO invalidate token cache on all nodes
+	//      damn, it appears I ran into the most difficult problem...
+	return errOf(d.Exec("update users set sectoken = ? where id = ?", makeToken(tokenLength), id))
+}
+
+func (d *sqlImpl) SetStreamName(id int64, name string) error {
+	return errOf(d.Exec("update streams set name = ? where user = ?", name, id))
+}
+
+func (d *sqlImpl) AddStreamPanel(id int64, text string) error {
+	return errOf(d.Exec("insert into panels(stream, text) select id, ? from streams where user = ?", text, id))
+}
+
+func (d *sqlImpl) SetStreamPanel(id int64, n int64, text string) error {
+	return errOf(d.Exec("update panels set text = ? where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)", text, id, n))
+}
+
+func (d *sqlImpl) DelStreamPanel(id int64, n int64) error {
+	return errOf(d.Exec("delete from panels where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)", id, n))
+}
+
 func (d *sqlImpl) StartStream(id string, token string) error {
-	if expect, ok := d.streamTokenCache[id]; ok {
+	d.streamTokenLock.RLock()
+	if expect, ok := d.streamTokens[id]; ok {
+		d.streamTokenLock.RUnlock()
 		if expect != token {
 			return ErrInvalidToken
 		}
 		return nil
 	}
+	d.streamTokenLock.RUnlock()
 
-	_, err := d.Exec(
-		`update users set stream_server = ? where name = ? and activated = 1 and stream_server is null and stream_token = ?`,
-		d.localhost, id, token,
-	)
+	_, err := d.Exec("update streams set server = ? where server is null and user in (select id from users where login = ? and actoken is null and sectoken = ?)", d.localhost, id, token)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,8 @@ func (d *sqlImpl) StartStream(id string, token string) error {
 	var expect string
 	var server sql.NullString
 	var activated = true
-	err = d.QueryRow(`select stream_token, stream_server, activated from users where name = ?`, id).Scan(&expect, &server, &activated)
+
+	err = d.QueryRow("select sectoken, server, actoken is null from users join streams on users.id = streams.user where users.login = ?", id).Scan(&expect, &server, &activated)
 	if err == sql.ErrNoRows || !activated {
 		return ErrStreamNotExist
 	}
@@ -245,68 +246,47 @@ func (d *sqlImpl) StartStream(id string, token string) error {
 	if !server.Valid || server.String != d.localhost {
 		return ErrStreamNotHere
 	}
-	d.streamTokenCache[id] = expect
+	d.streamTokenLock.Lock()
+	d.streamTokens[id] = expect
+	d.streamTokenLock.Unlock()
 	return nil
 }
 
-func (d *sqlImpl) SetStreamName(id string, name string) error {
-	_, err := d.Exec(`update users set stream_name = ? where name = ?`, name, id)
-	return err
-}
-
-func (d *sqlImpl) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
-	_, err := d.Exec(
-		`update users set stream_has_video = ?, stream_has_audio = ?, stream_w = ?, stream_h = ? where name = ?`,
-		info.HasVideo, info.HasAudio, info.Width, info.Height, id,
-	)
-	return err
-}
-
-func (d *sqlImpl) AddStreamPanel(id string, contents string) error {
-	_, err := d.Exec(`insert into description_panels select NULL, users.id, ?, "" from users where name = ?;`, contents, id)
-	return err
-}
-
-func (d *sqlImpl) SetStreamPanel(id string, number int, contents string) error {
-	_, err := d.Exec(
-		`update description_panels set contents = ? where id = ? and user in (select users.id from users where name = ?)`,
-		contents, number, id,
-	)
-	return err
-}
-
-func (d *sqlImpl) DelStreamPanel(id string, number int) error {
-	_, err := d.Exec(
-		`delete from description_panels where id = ? and user in (select users.id from users where name = ?)`,
-		number, id,
-	)
+func (d *sqlImpl) StopStream(id string) error {
+	d.streamTokenLock.Lock()
+	delete(d.streamTokens, id)
+	d.streamTokenLock.Unlock()
+	_, err := d.Exec("update streams set server = null where user in (select id from users where login = ?)", id)
 	return err
 }
 
 func (d *sqlImpl) GetStreamServer(id string) (string, error) {
-	if _, ok := d.streamTokenCache[id]; ok {
+	d.streamTokenLock.RLock()
+	if _, ok := d.streamTokens[id]; ok {
+		d.streamTokenLock.RUnlock()
 		return d.localhost, nil
 	}
+	d.streamTokenLock.RUnlock()
 
+	var intId int64
 	var server sql.NullString
-	err := d.QueryRow(`select stream_server from users where name = ?`, id).Scan(&server)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", ErrStreamNotExist
-		}
-		return "", err
+	err := d.QueryRow("select id, server from streams where user in (select id from users where login = ?)", id).Scan(&intId, &server)
+	if err == sql.ErrNoRows {
+		return "", ErrStreamNotExist
 	}
-	if server.String == d.localhost {
-		// it should have been offline??
-		if _, err = d.Exec(`update users set stream_server = null where name = ?`, id); err != nil {
-			return "", err
-		}
-		return "", ErrStreamOffline
+	if err != nil {
+		return "", err
 	}
 	if !server.Valid {
 		return "", ErrStreamOffline
 	}
-	return server.String, ErrStreamNotHere
+	if server.String != d.localhost {
+		return server.String, ErrStreamNotHere
+	}
+	if _, err = d.Exec("update streams set server = null where id = ?", intId); err != nil {
+		return "", err
+	}
+	return "", ErrStreamOffline
 }
 
 func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
@@ -314,13 +294,9 @@ func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.QueryRow(
-		`select display_name, about, email, stream_name, stream_server,
-		        stream_has_video, stream_has_audio, stream_w, stream_h, id
-		 from users where name = ?`,
-		id,
+		"select users.name, about, email, streams.name, server, video, audio, width, height, streams.id from users join streams on users.id = streams.user where login = ?", id,
 	).Scan(
-		&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server,
-		&meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
+		&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server, &meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist
@@ -328,30 +304,27 @@ func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta.Server = server.String
-	rows, err := d.Query(`select id, contents, image from description_panels where user = ?`, intId)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
+	rows, err := d.Query("select text, image from panels where stream = ?", intId)
+	if err == nil {
 		var panel StreamMetadataPanel
-		if err = rows.Scan(&panel.ID, &panel.Text, &panel.Image); err != nil {
-			return nil, err
+		for rows.Next() {
+			if err = rows.Scan(&panel.Text, &panel.Image); err != nil {
+				break
+			}
+			meta.Panels = append(meta.Panels, panel)
 		}
-		meta.Panels = append(meta.Panels, panel)
+		if err = rows.Err(); err == nil && !server.Valid {
+			err = ErrStreamOffline
+		}
+		rows.Close()
+		meta.Server = server.String
 	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	if !server.Valid {
-		return &meta, ErrStreamOffline
-	}
-	return &meta, nil
+	return &meta, err
 }
 
-func (d *sqlImpl) StopStream(id string) error {
-	delete(d.streamTokenCache, id)
-	_, err := d.Exec(`update users set stream_server = NULL where name = ?`, id)
-	return err
+func (d *sqlImpl) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
+	return errOf(d.Exec(
+		"update streams set video = ?, audio = ?, width = ?, height = ? where user in (select id from users where login = ?)",
+		info.HasVideo, info.HasAudio, info.Width, info.Height, id,
+	))
 }

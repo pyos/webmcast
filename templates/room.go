@@ -7,7 +7,7 @@ type Room struct {
 	Owned  bool
 	Online bool
 	Meta   *common.StreamMetadata
-	User   *common.UserShortData
+	User   *common.UserData
 }
 
 func (_ Room) TemplateFile() string {

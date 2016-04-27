@@ -6,7 +6,7 @@ type UserLogin int
 type UserSignup int
 type UserRestore int
 type UserConfig struct {
-	User *common.UserMetadata
+	User *common.UserData
 }
 
 func (_ UserLogin) TemplateFile() string {

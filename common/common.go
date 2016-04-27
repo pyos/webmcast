@@ -20,14 +20,14 @@ type Context struct {
 	StreamKeepAlive time.Duration
 }
 
-func (c *Context) GetAuthInfo(r *http.Request) (*UserShortData, error) {
+func (c *Context) GetAuthInfo(r *http.Request) (*UserData, error) {
 	if c.cookieCodec == nil {
 		c.cookieCodec = securecookie.New(c.SecureKey, nil)
 	}
 	var uid int64
 	if cookie, err := r.Cookie("uid"); err == nil {
 		if err = c.cookieCodec.Decode("uid", cookie.Value, &uid); err == nil {
-			return c.GetUserShort(uid)
+			return c.GetUserFull(uid)
 		}
 	}
 	return nil, ErrUserNotExist
@@ -37,6 +37,9 @@ func (c *Context) SetAuthInfo(w http.ResponseWriter, id int64) error {
 	if id == -1 {
 		http.SetCookie(w, &http.Cookie{Name: "uid", Value: "", Path: "/", MaxAge: 0})
 	} else {
+		if c.cookieCodec == nil {
+			c.cookieCodec = securecookie.New(c.SecureKey, nil)
+		}
 		enc, err := c.cookieCodec.Encode("uid", id)
 		if err != nil {
 			return err

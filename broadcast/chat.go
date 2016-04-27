@@ -136,7 +136,7 @@ func (c *Chat) handle() {
 	}
 }
 
-func (c *Chat) Connect(ws *websocket.Conn, auth *common.UserShortData) *chatter {
+func (c *Chat) Connect(ws *websocket.Conn, auth *common.UserData) *chatter {
 	chatter := &chatter{socket: ws, chat: c}
 	if auth != nil {
 		chatter.name = auth.Name
@@ -155,7 +155,7 @@ func (c *Chat) Close() {
 	c.events <- nil
 }
 
-func (chat *Chat) RunRPC(ws *websocket.Conn, user *common.UserShortData) {
+func (chat *Chat) RunRPC(ws *websocket.Conn, user *common.UserData) {
 	chatter := chat.Connect(ws, user)
 	defer chat.Disconnect(chatter)
 

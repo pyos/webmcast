@@ -37,16 +37,12 @@ func makeToken(length int) string {
 	return string(xs)
 }
 
-type UserShortData struct {
-	ID     int64
-	Login  string
-	Email  string
-	Name   string
-	PwHash []byte
-}
-
-type UserMetadata struct {
-	UserShortData
+type UserData struct {
+	ID              int64
+	Login           string
+	Email           string
+	Name            string
+	PwHash          []byte
 	About           string
 	Activated       bool
 	ActivationToken string
@@ -64,7 +60,6 @@ type StreamMetadata struct {
 }
 
 type StreamMetadataPanel struct {
-	ID    int64
 	Text  string
 	Image string
 }
@@ -83,7 +78,7 @@ func hashPassword(password []byte) ([]byte, error) {
 	return bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 }
 
-func (u *UserShortData) CheckPassword(password []byte) error {
+func (u *UserData) CheckPassword(password []byte) error {
 	err := bcrypt.CompareHashAndPassword(u.PwHash, password)
 	if err == bcrypt.ErrMismatchedHashAndPassword {
 		return ErrUserNotExist
@@ -97,7 +92,7 @@ func gravatarURL(email string, size int) string {
 	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
 }
 
-func (u *UserShortData) GravatarURL(size int) string {
+func (u *UserData) GravatarURL(size int) string {
 	return gravatarURL(u.Email, size)
 }
 
@@ -107,27 +102,22 @@ func (s *StreamMetadata) GravatarURL(size int) string {
 
 type Database interface {
 	Close() error
-	// Create a new user entry. Display name = name, activation token is generated randomly.
-	NewUser(name string, email string, password []byte) (*UserMetadata, error)
-	// Authenticate a user.
-	GetUserID(name string, password []byte) (int64, error)
-	GetUserShort(id int64) (*UserShortData, error)
-	GetUserFull(id int64) (*UserMetadata, error)
 	// TODO something for password recovery.
-	// Allow a user to create streams.
+	NewUser(login string, email string, password []byte) (*UserData, error)
 	ActivateUser(id int64, token string) error
+	GetUserID(login string, password []byte) (int64, error)
+	GetUserFull(id int64) (*UserData, error)
+	// v--- can assume existence of user with given id
+	SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error)
 	NewStreamToken(id int64) error
-	// An empty string in any field keeps the old value. Except for `about`,
-	// which is set to an empty string. Changing the email address resets activation
-	// status, in which case a new activation token is returned.
-	SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error)
+	SetStreamName(id int64, name string) error
+	AddStreamPanel(id int64, text string) error
+	SetStreamPanel(id int64, n int64, text string) error
+	DelStreamPanel(id int64, n int64) error
+	// v--- must accept string ids to be usable from broadcasting nodes (which don't deal in users)
 	StartStream(id string, token string) error
-	AddStreamPanel(id string, contents string) error
-	SetStreamPanel(id string, number int, contents string) error
-	DelStreamPanel(id string, number int) error
-	SetStreamName(id string, name string) error
-	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
-	GetStreamServer(user string) (string, error)
-	GetStreamMetadata(user string) (*StreamMetadata, error)
 	StopStream(id string) error
+	GetStreamServer(id string) (string, error)
+	GetStreamMetadata(id string) (*StreamMetadata, error)
+	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
 }

@@ -24,14 +24,6 @@
 // POST /user/new-token
 //     Request a new stream token.
 //
-// POST /user/set-stream-name
-//     [XHR-only] Change the display name of the stream.
-//     Parameters: value string
-//
-// POST /user/set-stream-about
-//     [XHR only] Change the text in the "about" section of the stream.
-//     Parameters: value string
-//
 package ui
 
 import (
@@ -190,11 +182,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			if err != nil {
 				return err
 			}
-			userFull, err := ctx.GetUserFull(user.ID)
-			if err != nil {
-				return err
-			}
-			return templates.Page(w, http.StatusOK, templates.UserConfig{userFull})
+			return templates.Page(w, http.StatusOK, templates.UserConfig{user})
 
 		case "POST":
 			//     Parameters: password-old string,
@@ -214,8 +202,8 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			case nil:
 			}
 
-			_, err = ctx.SetUserMetadata(user.ID,
-				r.FormValue("username"), r.FormValue("displayname"), r.FormValue("email"),
+			_, err = ctx.SetUserData(user.ID,
+				r.FormValue("displayname"), r.FormValue("username"), r.FormValue("email"),
 				r.FormValue("about"), []byte(r.FormValue("password")),
 			)
 			switch err {
@@ -282,22 +270,22 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		case "/set-stream-panel":
 			// TODO image
 			if r.FormValue("id") != "" {
-				id, err := strconv.ParseInt(r.FormValue("id"), 10, 32)
+				id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 				if err != nil {
 					return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
 				}
-				err = ctx.SetStreamPanel(auth.Login, int(id), r.FormValue("value"))
+				err = ctx.SetStreamPanel(auth.ID, id, r.FormValue("value"))
 			} else {
-				err = ctx.AddStreamPanel(auth.Login, r.FormValue("value"))
+				err = ctx.AddStreamPanel(auth.ID, r.FormValue("value"))
 			}
 		case "/del-stream-panel":
-			id, err := strconv.ParseInt(r.FormValue("id"), 10, 32)
+			id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 			if err != nil {
 				return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
 			}
-			err = ctx.DelStreamPanel(auth.Login, int(id))
+			err = ctx.DelStreamPanel(auth.ID, id)
 		default:
-			err = ctx.SetStreamName(auth.Login, r.FormValue("value"))
+			err = ctx.SetStreamName(auth.ID, r.FormValue("value"))
 		}
 
 		if err == nil {

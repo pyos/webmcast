@@ -47,10 +47,10 @@
                 </div>
             </section>
             <section class="about center-block">
-            {{ range .Meta.Panels }}
+            {{ range $id, $_ := .Meta.Panels }}
                 <div class="panel">
                 {{ if $.Owned }}
-                    <p class="edit" data-panel="{{.ID}}"><a href="#">Edit this panel</a></p>
+                    <p class="edit" data-panel="{{$id}}"><a href="#">Edit this panel</a></p>
                 {{- end -}}
                     <p data-markup>{{.Text}}</p>
                 </div>

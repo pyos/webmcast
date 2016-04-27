@@ -3,7 +3,7 @@ package templates
 import "../common"
 
 type Landing struct {
-	User *common.UserShortData
+	User *common.UserData
 }
 
 func (_ Landing) TemplateFile() string {
