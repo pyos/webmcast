@@ -153,7 +153,7 @@ type BroadcastSet struct {
 
 type Broadcast struct {
 	common.StreamTrackInfo
-	onTrackInfo func()
+	onTrackInfoChange func()
 
 	closing time.Duration
 	Closed  bool
@@ -162,17 +162,15 @@ type Broadcast struct {
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
-
-	time struct {
-		last  uint64 // Last seen block timecode. The next timecode must be no less than that.
-		recv  uint64 // Last received cluster timecode, shifted to ensure monotonicity.
-		sent  uint64 // Last sent cluster timecode. (All viewers receive same clusters.)
-		shift uint64 // By how much the cluster timecode has been shifted.
-	}
-
-	// These values are for the whole stream, so they include audio and muxing overhead.
-	// The latter is negligible, however, and the former is normally about 64k,
-	// so also negligible. Or at least predictable.
+	// outbound blocks must have monotonically increasing timecodes even if the inbound
+	// stream restarts from the beginning, so we'll shift clusters' timecodes.
+	blockTimecode       uint64
+	recvClusterTimecode uint64
+	sentClusterTimecode uint64
+	timecodeShift       uint64
+	// these values are for the whole stream, so they include audio and muxing overhead.
+	// the latter is negligible, however, and the former is normally about 64k,
+	// so also negligible. or at least predictable.
 	rateUnit float64
 	RateMean float64
 	RateVar  float64
@@ -219,7 +217,7 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 	}
 	emitInfo := false
 	cast := NewBroadcast()
-	cast.onTrackInfo = func() {
+	cast.onTrackInfoChange = func() {
 		emitInfo = true
 	}
 	ctx.streams[id] = &cast
@@ -360,7 +358,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			cast.Height = 0
 			cast.tracks = append([]byte{}, buf...)
 			// Will recalculate this when the first block arrives.
-			cast.time.shift = 0
+			cast.timecodeShift = 0
 
 		case ebmlTagInfo:
 			// Default timecode resolution in Matroska is 1 ms. This value is required
@@ -443,8 +441,8 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 			cast.tracks = append(cast.tracks, buf...)
-			if cast.onTrackInfo != nil {
-				cast.onTrackInfo()
+			if cast.onTrackInfoChange != nil {
+				cast.onTrackInfoChange()
 			}
 
 		case ebmlTagTracks:
@@ -452,7 +450,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 		case ebmlTagTimecode:
 			// Will reencode it when sending a Cluster.
-			cast.time.recv = fixedUint(tag.Contents(buf)) + cast.time.shift
+			cast.recvClusterTimecode = fixedUint(tag.Contents(buf)) + cast.timecodeShift
 
 		case ebmlTagBlockGroup, ebmlTagSimpleBlock:
 			key := false
@@ -492,13 +490,13 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			key = key || block[consumed+2]&0x80 != 0
 			// Block timecodes are relative to cluster ones.
 			timecode := uint64(block[consumed+0])<<8 | uint64(block[consumed+1])
-			if cast.time.recv+timecode < cast.time.last {
-				cast.time.shift += cast.time.last - (cast.time.recv + timecode)
-				cast.time.recv = cast.time.last - timecode
+			if cast.recvClusterTimecode+timecode < cast.blockTimecode {
+				cast.timecodeShift += cast.blockTimecode - (cast.recvClusterTimecode + timecode)
+				cast.recvClusterTimecode = cast.blockTimecode - timecode
 			}
-			cast.time.last = cast.time.recv + timecode
+			cast.blockTimecode = cast.recvClusterTimecode + timecode
 
-			ctc := cast.time.recv
+			ctc := cast.recvClusterTimecode
 			cluster := []byte{
 				ebmlTagCluster >> 24 & 0xFF,
 				ebmlTagCluster >> 16 & 0xFF,
@@ -526,7 +524,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				}
 
 				if cb.seenKeyframes&trackMask != 0 {
-					if !cb.skipCluster || timecode != cast.time.sent {
+					if !cb.skipCluster || ctc != cast.sentClusterTimecode {
 						cb.skipCluster = cb.write(cluster)
 					}
 					if !cb.skipCluster || !cb.write(buf) {
@@ -536,7 +534,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 			cast.vlock.Unlock()
-			cast.time.sent = timecode
+			cast.sentClusterTimecode = ctc
 
 		default:
 			return 0, errors.New("unknown EBML tag")
