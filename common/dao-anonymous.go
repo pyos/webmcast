@@ -53,9 +53,25 @@ func (d anonymous) SetStreamName(id string, name string) error {
 	return ErrStreamNotExist
 }
 
-func (d anonymous) SetStreamAbout(id string, about string) error {
-	if info, ok := d[id]; ok {
-		info.About = about
+func (d anonymous) AddStreamPanel(id string, contents string) error {
+	if _, ok := d[id]; ok {
+		// TODO
+		return nil
+	}
+	return ErrStreamNotExist
+}
+
+func (d anonymous) SetStreamPanel(id string, number int, contents string) error {
+	if _, ok := d[id]; ok {
+		// TODO
+		return nil
+	}
+	return ErrStreamNotExist
+}
+
+func (d anonymous) DelStreamPanel(id string, number int) error {
+	if _, ok := d[id]; ok {
+		// TODO
 		return nil
 	}
 	return ErrStreamNotExist

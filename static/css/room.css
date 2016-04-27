@@ -163,25 +163,47 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 }
 
 .about {
-    padding: 0 2em;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0 1em;
 }
 
-.about p:first-child {
+.about > .panel {
+    width: 33%;
+    padding: 1em;
+    word-wrap: break-word;
+    box-sizing: border-box;
+}
+
+.about > .panel p:first-child {
     margin-top: 0;
 }
 
-.about p:last-child {
+.about > .panel p:last-child {
     margin-bottom: 0;
 }
 
-.about > form > textarea {
+@media (max-width: 64em) {
+    .about > .panel {
+        width: 50%;
+    }
+}
+
+@media (max-width: 32em) {
+    .about > .panel {
+        width: 100%;
+    }
+}
+
+.about form textarea {
     display: block;
     margin-bottom: 1em;
+    width: 100%;
 }
 
 .meta form + .name,
 .meta form ~ .edit,
-.about > form ~ * {
+.about form ~ * {
     display: none;
 }
 

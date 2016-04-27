@@ -58,9 +58,15 @@ type StreamMetadata struct {
 	UserAbout string
 	Name      string
 	Email     string
-	About     string
 	Server    string
+	Panels    []StreamMetadataPanel
 	StreamTrackInfo
+}
+
+type StreamMetadataPanel struct {
+	ID    int64
+	Text  string
+	Image string
 }
 
 type StreamTrackInfo struct {
@@ -116,8 +122,10 @@ type Database interface {
 	// status, in which case a new activation token is returned.
 	SetUserMetadata(id int64, name string, displayName string, email string, about string, password []byte) (string, error)
 	StartStream(id string, token string) error
+	AddStreamPanel(id string, contents string) error
+	SetStreamPanel(id string, number int, contents string) error
+	DelStreamPanel(id string, number int) error
 	SetStreamName(id string, name string) error
-	SetStreamAbout(id string, about string) error
 	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
 	GetStreamServer(user string) (string, error)
 	GetStreamMetadata(user string) (*StreamMetadata, error)

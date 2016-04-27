@@ -1,4 +1,4 @@
-'use strict'; /* global screenfull, form */
+'use strict'; /* global screenfull, init, form */
 
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
@@ -270,7 +270,7 @@ let Meta = function (rpc, meta, about, stream) {
     });
 
     let insertEditForm = (elem, template, defaultValue) => {
-        let t = document.importNode(template, true);
+        let t = init.all(document.importNode(template, true));
         let f = t.querySelector('form');
         let i = f.querySelector('input, textarea');
         f.addEventListener('reset', () => f.remove());
@@ -284,6 +284,7 @@ let Meta = function (rpc, meta, about, stream) {
         elem.parentElement.insertBefore(f, elem);
         i.value = elem.textContent;
         i.focus();
+        return f;
     };
 
     let edit = meta.querySelector('.edit');
@@ -295,11 +296,42 @@ let Meta = function (rpc, meta, about, stream) {
                 meta.querySelector('.edit-name-template').content, '#' + stream);
         });
 
-        about.querySelector('.edit').addEventListener('click', (ev) => {
+        about.addEventListener('click', (ev) => {
+            let e = ev.target;
+            for (; e !== null; e = e.parentElement)
+                if (e.classList.contains('edit'))
+                    break;
+            if (e === null)
+                return;
             ev.preventDefault();
-            insertEditForm(
-                about.querySelector('.source'),
-                about.querySelector('.edit-about-template').content, '');
+
+            let t = init.all(document.importNode(about.querySelector('.edit-panel-template').content, true));
+            let f = t.querySelector('form');
+            let i = f.querySelector('textarea');
+            f.addEventListener('reset', () => f.remove());
+
+            let id = e.getAttribute('data-panel');
+            if (id === null) {
+                f.querySelector('.remove').remove();
+            } else {
+                f.querySelector('[name="id"]').value = id;
+                f.querySelector('.remove').addEventListener('click', () => {
+                    f.setAttribute('action', '/user/del-stream-panel');
+                    form.submit(f).then(() => {
+                        e.parentElement.remove();
+                    }).catch((xhr, isNetworkError) => {
+                        f.classList.add('error');
+                        f.querySelector('.error').textContent =
+                            isNetworkError ? 'Could not connect to server.'
+                                           : xhr.response.getElementById('message').textContent;
+                    });
+                });
+            }
+
+            e.parentElement.insertBefore(f, e);
+            i.value = e.parentElement.querySelector('[data-markup]').textContent;
+            i.focus();
+            return f;
         });
     }
 

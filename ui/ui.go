@@ -265,7 +265,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		}
 		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 
-	case "/set-stream-name", "/set-stream-about":
+	case "/set-stream-name", "/add-stream-panel", "/set-stream-panel", "/del-stream-panel":
 		if r.Method != "POST" {
 			return templates.InvalidMethod(w, "POST")
 		}
@@ -278,18 +278,32 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			return err
 		}
 
-		value := r.FormValue("value")
-		if path == "/set-stream-name" {
-			err = ctx.SetStreamName(auth.Login, value)
-		} else {
-			err = ctx.SetStreamAbout(auth.Login, value)
-		}
-		if err != nil {
-			return err
+		switch path {
+		case "/set-stream-panel":
+			// TODO image
+			if r.FormValue("id") != "" {
+				id, err := strconv.ParseInt(r.FormValue("id"), 10, 32)
+				if err != nil {
+					return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
+				}
+				err = ctx.SetStreamPanel(auth.Login, int(id), r.FormValue("value"))
+			} else {
+				err = ctx.AddStreamPanel(auth.Login, r.FormValue("value"))
+			}
+		case "/del-stream-panel":
+			id, err := strconv.ParseInt(r.FormValue("id"), 10, 32)
+			if err != nil {
+				return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
+			}
+			err = ctx.DelStreamPanel(auth.Login, int(id))
+		default:
+			err = ctx.SetStreamName(auth.Login, r.FormValue("value"))
 		}
 
-		w.WriteHeader(http.StatusNoContent)
-		return nil
+		if err == nil {
+			w.WriteHeader(http.StatusNoContent)
+		}
+		return err
 
 	}
 

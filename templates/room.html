@@ -47,17 +47,30 @@
                 </div>
             </section>
             <section class="about center-block">
-                <p class="source" data-markup>{{.Meta.About}}</p>
-                {{ if .Owned }}
-                    <template class="edit-about-template">
-                        <form method="POST" action="/user/set-stream-about">
-                            <textarea name="value" cols="40" rows="6"></textarea>
-                            <button type="submit">Save</button>
-                            <button type="reset">Cancel</button>
-                        </form>
-                    </template>
-                    <p class="edit"><a href="#">Edit description</a></p>
-                {{ end }}
+            {{ range .Meta.Panels }}
+                <div class="panel">
+                {{ if $.Owned }}
+                    <p class="edit" data-panel="{{.ID}}"><a href="#">Edit this panel</a></p>
+                {{- end -}}
+                    <p data-markup>{{.Text}}</p>
+                </div>
+            {{- end -}}
+            {{ if .Owned }}
+                <div class="panel">
+                    <p class="edit"><a href="#">New panel</a></p>
+                    <p data-markup></p>
+                </div>
+                <template class="edit-panel-template">
+                    <form method="POST" action="/user/set-stream-panel" data-xhrable>
+                        <input type="hidden" name="id" value="" />
+                        <textarea name="value" rows="6" cols="10"></textarea>
+                        <p class="error"></p>
+                        <button type="submit">Save</button>
+                        <button type="reset">Cancel</button>
+                        <button type="reset" class="remove">Remove</button>
+                    </form>
+                </template>
+            {{- end -}}
             </section>
             {{ template "footer.html" }}
         </article>

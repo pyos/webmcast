@@ -23,7 +23,6 @@ create table if not exists users (
     about             text         not null default "",
     password          varchar(256) not null,
     stream_name       varchar(256) not null default "",
-    stream_about      text         not null default "",
     stream_token      varchar(64)  not null,
     stream_server     varchar(128),
     stream_has_video  integer default 1,
@@ -31,6 +30,14 @@ create table if not exists users (
     stream_w          integer default 0,
     stream_h          integer default 0,
     primary key (id), unique (name), unique (email)
+);
+
+create table if not exists description_panels (
+    id        integer      not null,
+    user      integer      not null,
+    contents  text         not null,
+    image     varchar(256) not null default "",
+    primary key (id)
 );`
 
 func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
@@ -247,15 +254,31 @@ func (d *sqlImpl) SetStreamName(id string, name string) error {
 	return err
 }
 
-func (d *sqlImpl) SetStreamAbout(id string, about string) error {
-	_, err := d.Exec(`update users set stream_about = ? where name = ?`, about, id)
-	return err
-}
-
 func (d *sqlImpl) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
 	_, err := d.Exec(
 		`update users set stream_has_video = ?, stream_has_audio = ?, stream_w = ?, stream_h = ? where name = ?`,
 		info.HasVideo, info.HasAudio, info.Width, info.Height, id,
+	)
+	return err
+}
+
+func (d *sqlImpl) AddStreamPanel(id string, contents string) error {
+	_, err := d.Exec(`insert into description_panels select NULL, users.id, ?, "" from users where name = ?;`, contents, id)
+	return err
+}
+
+func (d *sqlImpl) SetStreamPanel(id string, number int, contents string) error {
+	_, err := d.Exec(
+		`update description_panels set contents = ? where id = ? and user in (select users.id from users where name = ?)`,
+		contents, number, id,
+	)
+	return err
+}
+
+func (d *sqlImpl) DelStreamPanel(id string, number int) error {
+	_, err := d.Exec(
+		`delete from description_panels where id = ? and user in (select users.id from users where name = ?)`,
+		number, id,
 	)
 	return err
 }
@@ -287,16 +310,17 @@ func (d *sqlImpl) GetStreamServer(id string) (string, error) {
 }
 
 func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
+	var intId int
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.QueryRow(
-		`select display_name, about, email, stream_name, stream_about, stream_server,
-		        stream_has_video, stream_has_audio, stream_w, stream_h
+		`select display_name, about, email, stream_name, stream_server,
+		        stream_has_video, stream_has_audio, stream_w, stream_h, id
 		 from users where name = ?`,
 		id,
 	).Scan(
-		&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &meta.About, &server,
-		&meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height,
+		&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server,
+		&meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist
@@ -305,6 +329,21 @@ func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
 		return nil, err
 	}
 	meta.Server = server.String
+	rows, err := d.Query(`select id, contents, image from description_panels where user = ?`, intId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var panel StreamMetadataPanel
+		if err = rows.Scan(&panel.ID, &panel.Text, &panel.Image); err != nil {
+			return nil, err
+		}
+		meta.Panels = append(meta.Panels, panel)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 	if !server.Valid {
 		return &meta, ErrStreamOffline
 	}
