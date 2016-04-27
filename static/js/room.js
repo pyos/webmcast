@@ -148,6 +148,12 @@ let View = function (rpc, root, uri) {
     volume.addEventListener('mousedown',  () => volume.addEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseup',    () => volume.removeEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseleave', () => volume.removeEventListener('mousemove', onVolumeSelect));
+    volume.addEventListener('keydown', (ev) => {
+        if (ev.keyCode === 37)  // left arrow
+            video.volume = Math.max(0, video.volume - 0.05);
+        if (ev.keyCode == 39)  // right arrow
+            video.volume = Math.min(1, video.volume + 0.05);
+    });
 
     root.querySelector('.mute').addEventListener('click', (ev) => {
         ev.preventDefault();
