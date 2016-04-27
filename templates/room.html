@@ -47,7 +47,7 @@
                 </div>
             </section>
             <section class="about center-block">
-                <p class="source">{{.Meta.About}}</p>
+                <p class="source" data-markup>{{.Meta.About}}</p>
                 {{ if .Owned }}
                     <template class="edit-about-template">
                         <form method="POST" action="/user/set-stream-about">
@@ -87,6 +87,7 @@
 
         <script src="/static/js/vendored.min.js"></script>
         <script src="/static/js/global.js"></script>
+        <script src="/static/js/markup.js"></script>
         <script src="/static/js/room.js"></script>
     </body>
 </html>

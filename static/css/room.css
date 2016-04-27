@@ -166,11 +166,11 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     padding: 0 2em;
 }
 
-.about > :first-child {
+.about p:first-child {
     margin-top: 0;
 }
 
-.about > :last-child {
+.about p:last-child {
     margin-bottom: 0;
 }
 

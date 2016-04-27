@@ -106,6 +106,10 @@ img, svg, video, audio, canvas {
     border-bottom-width: 4px;
 }
 
+[data-markup-html] + [data-markup] {
+    display: none;
+}
+
 form {
     position: relative;
 }
