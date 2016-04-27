@@ -197,4 +197,4 @@ let form = {
 };
 
 
-init.all(document);
+document.addEventListener('DOMContentLoaded', () => init.all(document));
