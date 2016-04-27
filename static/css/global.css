@@ -5,45 +5,36 @@
          url('../fonts/fontawesome-webfont.woff') format('woff');
 }
 
-html {
-    font: normal 14px/1.5 sans-serif;
-    color: #444;
+html, body {
+    height: 100%;
 }
 
 body {
+    font: normal 14px/1.5 sans-serif;
+    color: #444;
     margin: 0;
     display: flex;
-    position: relative;
-}
-
-html, body {
-    height: 100%;
     overflow: hidden;
+    position: relative;
 }
 
 h1, h2, h3, h4, h5, h6 {
     font-weight: normal;
 }
 
-a {
+a:link, a:visited {
     color: #a168ad;
+}
+
+a:link:not(:hover), a:visited:not(:hover) {
     text-decoration: none;
 }
 
-a:hover {
-    cursor: pointer;
-    text-decoration: underline;
-}
-
-img,
-svg,
-video,
-audio,
-canvas {
+img, svg, video, audio, canvas {
     vertical-align: middle;  /* https://github.com/h5bp/html5-boilerplate/issues/440 */
 }
 
-.content {
+#content {
     flex: 1;
 }
 
@@ -58,9 +49,18 @@ canvas {
     max-width: 30em;
 }
 
-.section-highlight {
+.invert-block {
     background: #1a1a1a;
     color: #fff;
+}
+
+.warning-block {
+    border: 1px solid #ffc;
+    background: repeating-linear-gradient(-60deg, #ffc, #ffc 100px, #ffd 100px, #ffd 200px) #ffc;
+}
+
+.warning-block > * {
+    padding: 2em;
 }
 
 [data-scrollbar] {
@@ -194,7 +194,7 @@ button:not(:disabled) {
 
 button:focus {
     outline: none;
-    box-shadow: 0 0 5px #f7d358;
+    box-shadow: 0 0 5px #cfac33;
 }
 
 button:active {
@@ -212,7 +212,7 @@ button[type="reset"] {
 }
 
 button[type="reset"]:focus {
-    box-shadow: 0 0 5px #ddd;
+    box-shadow: 0 0 5px #ccc;
 }
 
 button[type="reset"]:active {
@@ -230,7 +230,6 @@ a.text-button {
 a.text-button:focus {
     outline: 0;
     box-shadow: 0 0 5px #a168ad;
-    text-decoration: none;
 }
 
 a.text-button:active {
@@ -241,8 +240,8 @@ a.button {
     width: 1.5em;
     padding: 0.5em;
     color: inherit;
-    cursor: pointer;
     display: inline-block;
+    text-align: center;
     vertical-align: middle;
     transition: text-shadow 0.1s ease-in-out;
 }
@@ -320,22 +319,6 @@ footer {
 
 .modal > .close:before {
     content: '\f00d';  /* close */
-}
-
-.alert-warning {
-    margin: 2em 2em 0 2em;
-    padding: 2em;
-    border: 1px solid #f3efc4;
-    border-radius: 1em;
-    background: #ffffde;
-}
-
-.alert-warning > :first-child {
-    margin-top: 0;
-}
-
-.alert-warning > :last-child {
-    margin-bottom: 0;
 }
 
 .row {
@@ -423,31 +406,31 @@ footer {
     100% {transform: rotate(359deg);}
 }
 
-.login-form {
+.form-wrapper {
     padding: 2em;
 }
 
-.login-form > form > * {
+.form-wrapper > form > * {
     display: block;
 }
 
-.login-form > :not(label) + *,
-.login-form > form > :not(label) + * {
+.form-wrapper > :not(label) + *,
+.form-wrapper > form > :not(label) + * {
     margin-top: 1em;
 }
 
-.login-form label {
+.form-wrapper label {
     font-weight: bold;
     margin-bottom: 0;
 }
 
-.login-form .notice {
+.form-wrapper .notice {
     color: #888;
 }
 
-.user-config-form textarea,
-.user-config-form input[type="text"],
-.user-config-form input[type="password"],
-.user-config-form input[type="email"] {
+.form-wrapper textarea,
+.form-wrapper input[type="text"],
+.form-wrapper input[type="password"],
+.form-wrapper input[type="email"] {
     width: 100%;
 }

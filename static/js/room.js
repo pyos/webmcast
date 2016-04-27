@@ -82,19 +82,20 @@ let View = function (rpc, root, uri) {
         video.muted  = false;
     };
 
-    let onVolumeChange = (v, muted) => {
+    let onVolumeChange = () => {
         let e = volume.querySelector('.slider');
         let r = volume.getBoundingClientRect();
-        e.style.left = `${v * (r.right - r.left)}px`;
-        e.style.top = `${(1 - v) * (r.bottom - r.top)}px`;
-        if (muted)
+        e.style.left = `${video.volume * (r.right - r.left)}px`;
+        e.style.top = `${(1 - video.volume) * (r.bottom - r.top)}px`;
+        if (video.muted)
             root.classList.add('muted');
         else
             root.classList.remove('muted');
     };
 
-    let onTimeUpdate = (t) => {
+    let onTimeUpdate = () => {
         // let leftPad = require('left-pad');
+        let t = video.currentTime;
         status.textContent = `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`;
     };
 
@@ -119,35 +120,27 @@ let View = function (rpc, root, uri) {
     };
 
     let hideCursorTimeout = null;
-    let hideCursor = () => {
+    let hideCursorLater = () => {
         showCursor();
-        hideCursorTimeout = window.setTimeout(() => {
-            hideCursorTimeout = null;
-            document.body.classList.add('hide-cursor');
-        }, 3000);
+        hideCursorTimeout = window.setTimeout(() =>
+            document.body.classList.add('hide-cursor'), 3000);
     };
 
     let showCursor = () => {
-        if (hideCursorTimeout !== null)
-            window.clearTimeout(hideCursorTimeout);
-        else
-            document.body.classList.remove('hide-cursor');
-        hideCursorTimeout = null;
+        window.clearTimeout(hideCursorTimeout);
+        document.body.classList.remove('hide-cursor');
     };
 
+    video.addEventListener('mouseenter',     hideCursorLater);
+    video.addEventListener('mousemove',      hideCursorLater);
+    video.addEventListener('mouseleave',     showCursor);
+    // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
     video.addEventListener('loadstart',      onLoadStart);
     video.addEventListener('loadedmetadata', onLoadEnd);
     video.addEventListener('error',          onDone);
     video.addEventListener('ended',          onDone);
-    video.addEventListener('timeupdate',     () => onTimeUpdate(video.currentTime));
-    video.addEventListener('volumechange'  , () => onVolumeChange(video.volume, video.muted));
-    // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
-
-    video.addEventListener('mouseenter', hideCursor);
-    video.addEventListener('mouseleave', showCursor);
-    video.addEventListener('mouseenter', () => video.addEventListener('mousemove', hideCursor));
-    video.addEventListener('mouseleave', () => video.removeEventListener('mousemove', hideCursor));
-
+    video.addEventListener('timeupdate',     onTimeUpdate);
+    video.addEventListener('volumechange',   onVolumeChange);
     // when styling <input type="range"> is too hard
     volume.addEventListener('mousedown',  onVolumeSelect);
     volume.addEventListener('touchstart', onVolumeSelect);
@@ -155,28 +148,33 @@ let View = function (rpc, root, uri) {
     volume.addEventListener('mousedown',  () => volume.addEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseup',    () => volume.removeEventListener('mousemove', onVolumeSelect));
     volume.addEventListener('mouseleave', () => volume.removeEventListener('mousemove', onVolumeSelect));
-    onVolumeChange(video.volume, video.muted);
 
-    root.querySelector('.mute').addEventListener('click', () => {
+    root.querySelector('.mute').addEventListener('click', (ev) => {
+        ev.preventDefault();
         video.muted = !video.muted;
     });
 
-    root.querySelector('.theatre').addEventListener('click', () =>
-        document.body.classList.add('theatre'));
+    root.querySelector('.theatre').addEventListener('click', (ev) => {
+        ev.preventDefault();
+        document.body.classList.add('theatre');
+    });
 
-    root.querySelector('.fullscreen').addEventListener('click', () =>
-        screenfull.request(root));
+    root.querySelector('.fullscreen').addEventListener('click', (ev) => {
+        ev.preventDefault();
+        screenfull.request(root);
+    });
 
-    root.querySelector('.collapse').addEventListener('click', () => {
+    root.querySelector('.collapse').addEventListener('click', (ev) => {
+        ev.preventDefault();
         document.body.classList.remove('theatre');
         screenfull.exit();
     });
 
+    onVolumeChange();
     onLoadStart();
     return {
         onLoad: () => {
-            // TODO measure connection speed, request a stream
-            video.src = uri;
+            video.src = uri;  // TODO measure connection speed, request a stream
             video.play();
         },
 

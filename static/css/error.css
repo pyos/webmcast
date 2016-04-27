@@ -1,4 +1,4 @@
-html, body, .content {
+html, body, #content {
     margin: auto;
     height: 100%;
 }
@@ -8,7 +8,7 @@ body {
     background: #000;
 }
 
-.content {
+#content {
     padding: 2em;
     max-width: 1400px;
     max-height: 1000px;

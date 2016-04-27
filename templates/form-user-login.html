@@ -1,10 +1,12 @@
-<h2 data-tab="login">Log in</h2>
-<form method="POST" action="/user/login" data-xhrable>
-    <label for="username">Username</label>
-    <input name="username" type="text" required tabindex="1" />
-    <label for="password">Password</label>
-    <input name="password" type="password" required tabindex="1" />
-    <p class="error"></p>
-    <a href="/user/restore" tabindex="1" data-tab-trigger="restore">Trouble logging in?</a>
-    <button type="submit" tabindex="1">Log in</button>
-</form>
+<div class="form-wrapper">
+    <h2 data-tab="login">Log in</h2>
+    <form method="POST" action="/user/login" data-xhrable>
+        <label for="username">Username</label>
+        <input name="username" type="text" required />
+        <label for="password">Password</label>
+        <input name="password" type="password" required />
+        <p class="error"></p>
+        <a href="/user/restore">Trouble logging in?</a>
+        <button type="submit">Log in</button>
+    </form>
+</div>

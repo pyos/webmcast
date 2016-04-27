@@ -119,7 +119,7 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 }
 
 .player:not(.has-video) .controls {
-    left: 2em;  /* = margin of .content = half of .player:before's width */
+    left: 2em;  /* = margin of #content = half of .player:before's width */
     right: 2em;
 }
 
@@ -271,7 +271,7 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     content: '\f118';  /* smile-o */
 }
 
-body.theatre .content {
+body.theatre #content {
     padding: 0;
     height: 100%;
 }
@@ -299,7 +299,7 @@ body.theatre .chat h1 {
 .chat.logged-in .login-form,
 .chat:not(.online) form,
 .chat:not(.logged-in) .input-form,
-body.theatre .content > :not(.player-block),
+body.theatre #content > :not(.player-block),
 body.theatre .player .theatre,
 body.theatre .player .fullscreen,
 body:not(.theatre) .player:not(.is-fullscreen) .collapse,

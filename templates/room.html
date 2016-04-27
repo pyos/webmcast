@@ -8,25 +8,25 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
-        <article class="content" data-scrollbar>
+        <article id="content" data-scrollbar>
             {{ template "nav.html" . }}
-            <section class="player-block section-highlight">
+            <section class="player-block invert-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
                                   {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
                         so instead we enforce the size of this element with an empty image. */ -}}
                     <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                     <video></video><div class="controls">
-                        <a class="button mute" title="Mute"></a>
+                        <a href="#" class="button mute" title="Mute"></a>
                         <div class="volume" title="Volume"><div class="slider"></div></div>
                         <div class="status">not connected</div>
-                        <a class="button theatre" title="Theatre mode"></a>
-                        <a class="button fullscreen" title="Fullscreen"></a>
-                        <a class="button collapse" title="Normal view"></a>
+                        <a href="#" class="button theatre" title="Theatre mode"></a>
+                        <a href="#" class="button fullscreen" title="Fullscreen"></a>
+                        <a href="#" class="button collapse" title="Normal view"></a>
                     </div>
                 </div>
             </section>
-            <header class="meta center-block">
+            <section class="meta center-block">
                 <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
                 <div>
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
@@ -45,7 +45,7 @@
                 <div>
                     {{ if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end }}
                 </div>
-            </header>
+            </section>
             <section class="about center-block">
                 <p class="source">{{.Meta.About}}</p>
                 {{ if .Owned }}
@@ -75,12 +75,12 @@
             <div class="offline-message">Chat offline.</div>
             <form class="login-form">
                 <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
-                <button type="submit">Join</button>
+                <button tabindex="1" type="submit">Join</button>
             </form>
             <form class="input-form">
                 <textarea tabindex="1" class="input" cols="1" rows="2" placeholder="Write a message"></textarea>
-                <button type="submit">Send</button>
-                <a class="button ins-emoji" title="Emoji..."></a>
+                <button tabindex="1" type="submit">Send</button>
+                <a href="#" class="button ins-emoji" title="Emoji..."></a>
             </form>
             <div class="tab"></div>
         </aside>

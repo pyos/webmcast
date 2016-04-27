@@ -60,7 +60,7 @@ let init = {
         let bar = document.createElement('div');
         bar.classList.add('tabbar');
         bar.addEventListener('click', (ev) =>
-            e.setAttribute('data-tabs', ev.target.getAttribute('data-tab')));
+            e.setAttribute('data-tabs', ev.target.getAttribute('data-tab') || e.getAttribute('data-tabs')));
 
         let tabs = {};
         for (let tab of e.querySelectorAll('[data-tab]')) {
@@ -82,15 +82,6 @@ let init = {
 
         e.insertBefore(bar, e.childNodes[0]);
         e.setAttribute('data-tabs', e.getAttribute('data-tabs'));
-    },
-
-    '[data-tab-trigger]': (e) => {
-        e.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            for (let p = e.parentElement; p !== null; p = p.parentElement)
-                if (p.hasAttribute('data-tabs'))
-                    return p.setAttribute('data-tabs', e.getAttribute('data-tab-trigger'));
-        });
     },
 
     '[data-modal]': (e) => {
@@ -129,19 +120,21 @@ let init = {
         });
     },
 
-    'nav .login': (e) => {
-        e.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            document.body.appendChild(init.all(document.importNode(
-                document.querySelector('#login-template').content, true)));
-        });
-    },
+    'a[href^="/user/"]': (e) => {
+        let tab = {
+            '/user/new':     'signup',
+            '/user/login':   'login',
+            '/user/restore': 'restore',
+        }[e.getAttribute('href')];
 
-    'nav .signup': (e) => {
-        e.addEventListener('click', (ev) => {
+        if (tab) e.addEventListener('click', (ev) => {
             ev.preventDefault();
-            let it = document.importNode(document.querySelector('#login-template').content, true);
-            it.firstElementChild.setAttribute('data-tabs', 'signup');
+            for (let p = e.parentElement; p !== null; p = p.parentElement)
+                if (p.hasAttribute('data-tabs'))
+                    return p.setAttribute('data-tabs', tab);
+
+            let it = document.importNode(document.querySelector('#login-form').content, true);
+            it.firstElementChild.setAttribute('data-tabs', tab);
             document.body.appendChild(init.all(it));
         });
     },

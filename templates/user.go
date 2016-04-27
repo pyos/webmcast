@@ -14,7 +14,7 @@ func (_ UserLogin) TemplateFile() string {
 }
 
 func (_ UserSignup) TemplateFile() string {
-	return "user-signup.html"
+	return "user-new.html"
 }
 
 func (_ UserRestore) TemplateFile() string {

@@ -2,24 +2,17 @@
     <a href="/" class="brand">webmcast</a>
     <span class="spacer"></span>
 {{ if .User }}
-    <span class="userinfo">Hi, <a class="username" href="/user/cfg">{{.User.Login}}</a>.</span>
-    <a tabindex="0" class="logout" href="/user/logout">Log out</a>
+    <span>Hi, <a href="/user/cfg">{{.User.Login}}</a>.</span>
+    <a href="/user/logout">Log out</a>
 {{- else -}}
-    <a tabindex="0" class="login"  href="/user/login">Log in</a>
-    <a tabindex="0" class="text-button signup" href="/user/new">Sign up</a>
+    <a href="/user/login">Log in</a>
+    <a href="/user/new" class="text-button">Sign up</a>
 {{- end -}}
 </nav>
-
-<template id="login-template">
+<template id="login-form">
     <div data-tabs="login" data-modal>
-        <div class="login-form">
-            {{ template "form-user-login.html" }}
-        </div>
-        <div class="login-form">
-            {{ template "form-user-new.html" }}
-        </div>
-        <div class="login-form">
-            {{ template "form-user-restore.html" }}
-        </div>
+        {{ template "form-user-login.html" }}
+        {{ template "form-user-new.html" }}
+        {{ template "form-user-restore.html" }}
     </div>
 </template>
