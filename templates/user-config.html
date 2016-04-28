@@ -9,22 +9,22 @@
     <body>
         <article id="content" data-scrollbar>
             {{ template "nav.html" . }}
-            <section class="invert-block">
+            <div class="invert-block">
                 <div class="meta center-block">
-                    <img class="avatar" src="{{.User.GravatarURL 60}}" />
+                    <img class="avatar" src="{{.User.GravatarURL 60}}" alt="Gravatar" />
                     <div>
                         <h1>Hey there, {{.User.Name}}.</h1>
-                        <h2>Stream URL:</h2>
-                        <h2><a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Publish</a>
+                        <h2>Stream URL:
+                            <a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Publish</a>
                          // <a href="/{{.User.Login}}">View</a>
                          // <a href="/stream/{{.User.Login}}">Download</a></h2>
                     </div>
                 </div>
-            </section>
+            </div>
         {{ if not .User.Activated }}
             <section class="warning-block">
                 <div class="center-block">
-                    <h3>Your account is not activated.</h3>
+                    <h2>Your account is not activated.</h2>
                     <p>You will not be able to broadcast until you confirm
                        your email address, {{.User.Email}}. (Check the inbox.)</p>
                     <form method="GET" action="/user/activate">
@@ -57,7 +57,7 @@
                         <input name="password-old" type="password" placeholder="Required to change anything." />
                         <label>Username</label>
                         <input name="username" type="text" placeholder="{{.User.Login}}" />
-                        <label form="displayname">Display name</label>
+                        <label>Display name</label>
                         <input name="displayname" type="text" placeholder="{{.User.Name}}" />
                         <label>Email</label>
                         <input name="email" type="email" placeholder="{{.User.Email}}" />
