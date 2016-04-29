@@ -34,6 +34,7 @@ let markup = {
         { 'italic':  /\*((?:\\?.)+?)\*/g     },
         { 'strike':  /~~((?:\\?.)+?)~~/g     },
         { 'spoiler': /%%((?:\\?.)+?)%%/g     },
+        { 'mdash':   /--/g                   },
         { 'link':    /\b(([a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+))/g },
         { 'link':    /\[(.*?)\]\(((?:[^()]+|\(.*?\)|[^)])*)\)/g },
         { 'text':    /\\?([\w-]*[^\W_-]\s*|.)/g },
@@ -46,6 +47,7 @@ let markup = {
         'strike':  (m, a)    => '<del>'                  + markup.inlineSafe(a) + '</del>',
         'spoiler': (m, a)    => '<span class="spoiler">' + markup.inlineSafe(a) + '</span>',
         'link':    (m, a, b) => `<a href="${b}" target="_blank">${a}</a>`,
+        'mdash':   (m)       => '&mdash;',
         'text':    (m, a)    => a,
     },
 
