@@ -1,4 +1,4 @@
-package common
+package main
 
 import (
 	"net/http"
@@ -13,11 +13,12 @@ type Context struct {
 	// the key used to sign client-side secure session cookies.
 	// should probably be changed in production, but not random
 	// so that cookies stay valid across nodes/app restarts.
-	SecureKey   []byte
-	cookieCodec *securecookie.SecureCookie
+	SecureKey []byte
 	// how long to keep a stream online after the broadcaster has disconnected.
 	// if the stream does not resume within this time, all clients get dropped.
 	StreamKeepAlive time.Duration
+
+	cookieCodec *securecookie.SecureCookie
 }
 
 func (c *Context) GetAuthInfo(r *http.Request) (*UserData, error) {

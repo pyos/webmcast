@@ -30,7 +30,7 @@
 //          May be emitted automatically at the start of a connection if already logged in.
 //        * `Chat.Message(user string, text string)`: a broadcasted text message.
 //
-package broadcast
+package main
 
 import (
 	"golang.org/x/net/websocket"
@@ -38,19 +38,17 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-
-	"../common"
 )
 
-type HTTPContext struct {
+type RetransmissionContext struct {
 	BroadcastSet
 	chatLock sync.Mutex
 	chats    map[string]*Chat
-	context  *common.Context
+	context  *Context
 }
 
-func NewHTTPContext(c *common.Context) *HTTPContext {
-	ctx := &HTTPContext{chats: make(map[string]*Chat), context: c}
+func NewRetransmissionContext(c *Context) *RetransmissionContext {
+	ctx := &RetransmissionContext{chats: make(map[string]*Chat), context: c}
 	ctx.Timeout = c.StreamKeepAlive
 	ctx.OnStreamClose = func(id string) {
 		ctx.chatLock.Lock()
@@ -63,7 +61,7 @@ func NewHTTPContext(c *common.Context) *HTTPContext {
 			log.Println("Error stopping the stream: ", err)
 		}
 	}
-	ctx.OnStreamTrackInfo = func(id string, info *common.StreamTrackInfo) {
+	ctx.OnStreamTrackInfo = func(id string, info *StreamTrackInfo) {
 		if err := ctx.context.SetStreamTrackInfo(id, info); err != nil {
 			log.Println("Error setting stream metadata: ", err)
 		}
@@ -71,7 +69,7 @@ func NewHTTPContext(c *common.Context) *HTTPContext {
 	return ctx
 }
 
-func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
+func (ctx *RetransmissionContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
 	switch {
 	case r.URL.Path == "/":
 		http.Error(w, "This is not an UI node.", http.StatusBadRequest)
@@ -88,15 +86,15 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-func (ctx *HTTPContext) watch(w http.ResponseWriter, r *http.Request, id string) error {
+func (ctx *RetransmissionContext) watch(w http.ResponseWriter, r *http.Request, id string) error {
 	stream, ok := ctx.Readable(id)
 	if !ok {
 		switch _, err := ctx.context.GetStreamServer(id); err {
-		case common.ErrStreamNotHere:
+		case ErrStreamNotHere:
 			http.Error(w, "This stream is not here.", http.StatusNotFound)
-		case common.ErrStreamOffline, nil:
+		case ErrStreamOffline, nil:
 			http.Error(w, "Stream offline.", http.StatusNotFound)
-		case common.ErrStreamNotExist:
+		case ErrStreamNotExist:
 			http.Error(w, "Invalid stream name.", http.StatusNotFound)
 		default:
 			return err
@@ -108,7 +106,7 @@ func (ctx *HTTPContext) watch(w http.ResponseWriter, r *http.Request, id string)
 		for i := range upgrade {
 			if strings.ToLower(upgrade[i]) == "websocket" {
 				auth, err := ctx.context.GetAuthInfo(r)
-				if err != nil && err != common.ErrUserNotExist {
+				if err != nil && err != ErrUserNotExist {
 					return err
 				}
 				websocket.Handler(func(ws *websocket.Conn) {
@@ -145,15 +143,15 @@ func (ctx *HTTPContext) watch(w http.ResponseWriter, r *http.Request, id string)
 	return nil
 }
 
-func (ctx *HTTPContext) stream(w http.ResponseWriter, r *http.Request, id string) error {
+func (ctx *RetransmissionContext) stream(w http.ResponseWriter, r *http.Request, id string) error {
 	switch err := ctx.context.StartStream(id, r.URL.RawQuery); err {
-	case common.ErrInvalidToken:
+	case ErrInvalidToken:
 		http.Error(w, "Invalid token.", http.StatusForbidden)
 		return nil
-	case common.ErrStreamNotExist:
+	case ErrStreamNotExist:
 		http.Error(w, "Invalid stream ID.", http.StatusNotFound)
 		return nil
-	case common.ErrStreamNotHere:
+	case ErrStreamNotHere:
 		http.Error(w, "The stream is on another server.", http.StatusBadRequest)
 		return nil
 	default:

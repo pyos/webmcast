@@ -1,4 +1,3 @@
-// asd
 package main
 
 import (
@@ -8,11 +7,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"./broadcast"
-	"./common"
-	"./templates"
-	"./ui"
 )
 
 type disallowDirectoryListing struct {
@@ -44,7 +38,7 @@ func (ctx UnsafeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := ctx.ServeHTTPUnsafe(w, r); err != nil {
 		log.Println("error rendering template", r.URL.Path, err.Error())
-		if err = templates.Error(w, http.StatusInternalServerError, ""); err != nil {
+		if err = RenderError(w, http.StatusInternalServerError, ""); err != nil {
 			log.Println("error rendering error", err.Error())
 			http.Error(w, "Error while rendering error message.", http.StatusInternalServerError)
 		}
@@ -64,15 +58,15 @@ func main() {
 		log.Fatal("These modes require coordination through a persistent database.")
 	}
 
-	ctx := common.Context{
+	ctx := Context{
 		SecureKey:       []byte("12345678901234567890123456789012"),
 		StreamKeepAlive: 10 * time.Second,
 	}
 	if *devnull {
-		ctx.Database = common.NewAnonDatabase()
+		ctx.Database = NewAnonDatabase()
 	} else {
 		var err error
-		if ctx.Database, err = common.NewSQLDatabase(*addr, "sqlite3", "development.db"); err != nil {
+		if ctx.Database, err = NewSQLDatabase(*addr, "sqlite3", "development.db"); err != nil {
 			log.Fatal("Could not connect to database: ", err)
 		}
 	}
@@ -80,10 +74,10 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	if *addr != "" || !*ui_mode {
-		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{broadcast.NewHTTPContext(&ctx)}))
+		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{NewRetransmissionContext(&ctx)}))
 	}
 	if *addr == "" {
-		mux.Handle("/", UnsafeHandler{ui.NewHTTPContext(&ctx)})
+		mux.Handle("/", UnsafeHandler{NewUIHandler(&ctx)})
 	}
 	log.Fatal(http.ListenAndServe(*bind, mux))
 }

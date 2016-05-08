@@ -1,4 +1,4 @@
-package broadcast
+package main
 
 import (
 	"encoding/json"
@@ -7,8 +7,6 @@ import (
 	"golang.org/x/net/websocket"
 	"net/rpc"
 	"strings"
-
-	"../common"
 )
 
 type Chat struct {
@@ -36,6 +34,11 @@ type chatter struct {
 	authed bool
 	socket *websocket.Conn
 	chat   *Chat
+}
+
+type chatSetNameEvent struct {
+	user *chatter
+	name string
 }
 
 func (q *ChatMessageQueue) Push(x ChatMessage) {
@@ -68,11 +71,6 @@ func NewChat(qsize int) *Chat {
 	}
 	go ctx.handle()
 	return ctx
-}
-
-type chatSetNameEvent struct {
-	user *chatter
-	name string
 }
 
 func (c *Chat) handle() {
@@ -136,7 +134,7 @@ func (c *Chat) handle() {
 	}
 }
 
-func (c *Chat) Connect(ws *websocket.Conn, auth *common.UserData) *chatter {
+func (c *Chat) Connect(ws *websocket.Conn, auth *UserData) *chatter {
 	chatter := &chatter{socket: ws, chat: c}
 	if auth != nil {
 		chatter.name = auth.Name
@@ -155,7 +153,7 @@ func (c *Chat) Close() {
 	c.events <- nil
 }
 
-func (chat *Chat) RunRPC(ws *websocket.Conn, user *common.UserData) {
+func (chat *Chat) RunRPC(ws *websocket.Conn, user *UserData) {
 	chatter := chat.Connect(ws, user)
 	defer chat.Disconnect(chatter)
 
@@ -188,7 +186,7 @@ func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
 
 func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	name := strings.TrimSpace(args.First)
-	if err := common.ValidateUsername(name); err != nil {
+	if err := ValidateUsername(name); err != nil {
 		return err
 	}
 	ctx.chat.events <- chatSetNameEvent{ctx, name}

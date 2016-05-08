@@ -1,11 +1,11 @@
-package common
+package main
 
 import (
 	"database/sql"
 	"sync"
 )
 
-type sqlImpl struct {
+type sqlDAO struct {
 	sql.DB
 	// The string written to `streams.server` of streams owned by this server.
 	localhost string
@@ -50,7 +50,7 @@ create table if not exists panels (
 func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
 	db, err := sql.Open(driver, server)
 	if err == nil {
-		wrapped := &sqlImpl{*db, localhost, sync.RWMutex{}, make(map[string]string)}
+		wrapped := &sqlDAO{*db, localhost, sync.RWMutex{}, make(map[string]string)}
 		if _, err = wrapped.Exec(sqlSchema); err == nil {
 			return wrapped, nil
 		}
@@ -59,12 +59,12 @@ func NewSQLDatabase(localhost string, driver string, server string) (Database, e
 	return nil, err
 }
 
-func (d *sqlImpl) userExists(login string, email string) bool {
+func (d *sqlDAO) userExists(login string, email string) bool {
 	var i int
 	return d.QueryRow("select 1 from users where login = ? or email = ?", login, email).Scan(&i) != sql.ErrNoRows
 }
 
-func (d *sqlImpl) NewUser(login string, email string, password []byte) (*UserData, error) {
+func (d *sqlDAO) NewUser(login string, email string, password []byte) (*UserData, error) {
 	if err := ValidateUsername(login); err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (d *sqlImpl) NewUser(login string, email string, password []byte) (*UserDat
 	return &UserData{uid, login, email, login, hash, "", false, token, token}, err
 }
 
-func (d *sqlImpl) ActivateUser(id int64, token string) error {
+func (d *sqlDAO) ActivateUser(id int64, token string) error {
 	r, err := d.Exec("update users set actoken = NULL where id = ? and actoken = ?", id, token)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (d *sqlImpl) ActivateUser(id int64, token string) error {
 	return err
 }
 
-func (d *sqlImpl) GetUserID(login string, password []byte) (int64, error) {
+func (d *sqlDAO) GetUserID(login string, password []byte) (int64, error) {
 	var u UserData
 	err := d.QueryRow("select id, pwhash from users where login = ?", login).Scan(&u.ID, &u.PwHash)
 	if err == sql.ErrNoRows {
@@ -117,7 +117,7 @@ func (d *sqlImpl) GetUserID(login string, password []byte) (int64, error) {
 	return u.ID, err
 }
 
-func (d *sqlImpl) GetUserFull(id int64) (*UserData, error) {
+func (d *sqlDAO) GetUserFull(id int64) (*UserData, error) {
 	var actoken sql.NullString
 	u := UserData{ID: id}
 	err := d.QueryRow(
@@ -134,7 +134,7 @@ func (d *sqlImpl) GetUserFull(id int64) (*UserData, error) {
 	return &u, err
 }
 
-func (d *sqlImpl) SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error) {
+func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error) {
 	token := ""
 	query := "update users set "
 	params := make([]interface{}, 0, 7)
@@ -191,29 +191,29 @@ func errOf(_ interface{}, err error) error {
 	return err
 }
 
-func (d *sqlImpl) NewStreamToken(id int64) error {
+func (d *sqlDAO) NewStreamToken(id int64) error {
 	// TODO invalidate token cache on all nodes
 	//      damn, it appears I ran into the most difficult problem...
 	return errOf(d.Exec("update users set sectoken = ? where id = ?", makeToken(tokenLength), id))
 }
 
-func (d *sqlImpl) SetStreamName(id int64, name string) error {
+func (d *sqlDAO) SetStreamName(id int64, name string) error {
 	return errOf(d.Exec("update streams set name = ? where user = ?", name, id))
 }
 
-func (d *sqlImpl) AddStreamPanel(id int64, text string) error {
+func (d *sqlDAO) AddStreamPanel(id int64, text string) error {
 	return errOf(d.Exec("insert into panels(stream, text) select id, ? from streams where user = ?", text, id))
 }
 
-func (d *sqlImpl) SetStreamPanel(id int64, n int64, text string) error {
+func (d *sqlDAO) SetStreamPanel(id int64, n int64, text string) error {
 	return errOf(d.Exec("update panels set text = ? where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)", text, id, n))
 }
 
-func (d *sqlImpl) DelStreamPanel(id int64, n int64) error {
+func (d *sqlDAO) DelStreamPanel(id int64, n int64) error {
 	return errOf(d.Exec("delete from panels where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)", id, n))
 }
 
-func (d *sqlImpl) StartStream(id string, token string) error {
+func (d *sqlDAO) StartStream(id string, token string) error {
 	d.streamTokenLock.RLock()
 	if expect, ok := d.streamTokens[id]; ok {
 		d.streamTokenLock.RUnlock()
@@ -252,7 +252,7 @@ func (d *sqlImpl) StartStream(id string, token string) error {
 	return nil
 }
 
-func (d *sqlImpl) StopStream(id string) error {
+func (d *sqlDAO) StopStream(id string) error {
 	d.streamTokenLock.Lock()
 	delete(d.streamTokens, id)
 	d.streamTokenLock.Unlock()
@@ -260,7 +260,7 @@ func (d *sqlImpl) StopStream(id string) error {
 	return err
 }
 
-func (d *sqlImpl) GetStreamServer(id string) (string, error) {
+func (d *sqlDAO) GetStreamServer(id string) (string, error) {
 	d.streamTokenLock.RLock()
 	if _, ok := d.streamTokens[id]; ok {
 		d.streamTokenLock.RUnlock()
@@ -289,7 +289,7 @@ func (d *sqlImpl) GetStreamServer(id string) (string, error) {
 	return "", ErrStreamOffline
 }
 
-func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
+func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	var intId int
 	var server sql.NullString
 	meta := StreamMetadata{}
@@ -322,7 +322,7 @@ func (d *sqlImpl) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	return &meta, err
 }
 
-func (d *sqlImpl) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
+func (d *sqlDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
 	return errOf(d.Exec(
 		"update streams set video = ?, audio = ?, width = ?, height = ? where user in (select id from users where login = ?)",
 		info.HasVideo, info.HasAudio, info.Width, info.Height, id,

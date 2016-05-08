@@ -24,35 +24,32 @@
 // POST /user/new-token
 //     Request a new stream token.
 //
-package ui
+package main
 
 import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	"../common"
-	"../templates"
 )
 
-type HTTPContext struct {
-	*common.Context
+type UIHandler struct {
+	*Context
 }
 
-func NewHTTPContext(c *common.Context) *HTTPContext {
-	return &HTTPContext{c}
+func NewUIHandler(c *Context) UIHandler {
+	return UIHandler{c}
 }
 
-func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
+func (ctx UIHandler) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Path == "/" {
 		if r.Method != "GET" {
-			return templates.InvalidMethod(w, "GET")
+			return RenderInvalidMethod(w, "GET")
 		}
 		auth, err := ctx.GetAuthInfo(r)
-		if err != nil && err != common.ErrUserNotExist {
+		if err != nil && err != ErrUserNotExist {
 			return err
 		}
-		return templates.Page(w, http.StatusOK, templates.Landing{auth})
+		return Render(w, http.StatusOK, Landing{auth})
 	}
 	if !strings.ContainsRune(r.URL.Path[1:], '/') {
 		return ctx.Player(w, r, r.URL.Path[1:])
@@ -60,7 +57,7 @@ func (ctx *HTTPContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) 
 	if strings.HasPrefix(r.URL.Path, "/user/") {
 		return ctx.UserControl(w, r, r.URL.Path[5:])
 	}
-	return templates.Error(w, http.StatusNotFound, "")
+	return RenderError(w, http.StatusNotFound, "")
 }
 
 func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
@@ -77,36 +74,36 @@ func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code 
 	return nil
 }
 
-func (ctx *HTTPContext) Player(w http.ResponseWriter, r *http.Request, id string) error {
+func (ctx UIHandler) Player(w http.ResponseWriter, r *http.Request, id string) error {
 	if r.Method != "GET" {
-		return templates.InvalidMethod(w, "GET")
+		return RenderInvalidMethod(w, "GET")
 	}
 
 	auth, err := ctx.GetAuthInfo(r)
-	if err != nil && err != common.ErrUserNotExist {
+	if err != nil && err != ErrUserNotExist {
 		return err
 	}
 
-	tpl := templates.Room{ID: id, Owned: auth != nil && id == auth.Login, Online: true, User: auth}
+	tpl := Room{ID: id, Owned: auth != nil && id == auth.Login, Online: true, User: auth}
 	tpl.Meta, err = ctx.GetStreamMetadata(id)
 	switch err {
 	default:
 		return err
-	case common.ErrStreamNotExist:
-		return templates.Error(w, http.StatusNotFound, "Invalid stream name.")
-	case common.ErrStreamOffline:
+	case ErrStreamNotExist:
+		return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+	case ErrStreamOffline:
 		tpl.Online = false
 	case nil:
 	}
-	return templates.Page(w, http.StatusOK, tpl)
+	return Render(w, http.StatusOK, tpl)
 }
 
-func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
+func (ctx UIHandler) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
 	switch path {
 	case "/new":
 		switch r.Method {
 		case "GET":
-			return templates.Page(w, http.StatusOK, templates.UserSignup(0))
+			return Render(w, http.StatusOK, UserNew(0))
 
 		case "POST":
 			username := strings.TrimSpace(r.FormValue("username"))
@@ -114,10 +111,10 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			email := r.FormValue("email")
 
 			switch user, err := ctx.NewUser(username, email, []byte(password)); err {
-			case common.ErrInvalidUsername, common.ErrInvalidPassword, common.ErrInvalidEmail, common.ErrUserNotUnique:
-				return templates.Error(w, http.StatusBadRequest, err.Error())
-			case common.ErrNotSupported:
-				return templates.Error(w, http.StatusNotImplemented, "Authentication is disabled.")
+			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
+				return RenderError(w, http.StatusBadRequest, err.Error())
+			case ErrNotSupported:
+				return RenderError(w, http.StatusNotImplemented, "Authentication is disabled.")
 			case nil:
 				if err = ctx.SetAuthInfo(w, user.ID); err != nil {
 					return err
@@ -128,14 +125,14 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 				return err
 			}
 		}
-		return templates.InvalidMethod(w, "GET, POST")
+		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/login":
 		switch r.Method {
 		case "GET":
 			_, err := ctx.GetAuthInfo(r)
-			if err == common.ErrUserNotExist {
-				return templates.Page(w, http.StatusOK, templates.UserLogin(0))
+			if err == ErrUserNotExist {
+				return Render(w, http.StatusOK, UserLogin(0))
 			}
 			if err == nil {
 				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
@@ -144,29 +141,29 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 		case "POST":
 			uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
-			if err == common.ErrUserNotExist {
-				return templates.Error(w, http.StatusForbidden, "Invalid username/password.")
+			if err == ErrUserNotExist {
+				return RenderError(w, http.StatusForbidden, "Invalid username/password.")
 			}
 			if err = ctx.SetAuthInfo(w, uid); err != nil {
 				return err
 			}
 			return redirectBack(w, r, "/", http.StatusSeeOther)
 		}
-		return templates.InvalidMethod(w, "GET, POST")
+		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/restore":
 		switch r.Method {
 		case "GET":
-			return templates.Page(w, http.StatusOK, templates.UserRestore(0))
+			return Render(w, http.StatusOK, UserRestore(0))
 
 		case "POST":
-			return templates.Error(w, http.StatusNotImplemented, "There is no UI yet.")
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
 		}
-		return templates.InvalidMethod(w, "GET, POST")
+		return RenderInvalidMethod(w, "GET, POST")
 
 	case "/logout": // TODO some protection against XSS?
 		if r.Method != "GET" {
-			return templates.InvalidMethod(w, "GET")
+			return RenderInvalidMethod(w, "GET")
 		}
 		ctx.SetAuthInfo(w, -1) // should not fail
 		return redirectBack(w, r, "/", http.StatusSeeOther)
@@ -175,21 +172,21 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		switch r.Method {
 		case "GET":
 			user, err := ctx.GetAuthInfo(r)
-			if err == common.ErrUserNotExist {
+			if err == ErrUserNotExist {
 				http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			return templates.Page(w, http.StatusOK, templates.UserConfig{user})
+			return Render(w, http.StatusOK, UserConfig{user})
 
 		case "POST":
 			//     Parameters: password-old string,
 			//                 username, displayname, email, password, about string optional
 			user, err := ctx.GetAuthInfo(r)
-			if err == common.ErrUserNotExist {
-				return templates.Error(w, http.StatusForbidden, "Must be logged in.")
+			if err == ErrUserNotExist {
+				return RenderError(w, http.StatusForbidden, "Must be logged in.")
 			}
 			if err != nil {
 				return err
@@ -197,8 +194,8 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			switch err = user.CheckPassword([]byte(r.FormValue("password-old"))); err {
 			default:
 				return err
-			case common.ErrUserNotExist:
-				return templates.Error(w, http.StatusForbidden, "Invalid old password.")
+			case ErrUserNotExist:
+				return RenderError(w, http.StatusForbidden, "Invalid old password.")
 			case nil:
 			}
 
@@ -209,22 +206,22 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			switch err {
 			default:
 				return err
-			case common.ErrInvalidUsername, common.ErrInvalidPassword, common.ErrInvalidEmail, common.ErrUserNotUnique:
-				return templates.Error(w, http.StatusBadRequest, err.Error())
-			case common.ErrStreamActive:
-				return templates.Error(w, http.StatusForbidden, "Stop streaming first.")
+			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
+				return RenderError(w, http.StatusBadRequest, err.Error())
+			case ErrStreamActive:
+				return RenderError(w, http.StatusForbidden, "Stop streaming first.")
 			case nil:
 				return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 			}
 		}
-		return templates.InvalidMethod(w, "GET")
+		return RenderInvalidMethod(w, "GET")
 
 	case "/new-token":
 		if r.Method != "POST" {
-			return templates.InvalidMethod(w, "POST")
+			return RenderInvalidMethod(w, "POST")
 		}
 		user, err := ctx.GetAuthInfo(r)
-		if err == common.ErrUserNotExist {
+		if err == ErrUserNotExist {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return nil
 		}
@@ -238,15 +235,15 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	case "/activate":
 		if r.Method != "GET" {
-			return templates.InvalidMethod(w, "GET")
+			return RenderInvalidMethod(w, "GET")
 		}
 		uid, err := strconv.ParseInt(r.FormValue("uid"), 10, 64)
 		if err != nil {
-			return templates.Error(w, http.StatusBadRequest, "Invalid user ID.")
+			return RenderError(w, http.StatusBadRequest, "Invalid user ID.")
 		}
 		err = ctx.ActivateUser(uid, r.FormValue("token"))
-		if err == common.ErrInvalidToken {
-			return templates.Error(w, http.StatusBadRequest, "Invalid activation token.")
+		if err == ErrInvalidToken {
+			return RenderError(w, http.StatusBadRequest, "Invalid activation token.")
 		}
 		if err != nil {
 			return err
@@ -255,12 +252,12 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	case "/set-stream-name", "/add-stream-panel", "/set-stream-panel", "/del-stream-panel":
 		if r.Method != "POST" {
-			return templates.InvalidMethod(w, "POST")
+			return RenderInvalidMethod(w, "POST")
 		}
 
 		auth, err := ctx.GetAuthInfo(r)
-		if err == common.ErrUserNotExist {
-			return templates.Error(w, http.StatusForbidden, "You own no streams.")
+		if err == ErrUserNotExist {
+			return RenderError(w, http.StatusForbidden, "You own no streams.")
 		}
 		if err != nil {
 			return err
@@ -272,7 +269,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 			if r.FormValue("id") != "" {
 				id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 				if err != nil {
-					return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
+					return RenderError(w, http.StatusBadRequest, "Invalid panel id.")
 				}
 				err = ctx.SetStreamPanel(auth.ID, id, r.FormValue("value"))
 			} else {
@@ -281,7 +278,7 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 		case "/del-stream-panel":
 			id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 			if err != nil {
-				return templates.Error(w, http.StatusBadRequest, "Invalid panel id.")
+				return RenderError(w, http.StatusBadRequest, "Invalid panel id.")
 			}
 			err = ctx.DelStreamPanel(auth.ID, id)
 		default:
@@ -295,5 +292,5 @@ func (ctx *HTTPContext) UserControl(w http.ResponseWriter, r *http.Request, path
 
 	}
 
-	return templates.Error(w, http.StatusNotFound, "")
+	return RenderError(w, http.StatusNotFound, "")
 }

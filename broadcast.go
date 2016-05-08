@@ -1,11 +1,9 @@
-package broadcast
+package main
 
 import (
 	"errors"
 	"sync"
 	"time"
-
-	"../common"
 )
 
 const (
@@ -148,11 +146,11 @@ type BroadcastSet struct {
 	Timeout time.Duration
 
 	OnStreamClose     func(id string)
-	OnStreamTrackInfo func(id string, info *common.StreamTrackInfo)
+	OnStreamTrackInfo func(id string, info *StreamTrackInfo)
 }
 
 type Broadcast struct {
-	common.StreamTrackInfo
+	StreamTrackInfo
 	onTrackInfoChange func()
 
 	closing time.Duration
