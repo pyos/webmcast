@@ -37,10 +37,9 @@ let init = {
         track.appendChild(thumb);
 
         let show = () => {
-            thumb.style.height =  `${e.clientHeight / e.scrollHeight * track.clientHeight}px`;
-            thumb.style.top    =  `${e.scrollTop    / e.scrollHeight * track.clientHeight}px`;
-            track.style.top    =  `${e.scrollTop}px`;
-            track.style.bottom = `-${e.scrollTop}px`;
+            let h = e.clientHeight / e.scrollHeight;
+            thumb.style.transform = `translateY(${e.scrollTop / e.scrollHeight * 100 + h * 50 - 50}%) scaleY(${h})`;
+            track.style.transform = `translateY(${e.scrollTop}px)`;
             if (e.scrollHeight > e.clientHeight) {
                 window.clearTimeout(timer);
                 track.classList.remove('hide');

@@ -71,9 +71,11 @@ img, svg, video, audio, canvas {
 [data-scrollbar] > .track {
     pointer-events: none;
     position: absolute;
-    right: 0;
+    overflow: hidden;
+    top: 5px;
+    right: 5px;
+    bottom: 5px;
     width: 5px;
-    margin: 5px;
     z-index: 255;
     border-radius: 2px;
     background: rgba(127,127,127,0.3);
@@ -85,9 +87,8 @@ img, svg, video, audio, canvas {
 }
 
 [data-scrollbar] > .track > .thumb {
-    position: relative;
     background: rgba(127,127,127,0.7);
-    border-radius: 2px;
+    height: 100%;
 }
 
 [data-tabs] > .tabbar {
