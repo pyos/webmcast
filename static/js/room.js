@@ -269,7 +269,7 @@ let Meta = function (rpc, meta, about, stream) {
         meta.querySelector('.viewers').textContent = n;
     });
 
-    meta.querySelector('.edit').addEventListener('click', (ev) => {
+    let createNameEditor = (ev) => {
         ev.preventDefault();
 
         let name = meta.querySelector('.name');
@@ -287,7 +287,7 @@ let Meta = function (rpc, meta, about, stream) {
         ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
         i.value = name.textContent;
         i.focus();
-    });
+    };
 
     let createPanelEditor = (ev) => {
         ev.preventDefault();
@@ -313,9 +313,10 @@ let Meta = function (rpc, meta, about, stream) {
         i.focus();
     };
 
+    for (let e of meta.querySelectorAll('.edit'))
+        e.addEventListener('click', createNameEditor);
     for (let e of about.querySelectorAll('.edit'))
         e.addEventListener('click', createPanelEditor);
-
     return { onLoad: () => {}, onUnload: () => {} };
 };
 
