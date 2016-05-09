@@ -33,25 +33,24 @@ let init = {
         let thumb = document.createElement('div');
         thumb.classList.add('thumb');
         track.classList.add('track');
-        track.classList.add('hide');
         track.appendChild(thumb);
 
         let show = () => {
-            let h = e.clientHeight / e.scrollHeight;
-            thumb.style.transform = `translateY(${e.scrollTop / e.scrollHeight * 100 + h * 50 - 50}%) scaleY(${h})`;
-            track.style.transform = `translateY(${e.scrollTop}px)`;
             if (e.scrollHeight > e.clientHeight) {
                 window.clearTimeout(timer);
-                track.classList.remove('hide');
-                timer = window.setTimeout(() => track.classList.add('hide'), 1000);
+                let h = e.clientHeight / e.scrollHeight;
+                track.style.opacity   = 1;
+                track.style.transform = `translateY(${e.scrollTop}px)`;
+                thumb.style.transform = `translateY(${e.scrollTop / e.scrollHeight * 100 + h * 50 - 50}%) scaleY(${h})`;
+                timer = window.setTimeout(() => { track.style.opacity = 0 }, 1000);
             }
         };
 
         e.style.overflowY   = 'scroll';
         e.style.marginRight = `${-nativeScrollbarWidth}px`;
         e.appendChild(track);
-        e.addEventListener('scroll',    show);
-        e.addEventListener('mousemove', show);
+        e.addEventListener('mousemove', () => window.requestAnimationFrame(show));
+        e.addEventListener('scroll',    () => window.requestAnimationFrame(show));
         show();
     },
 

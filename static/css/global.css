@@ -80,9 +80,6 @@ img, svg, video, audio, canvas {
     border-radius: 2px;
     background: rgba(127,127,127,0.3);
     transition: opacity 0.2s ease-in-out;
-}
-
-[data-scrollbar] > .track.hide {
     opacity: 0;
 }
 
