@@ -13,9 +13,8 @@
                 font-size: 1.2em;
             }
 
-            .row {
-                padding: 1em;
-                align-items: center;
+            .bg {
+                background: linear-gradient(180deg, #dde3e5, #dde3e5 246px, #e7e7e7 266px, #e7e7e7) #dde3e5;
             }
 
             .row img {
@@ -24,17 +23,18 @@
             }
 
             .row:nth-child(2n+1) { flex-direction: row-reverse; }
+            .row { padding: 1em; }
             .row > * { padding: 1em; }
-            .row > :first-child { flex: 0 0; }
-            .row > :second-child { min-width: 200px; }
-            .row > :second-child > :first-child { margin-top: 0; }
-            .row > :second-child > :last-child { margin-bottom: 0; }
+            .row > :first-child { flex: 0 0; align-self: top; }
+            .row > :last-child { min-width: 200px; align-self: center; }
+            .row > :last-child > :first-child { margin-top: 0; }
+            .row > :last-child > :last-child { margin-bottom: 0; }
         </style>
     </head>
     <body>
         <article id="content" data-scrollbar>
-            {{ template "nav.html" . }}
-            <div class="invert-block">
+            <div class="bg">
+                {{ template "nav.html" . }}
                 <div class="center-block row">
                     <div><img src="/static/img/aware-of-dog.png" alt="" /></div>
                     <div>
@@ -54,7 +54,7 @@
                 </div>
             </section>
             <section class="center-block row">
-                <div><img src="/static/img/mettaton.png" alt="" /></div>
+                <div><img src="about:blank" width="350" height="233" alt="TODO" /></div>
                 <div>
                     <h2>2. Broadcast the dog</h2>
                     <p>Use cutting-edge opensource software to encode the video
@@ -62,7 +62,7 @@
                 </div>
             </section>
             <section class="center-block row">
-                <div><img src="about:blank" alt="..." /></div>
+                <div><img src="about:blank" width="350" height="233" alt="TODO" /></div>
                 <div>
                     <h2>3. Watch the dog</h2>
                     <p>View the stream over the 'net (short for internet)
