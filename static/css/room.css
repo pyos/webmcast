@@ -143,8 +143,9 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     }
 }
 
-.edit {
-    font-style: italic;
+.edit > a:before {
+    font: normal 1em FontAwesome;
+    content: '\f040';  /* pencil */
 }
 
 .meta .creator:before {
@@ -157,42 +158,73 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     margin-right: 0.5em;
 }
 
+.meta .edit {
+    float: left;
+    margin-right: 0.33em;
+}
+
+.meta form + .edit,
+.meta form + .edit + .name {
+    display: none;
+}
+
 .meta form input,
 .meta form button {
     min-height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
 }
 
 .about {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 0 1em;
+    column-gap: 1em;
+    -moz-column-gap: 1em;
+    -webkit-column-gap: 1em;
+    column-count: 2;
+    -moz-column-count: 2;
+    -webkit-column-count: 2;
+    padding: 0 2em;
 }
 
-.about > .panel {
-    width: 33%;
-    padding: 1em;
+@media (max-width: 50em) {
+    .about {
+        column-count: 1;
+        -moz-column-count: 1;
+        -webkit-column-count: 1;
+    }
+}
+
+.about .panel {
+    position: relative;
+    background: #fafaf6;
+    min-height: 200px;
+    padding: 1px 1em;
     word-wrap: break-word;
     box-sizing: border-box;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -moz-column-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
 }
 
-.about > .panel p:first-child {
-    margin-top: 0;
+.about .panel:not(:last-child) {
+    margin-bottom: 1em;
 }
 
-.about > .panel p:last-child {
-    margin-bottom: 0;
+.about .edit {
+    float: right;
+    margin-left: 1em;
 }
 
-@media (max-width: 64em) {
-    .about > .panel {
-        width: 50%;
-    }
+.about form ~ * {
+    visibility: hidden;
 }
 
-@media (max-width: 32em) {
-    .about > .panel {
-        width: 100%;
-    }
+.about form {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: 0.5em;
 }
 
 .about form textarea {
@@ -201,14 +233,9 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     width: 100%;
 }
 
-.meta form + .name,
-.meta form ~ .edit,
-.about form ~ * {
-    display: none;
-}
-
 .chat {
-    width: 20em;
+    width: 20%;
+    min-width: 20em;
     display: flex;
     z-index: 128;
     position: relative;

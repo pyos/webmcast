@@ -29,9 +29,6 @@
             <section class="meta center-block">
                 <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
                 <div>
-                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
                     {{ if .Owned }}
                         <template class="edit-name-template">
                             <form method="POST" action="/user/set-stream-name">
@@ -39,8 +36,11 @@
                                 <button type="submit">Save</button>
                             </form>
                         </template>
-                        <h2 class="edit"><a href="#">Edit name</a></h2>
+                        <h1 class="edit"><a href="#" title="Edit..."></a></h1>
                     {{ end }}
+                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
+                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
+                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
                 </div>
                 <div>
                     {{ if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end }}
@@ -50,16 +50,12 @@
             {{ range $id, $_ := .Meta.Panels }}
                 <div class="panel">
                 {{ if $.Owned }}
-                    <p class="edit" data-panel="{{$id}}"><a href="#">Edit this panel</a></p>
+                    <p class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></p>
                 {{- end -}}
                     <p data-markup>{{.Text}}</p>
                 </div>
             {{- end -}}
             {{ if .Owned }}
-                <div class="panel">
-                    <p class="edit"><a href="#">New panel</a></p>
-                    <p data-markup></p>
-                </div>
                 <template class="edit-panel-template">
                     <form method="POST" action="/user/set-stream-panel" data-xhrable>
                         <input type="hidden" name="id" value="" />
@@ -70,6 +66,10 @@
                         <button type="reset" class="remove">Remove</button>
                     </form>
                 </template>
+                <div class="panel new-panel">
+                    <p class="edit"><a href="#" title="New panel..."></a></p>
+                    <p data-markup>*Edit this to create a new panel*</p>
+                </div>
             {{- end -}}
             </section>
             {{ template "footer.html" }}

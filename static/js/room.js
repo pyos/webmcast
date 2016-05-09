@@ -269,17 +269,7 @@ let Meta = function (rpc, meta, about, stream) {
         meta.querySelector('.viewers').textContent = n;
     });
 
-    let targetEditLink = (ev) => {
-        let e = ev.target;
-        for (; e !== null; e = e.parentElement)
-            if (e.classList.contains('edit'))
-                break;
-        return e;
-    };
-
-    meta.addEventListener('click', (ev) => {
-        if (!targetEditLink(ev))
-            return;
+    meta.querySelector('.edit').addEventListener('click', (ev) => {
         ev.preventDefault();
 
         let name = meta.querySelector('.name');
@@ -294,15 +284,12 @@ let Meta = function (rpc, meta, about, stream) {
                 f.remove();
             });
         });
-        name.parentElement.insertBefore(f, name);
+        ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
         i.value = name.textContent;
         i.focus();
     });
 
-    about.addEventListener('click', (ev) => {
-        let e = targetEditLink(ev);
-        if (e === null)
-            return;
+    let createPanelEditor = (ev) => {
         ev.preventDefault();
 
         let t = init.all(document.importNode(about.querySelector('.edit-panel-template').content, true));
@@ -310,28 +297,24 @@ let Meta = function (rpc, meta, about, stream) {
         let i = f.querySelector('textarea');
         f.addEventListener('reset', () => f.remove());
 
-        let id = e.getAttribute('data-panel');
+        let id = ev.currentTarget.getAttribute('data-panel');
         if (id === null) {
             f.querySelector('.remove').remove();
         } else {
             f.querySelector('[name="id"]').value = id;
             f.querySelector('.remove').addEventListener('click', () => {
                 f.setAttribute('action', '/user/del-stream-panel');
-                form.submit(f).then(() => {
-                    e.parentElement.remove();
-                }).catch((xhr, isNetworkError) => {
-                    f.classList.add('error');
-                    f.querySelector('.error').textContent =
-                        isNetworkError ? 'Could not connect to server.'
-                                       : xhr.response.getElementById('message').textContent;
-                });
+                f.dispatchEvent(new Event('submit'));
             });
         }
 
-        e.parentElement.insertBefore(f, e);
-        i.value = e.parentElement.querySelector('[data-markup]').textContent;
+        ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
+        i.value = ev.currentTarget.parentElement.querySelector('[data-markup]').textContent;
         i.focus();
-    });
+    };
+
+    for (let e of about.querySelectorAll('.edit'))
+        e.addEventListener('click', createPanelEditor);
 
     return { onLoad: () => {}, onUnload: () => {} };
 };
