@@ -39,10 +39,16 @@ img, svg, video, audio, canvas {
 }
 
 .center-block {
-    max-width: 64em;
+    max-width: 60em;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
+}
+
+@media (min-width: 100em) {
+    .center-block {
+        max-width: 80em;
+    }
 }
 
 .center-block-small {
@@ -102,6 +108,10 @@ img, svg, video, audio, canvas {
 
 [data-tabs] > .tabbar > .active {
     border-bottom-width: 4px;
+}
+
+[data-markup], [data-markup-html] p {
+    white-space: pre-line;
 }
 
 [data-markup-html] + [data-markup] {
