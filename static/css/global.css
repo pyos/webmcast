@@ -118,6 +118,10 @@ img, svg, video, audio, canvas {
     display: none;
 }
 
+[data-markup-html] pre {
+    overflow-x: auto;
+}
+
 form {
     position: relative;
 }
