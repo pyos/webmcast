@@ -75,10 +75,11 @@ func (d *sqlDAO) NewUser(login string, email string, password []byte) (*UserData
 	if err != nil {
 		return nil, err
 	}
-	token := makeToken(tokenLength)
+	actoken := makeToken(tokenLength)
+	sectoken := makeToken(tokenLength)
 	r, err := d.Exec(
 		"insert into users(actoken, sectoken, name, login, email, pwhash) values(?, ?, ?, ?, ?, ?)",
-		token, token, login, login, email, hash,
+		actoken, sectoken, login, login, email, hash,
 	)
 	if err != nil {
 		if d.userExists(login, email) {
@@ -91,7 +92,7 @@ func (d *sqlDAO) NewUser(login string, email string, password []byte) (*UserData
 	if err == nil {
 		_, err = d.Exec("insert into streams(user) values(?)", uid)
 	}
-	return &UserData{uid, login, email, login, hash, "", false, token, token}, err
+	return &UserData{uid, login, email, login, hash, "", false, actoken, sectoken}, err
 }
 
 func (d *sqlDAO) ActivateUser(id int64, token string) error {
