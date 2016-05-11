@@ -1,11 +1,9 @@
 package main
 
 import (
+	"github.com/gorilla/securecookie"
 	"net/http"
 	"time"
-
-	"github.com/gorilla/securecookie"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 type Context struct {

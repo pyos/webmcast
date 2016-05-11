@@ -40,8 +40,9 @@ func NewUIHandler(c *Context) UIHandler {
 	return UIHandler{c}
 }
 
-func (ctx UIHandler) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/" {
+func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	switch {
+	case r.URL.Path == "/":
 		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
 		}
@@ -50,14 +51,13 @@ func (ctx UIHandler) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) err
 			return err
 		}
 		return Render(w, http.StatusOK, Landing{auth})
+	case strings.HasPrefix(r.URL.Path, "/user/"):
+		return ctx.userControl(w, r, r.URL.Path[5:])
+	case !strings.ContainsRune(r.URL.Path[1:], '/'):
+		return ctx.player(w, r, r.URL.Path[1:])
+	default:
+		return RenderError(w, http.StatusNotFound, "")
 	}
-	if !strings.ContainsRune(r.URL.Path[1:], '/') {
-		return ctx.Player(w, r, r.URL.Path[1:])
-	}
-	if strings.HasPrefix(r.URL.Path, "/user/") {
-		return ctx.UserControl(w, r, r.URL.Path[5:])
-	}
-	return RenderError(w, http.StatusNotFound, "")
 }
 
 func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
@@ -74,7 +74,7 @@ func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code 
 	return nil
 }
 
-func (ctx UIHandler) Player(w http.ResponseWriter, r *http.Request, id string) error {
+func (ctx UIHandler) player(w http.ResponseWriter, r *http.Request, id string) error {
 	if r.Method != "GET" {
 		return RenderInvalidMethod(w, "GET")
 	}
@@ -98,7 +98,7 @@ func (ctx UIHandler) Player(w http.ResponseWriter, r *http.Request, id string) e
 	return Render(w, http.StatusOK, tpl)
 }
 
-func (ctx UIHandler) UserControl(w http.ResponseWriter, r *http.Request, path string) error {
+func (ctx UIHandler) userControl(w http.ResponseWriter, r *http.Request, path string) error {
 	switch path {
 	case "/new":
 		switch r.Method {

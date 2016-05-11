@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"math/rand"
 	"net/http"
@@ -25,7 +26,7 @@ func (fs disallowDirectoryListing) Open(name string) (http.File, error) {
 }
 
 type UnsafeHandlerIface interface {
-	ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error
+	ServeHTTP(w http.ResponseWriter, r *http.Request) error
 }
 
 type UnsafeHandler struct {
@@ -36,7 +37,7 @@ func (ctx UnsafeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "HEAD" {
 		r.Method = "GET"
 	}
-	if err := ctx.ServeHTTPUnsafe(w, r); err != nil {
+	if err := ctx.UnsafeHandlerIface.ServeHTTP(w, r); err != nil {
 		log.Println("error rendering template", r.URL.Path, err.Error())
 		if err = RenderError(w, http.StatusInternalServerError, ""); err != nil {
 			log.Println("error rendering error", err.Error())
@@ -59,12 +60,11 @@ func main() {
 	}
 
 	ctx := Context{
+		Database:        NewAnonDatabase(),
 		SecureKey:       []byte("12345678901234567890123456789012"),
 		StreamKeepAlive: 10 * time.Second,
 	}
-	if *devnull {
-		ctx.Database = NewAnonDatabase()
-	} else {
+	if !*devnull {
 		var err error
 		if ctx.Database, err = NewSQLDatabase(*addr, "sqlite3", "development.db"); err != nil {
 			log.Fatal("Could not connect to database: ", err)
@@ -74,7 +74,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
 	if *addr != "" || !*ui_mode {
-		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{NewRetransmissionContext(&ctx)}))
+		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{NewRetransmissionHandler(&ctx)}))
 	}
 	if *addr == "" {
 		mux.Handle("/", UnsafeHandler{NewUIHandler(&ctx)})

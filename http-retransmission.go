@@ -40,15 +40,15 @@ import (
 	"sync"
 )
 
-type RetransmissionContext struct {
+type RetransmissionHandler struct {
 	BroadcastSet
 	chatLock sync.Mutex
 	chats    map[string]*Chat
-	context  *Context
+	*Context
 }
 
-func NewRetransmissionContext(c *Context) *RetransmissionContext {
-	ctx := &RetransmissionContext{chats: make(map[string]*Chat), context: c}
+func NewRetransmissionHandler(c *Context) *RetransmissionHandler {
+	ctx := &RetransmissionHandler{chats: make(map[string]*Chat), Context: c}
 	ctx.Timeout = c.StreamKeepAlive
 	ctx.OnStreamClose = func(id string) {
 		ctx.chatLock.Lock()
@@ -57,55 +57,50 @@ func NewRetransmissionContext(c *Context) *RetransmissionContext {
 			delete(ctx.chats, id)
 		}
 		ctx.chatLock.Unlock()
-		if err := ctx.context.StopStream(id); err != nil {
+		if err := ctx.StopStream(id); err != nil {
 			log.Println("Error stopping the stream: ", err)
 		}
 	}
 	ctx.OnStreamTrackInfo = func(id string, info *StreamTrackInfo) {
-		if err := ctx.context.SetStreamTrackInfo(id, info); err != nil {
+		if err := ctx.SetStreamTrackInfo(id, info); err != nil {
 			log.Println("Error setting stream metadata: ", err)
 		}
 	}
 	return ctx
 }
 
-func (ctx *RetransmissionContext) ServeHTTPUnsafe(w http.ResponseWriter, r *http.Request) error {
+func (ctx *RetransmissionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	switch {
-	case r.URL.Path == "/":
-		http.Error(w, "This is not an UI node.", http.StatusBadRequest)
-	case strings.ContainsRune(r.URL.Path[1:], '/'):
-		http.Error(w, "", http.StatusNotFound)
+	case r.URL.Path == "/" || strings.ContainsRune(r.URL.Path[1:], '/'):
+		return RenderError(w, http.StatusNotFound, "")
 	case r.Method == "GET":
 		return ctx.watch(w, r, r.URL.Path[1:])
 	case r.Method == "POST" || r.Method == "PUT":
 		return ctx.stream(w, r, r.URL.Path[1:])
 	default:
-		w.Header().Set("Allow", "GET, PUT, POST")
-		http.Error(w, "Invalid HTTP method.", http.StatusMethodNotAllowed)
+		return RenderInvalidMethod(w, "GET, PUT, POST")
 	}
-	return nil
 }
 
-func (ctx *RetransmissionContext) watch(w http.ResponseWriter, r *http.Request, id string) error {
+func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, id string) error {
 	stream, ok := ctx.Readable(id)
 	if !ok {
-		switch _, err := ctx.context.GetStreamServer(id); err {
+		switch _, err := ctx.GetStreamServer(id); err {
 		case ErrStreamNotHere:
-			http.Error(w, "This stream is not here.", http.StatusNotFound)
+			return RenderError(w, http.StatusNotFound, "Wrong server.")
 		case ErrStreamOffline, nil:
-			http.Error(w, "Stream offline.", http.StatusNotFound)
+			return RenderError(w, http.StatusNotFound, "Stream offline.")
 		case ErrStreamNotExist:
-			http.Error(w, "Invalid stream name.", http.StatusNotFound)
+			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 		default:
 			return err
 		}
-		return nil
 	}
 
 	if upgrade, ok := r.Header["Upgrade"]; ok {
 		for i := range upgrade {
 			if strings.ToLower(upgrade[i]) == "websocket" {
-				auth, err := ctx.context.GetAuthInfo(r)
+				auth, err := ctx.GetAuthInfo(r)
 				if err != nil && err != ErrUserNotExist {
 					return err
 				}
@@ -143,17 +138,14 @@ func (ctx *RetransmissionContext) watch(w http.ResponseWriter, r *http.Request, 
 	return nil
 }
 
-func (ctx *RetransmissionContext) stream(w http.ResponseWriter, r *http.Request, id string) error {
-	switch err := ctx.context.StartStream(id, r.URL.RawQuery); err {
+func (ctx *RetransmissionHandler) stream(w http.ResponseWriter, r *http.Request, id string) error {
+	switch err := ctx.StartStream(id, r.URL.RawQuery); err {
 	case ErrInvalidToken:
-		http.Error(w, "Invalid token.", http.StatusForbidden)
-		return nil
+		return RenderError(w, http.StatusForbidden, "Invalid token.")
 	case ErrStreamNotExist:
-		http.Error(w, "Invalid stream ID.", http.StatusNotFound)
-		return nil
+		return RenderError(w, http.StatusNotFound, "Invalid stream ID.")
 	case ErrStreamNotHere:
-		http.Error(w, "The stream is on another server.", http.StatusBadRequest)
-		return nil
+		return RenderError(w, http.StatusBadRequest, "Wrong server.")
 	default:
 		return err
 	case nil:
@@ -161,8 +153,7 @@ func (ctx *RetransmissionContext) stream(w http.ResponseWriter, r *http.Request,
 
 	stream, ok := ctx.Writable(id)
 	if !ok {
-		http.Error(w, "Stream ID already taken.", http.StatusForbidden)
-		return nil
+		return RenderError(w, http.StatusForbidden, "Stream ID already taken.")
 	}
 	defer stream.Close()
 
@@ -172,8 +163,7 @@ func (ctx *RetransmissionContext) stream(w http.ResponseWriter, r *http.Request,
 		if n != 0 {
 			if _, err := stream.Write(buffer[:n]); err != nil {
 				stream.Reset()
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return nil
+				return RenderError(w, http.StatusBadRequest, err.Error())
 			}
 		}
 		if err != nil {
