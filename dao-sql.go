@@ -268,13 +268,13 @@ func (d *sqlDAO) StartStream(id string, token string) error {
 	var activated = true
 
 	err = d.prepared.GetStreamAuth.QueryRow(id).Scan(&server, &expect, &activated)
-	if err == sql.ErrNoRows || !activated {
+	if err == sql.ErrNoRows {
 		return ErrStreamNotExist
 	}
 	if err != nil {
 		return err
 	}
-	if expect != token {
+	if expect != token || !activated {
 		return ErrInvalidToken
 	}
 	if !server.Valid || server.String != d.localhost {
