@@ -56,8 +56,9 @@ let init = {
         e.style.overflowY   = 'scroll';
         e.style.marginRight = `${-nativeScrollbarWidth}px`;
         e.appendChild(track);
-        e.addEventListener('mousemove', trigger);
-        e.addEventListener('scroll',    trigger);
+        e.addEventListener('mouseleave', () => window.requestAnimationFrame(hide));
+        e.addEventListener('mousemove',  trigger);
+        e.addEventListener('scroll',     trigger);
     },
 
     '[data-tabs]': (e) => {
