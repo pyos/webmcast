@@ -8,13 +8,31 @@
         <title>webmcast -- {{.ID}}</title>
     </head>
     <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
+    {{- if .Owned }}
+        <template id="edit-name-template">
+            <form method="POST" action="/user/set-stream-name">
+                <input type="text" name="value" />
+                <button type="submit">Save</button>
+            </form>
+        </template>
+        <template id="edit-panel-template">
+            <form method="POST" action="/user/set-stream-panel" data-xhrable>
+                <input type="hidden" name="id" value="" />
+                <textarea name="value" rows="6" cols="10"></textarea>
+                <p class="error"></p>
+                <button type="submit">Save</button>
+                <button type="reset">Cancel</button>
+                <button type="reset" class="remove">Remove</button>
+            </form>
+        </template>
+    {{- end }}
         <article id="content" data-scrollbar>
             {{ template "nav.html" . }}
             <section class="player-block invert-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
                                   {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
-                        so instead we enforce the size of this element with an empty image. */ -}}
+                        so instead we enforce the size of this element with an empty image. */}}
                     <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                     <video></video><div class="controls">
                         <a href="#" class="button mute" title="Mute"></a>
@@ -26,51 +44,35 @@
                     </div>
                 </div>
             </section>
-            <section class="meta center-block">
-                <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
-                <div>
-                    {{ if .Owned }}
-                        <template class="edit-name-template">
-                            <form method="POST" action="/user/set-stream-name">
-                                <input type="text" name="value" />
-                                <button type="submit">Save</button>
-                            </form>
-                        </template>
-                        <h1 class="edit"><a href="#" title="Edit..."></a></h1>
-                    {{ end }}
-                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
+            <section class="stream-info center-block">
+                <div class="user-header">
+                    <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
+                    <div>
+                        {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
+                        <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
+                        <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
+                        {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
+                    </div>
+                    <div>
+                        {{- if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end -}}
+                    </div>
                 </div>
-                <div>
-                    {{ if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end }}
+                <div class="about">
+                {{- range $id, $_ := .Meta.Panels }}
+                    <div class="panel">
+                    {{- if $.Owned }}
+                        <h1 class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></h1>
+                    {{- end }}
+                        <p data-markup>{{.Text}}</p>
+                    </div>
+                {{- end }}
+                {{- if .Owned }}
+                    <div class="panel new-panel">
+                        <h1 class="edit"><a href="#" title="New panel..."></a></h1>
+                        <p data-markup>*Edit this to create a new panel*</p>
+                    </div>
+                {{- end }}
                 </div>
-            </section>
-            <section class="about center-block">
-            {{ range $id, $_ := .Meta.Panels }}
-                <div class="panel">
-                {{ if $.Owned }}
-                    <p class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></p>
-                {{- end -}}
-                    <p data-markup>{{.Text}}</p>
-                </div>
-            {{- end -}}
-            {{ if .Owned }}
-                <template class="edit-panel-template">
-                    <form method="POST" action="/user/set-stream-panel" data-xhrable>
-                        <input type="hidden" name="id" value="" />
-                        <textarea name="value" rows="6" cols="10"></textarea>
-                        <p class="error"></p>
-                        <button type="submit">Save</button>
-                        <button type="reset">Cancel</button>
-                        <button type="reset" class="remove">Remove</button>
-                    </form>
-                </template>
-                <div class="panel new-panel">
-                    <p class="edit"><a href="#" title="New panel..."></a></p>
-                    <p data-markup>*Edit this to create a new panel*</p>
-                </div>
-            {{- end -}}
             </section>
             {{ template "footer.html" }}
         </article>

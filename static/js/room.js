@@ -273,7 +273,7 @@ let Meta = function (rpc, meta, about, stream) {
         ev.preventDefault();
 
         let name = meta.querySelector('.name');
-        let t = init.all(document.importNode(meta.querySelector('.edit-name-template').content, true));
+        let t = init.all(document.importNode(document.getElementById('edit-name-template').content, true));
         let f = t.querySelector('form');
         let i = f.querySelector('input');
         f.addEventListener('reset', () => f.remove());
@@ -292,7 +292,7 @@ let Meta = function (rpc, meta, about, stream) {
     let createPanelEditor = (ev) => {
         ev.preventDefault();
 
-        let t = init.all(document.importNode(about.querySelector('.edit-panel-template').content, true));
+        let t = init.all(document.importNode(document.getElementById('edit-panel-template').content, true));
         let f = t.querySelector('form');
         let i = f.querySelector('textarea');
         f.addEventListener('reset', () => f.remove());
@@ -321,7 +321,7 @@ let Meta = function (rpc, meta, about, stream) {
 };
 
 
-let Player = function (root) {
+init['[data-stream-id]'] = (root) => {
     let stream = root.getAttribute('data-stream-id');
     let server = root.getAttribute('data-server');
     let owned  = root.hasAttribute('data-owned');
@@ -330,13 +330,10 @@ let Player = function (root) {
               : server[0] === ':' ? window.location.hostname + server
               : server ) + '/stream/' + encodeURIComponent(stream);
     let rpc = new RPC(`ws${window.location.protocol == 'https:' ? 's' : ''}://` + uri);
-    rpc.objects = [
-        new View(rpc, root.querySelector('.player'), window.location.protocol + '//' + uri),
-        new Chat(rpc, root.querySelector('.chat')),
-        new Meta(rpc, root.querySelector('.meta'), root.querySelector('.about'), stream),
-    ];
-    return rpc;
+    for (let e of root.querySelectorAll('.player'))
+        rpc.objects.push(new View(rpc, e, window.location.protocol + '//' + uri));
+    for (let e of root.querySelectorAll('.chat'))
+        rpc.objects.push(new Chat(rpc, e));
+    for (let e of root.querySelectorAll('.stream-info'))
+        rpc.objects.push(new Meta(rpc, e.querySelector('.user-header'), e.querySelector('.about'), stream));
 };
-
-
-let player = new Player(document.body);

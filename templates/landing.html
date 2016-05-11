@@ -71,13 +71,13 @@
                 </div>
             </section>
             <section class="center-block">
-            {{ if .User }}
+            {{- if .User }}
                 <h2>Oh, look, you've already signed up.</h2>
                 <p>Sorry, the streaming guide is not ready yet. Figure it out yourself.</p>
-            {{- else -}}
+            {{- else }}
                 <h2>Yeah, uh...you have to sign up first.</h2>
                 <a class="text-button" href="/user/new">Okay!</a>
-            {{- end -}}
+            {{- end }}
             </section>
             {{ template "footer.html" }}
         </article>

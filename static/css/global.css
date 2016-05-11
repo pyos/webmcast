@@ -16,6 +16,7 @@ body {
     color: #444;
     margin: 0;
     display: flex;
+    background: #fff;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -55,17 +56,12 @@ img, svg, video, audio, canvas {
     max-width: 30em;
 }
 
-.invert-block {
-    background: #1a1a1a;
-    color: #fff;
-}
-
 .warning-block {
     border: 1px solid #ffc;
     background: repeating-linear-gradient(-60deg, #ffc, #ffc 100px, #ffd 100px, #ffd 200px) #ffc;
 }
 
-.warning-block > * {
+.warning-block > .center-block {
     padding: 2em;
 }
 
@@ -346,40 +342,40 @@ footer {
     flex: 1 0;
 }
 
-.meta {
+.user-header {
     display: flex;
     flex-shrink: 0;
     align-items: center;
     padding: 2em;
 }
 
-.meta h1 {
+.user-header h1 {
     margin: 0;
     font-size: 1.6em;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.meta h2 {
+.user-header h2 {
     display: inline-block;
     margin: 0;
     font-size: 1.2em;
 }
 
-.meta .avatar {
+.user-header .avatar {
     flex-shrink: 0;
     margin-right: 1em;
     width: 60px;
     height: 60px;  /* ~= 58.8px = 4.2em = (h1.font-size + h2.font-size) * line-height */
 }
 
-.meta > :nth-child(2) {
+.user-header > :nth-child(2) {
     flex: 1;
     max-width: 100%;
     overflow: hidden;
 }
 
-.meta > :nth-child(3) h2 {
+.user-header > :nth-child(3) h2 {
     margin-left: 1em;
 }
 
