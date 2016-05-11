@@ -229,12 +229,31 @@ let Chat = function (rpc, root) {
         ev.keyCode === 13 && !ev.shiftKey ?
             form.dispatchEvent(new Event('submit', {cancelable: true})) : null);
 
+    let stringColor = (str) => {
+        let h = 0;
+        for (let i = 0; i < str.length; i++)
+            // Java's `String.hashCode`.
+            // h = (uint32_t) (h * 31 + s[i])
+            h = ((h << 5) - h + str.charCodeAt(i))|0;
+        let s = [30, 50, 70, 90];
+        let l = [60, 70, 80, 90];
+        return `hsl(${h % 359},${s[(h / 359|0) % s.length]}%,${l[((h / 359|0) / s.length|0) % l.length]}%)`;
+    };
+
     rpc.connect('Chat.Message', (name, text, login, isReal) => {
         autoscroll(() => {
-            // TODO derive a color for the name
-            // TODO show which users are actually anonymous
-            let entry  = document.importNode(msg.content, true);
-            entry.querySelector('.name').textContent = name;
+            console.log(stringColor(login));
+            let entry = document.importNode(msg.content, true);
+            let e = entry.querySelector('.name');
+            // TODO maybe do this server-side? that'd allow us to hash the IP instead...
+            e.style.color = stringColor(login);
+            e.textContent = name;
+            if (!isReal) {
+                e.setAttribute('title', 'Anonymous user');
+                e.classList.add('anon');
+            } else {
+                e.setAttribute('title', login);
+            }
             entry.querySelector('.text').textContent = text;
             log.appendChild(entry);
         });

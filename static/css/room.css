@@ -299,6 +299,12 @@ body.theatre .player video {
     font-weight: bold;
 }
 
+.chat .name.anon:before {
+    font: normal 1em/1 FontAwesome;
+    content: '\f21b';  /* user-secret */
+    margin-right: 0.33em;
+}
+
 .chat form {
     padding: 0 1em 1em 1em;
 }
