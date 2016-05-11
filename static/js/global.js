@@ -35,6 +35,7 @@ let init = {
         track.classList.add('track');
         track.appendChild(thumb);
 
+        let hide = () => { track.style.opacity = 0; };
         let show = () => {
             if (e.scrollHeight > e.clientHeight) {
                 window.clearTimeout(timer);
@@ -42,16 +43,21 @@ let init = {
                 track.style.opacity   = 1;
                 track.style.transform = `translateY(${e.scrollTop}px)`;
                 thumb.style.transform = `translateY(${e.scrollTop / e.scrollHeight * 100 + h * 50 - 50}%) scaleY(${h})`;
-                timer = window.setTimeout(() => { track.style.opacity = 0 }, 1000);
+                timer = window.setTimeout(hide, 1000);
             }
+        };
+
+        let trigger = (ev) => {
+            for (let t = ev.target; t !== null; t = t.parentElement)
+                if (t.hasAttribute('data-scrollbar'))
+                    return window.requestAnimationFrame(t === e ? show : hide);
         };
 
         e.style.overflowY   = 'scroll';
         e.style.marginRight = `${-nativeScrollbarWidth}px`;
         e.appendChild(track);
-        e.addEventListener('mousemove', () => window.requestAnimationFrame(show));
-        e.addEventListener('scroll',    () => window.requestAnimationFrame(show));
-        show();
+        e.addEventListener('mousemove', trigger);
+        e.addEventListener('scroll',    trigger);
     },
 
     '[data-tabs]': (e) => {
