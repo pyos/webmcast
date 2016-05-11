@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
-    <body data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
+    <body data-stream-id="{{.ID}}" {{- if not .Meta.HasVideo}} class="no-video" {{- end}} data-server="{{.Meta.Server}}">
     {{- if .Owned }}
         <template id="edit-name-template">
             <form method="POST" action="/user/set-stream-name">
