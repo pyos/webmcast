@@ -123,12 +123,12 @@ let View = function (rpc, root, uri) {
     let hideCursorLater = () => {
         showCursor();
         hideCursorTimeout = window.setTimeout(() =>
-            document.body.classList.add('hide-cursor'), 3000);
+            root.classList.add('hide-cursor'), 3000);
     };
 
     let showCursor = () => {
         window.clearTimeout(hideCursorTimeout);
-        document.body.classList.remove('hide-cursor');
+        root.classList.remove('hide-cursor');
     };
 
     video.addEventListener('mouseenter',     hideCursorLater);
@@ -216,7 +216,7 @@ let Chat = function (rpc, root) {
         rpc.send('Chat.SendMessage', text.value).then(() => {
             log.scrollTop = log.scrollHeight;
             text.value = '';
-            text.focus();
+            text.select();
         });
     });
 
@@ -246,7 +246,7 @@ let Chat = function (rpc, root) {
                 root.classList.remove('logged-in');
             } else {
                 root.classList.add('logged-in');
-                text.focus();
+                text.select();
             }
         });
     });

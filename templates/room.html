@@ -43,6 +43,29 @@
                         <a href="#" class="button collapse" title="Normal view"></a>
                     </div>
                 </div>
+                <aside class="chat-tab"></aside>
+                <aside class="chat">
+                    <h1>{{.ID}}</h1>
+                    <ul class="log" data-scrollbar>
+                        <li class="empty-message">Nothing here.</li>
+                    </ul>
+                    <template class="message-template">
+                        <li class="message">
+                            <span class="name"></span>
+                            <span class="text"></span>
+                        </li>
+                    </template>
+                    <div class="offline-message">Chat offline.</div>
+                    <form class="login-form">
+                        <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
+                        <button tabindex="1" type="submit">Join</button>
+                    </form>
+                    <form class="input-form">
+                        <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="Write a message"></textarea>
+                        <button tabindex="1" type="submit">Send</button>
+                        <a href="#" class="button ins-emoji" title="Emoji..."></a>
+                    </form>
+                </aside>
             </section>
             <section class="stream-info center-block">
                 <div class="user-header">
@@ -76,29 +99,6 @@
             </section>
             {{ template "footer.html" }}
         </article>
-        <aside class="chat">
-            <h1>{{.ID}}</h1>
-            <ul class="log" data-scrollbar>
-                <li class="empty-message">Nothing here.</li>
-            </ul>
-            <template class="message-template">
-                <li class="message">
-                    <span class="name"></span>
-                    <span class="text"></span>
-                </li>
-            </template>
-            <div class="offline-message">Chat offline.</div>
-            <form class="login-form">
-                <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
-                <button tabindex="1" type="submit">Join</button>
-            </form>
-            <form class="input-form">
-                <textarea tabindex="1" class="input" cols="1" rows="2" placeholder="Write a message"></textarea>
-                <button tabindex="1" type="submit">Send</button>
-                <a href="#" class="button ins-emoji" title="Emoji..."></a>
-            </form>
-            <div class="tab"></div>
-        </aside>
 
         <script src="/static/js/vendored.min.js"></script>
         <script src="/static/js/global.js"></script>

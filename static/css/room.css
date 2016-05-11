@@ -1,5 +1,7 @@
 .player-block {
     display: flex;
+    overflow: hidden;
+    position: relative;
     justify-content: center;
     background: #1a1a1a;
     color: #fff;
@@ -16,13 +18,13 @@
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
-    max-height: calc(100vh - 8.2em);  /* - total height of .user-header */
+    max-height: calc(100vh - 3.8em);  /* - total height of nav */
 }
 
 .player.has-video,
 .player.has-video svg,
 .player.has-video video {
-    min-height: 200px;
+    min-height: 240px;
 }
 
 .player.is-fullscreen,
@@ -32,9 +34,8 @@ body.theatre .player-block,
 body.theatre .player,
 body.theatre .player svg,
 body.theatre .player video {
-    display: block;
     width: 100%;  /* scale to *exactly* fit the window while preserving aspect ratio */
-    height: 100%;
+    height: 100vh;
     max-width: none;
     max-height: none;
 }
@@ -55,11 +56,11 @@ body.theatre .player video {
     transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
 }
 
-body.hide-cursor .player.has-video[data-status="playing"] {
+.player.has-video[data-status="playing"].hide-cursor {
     cursor: none;
 }
 
-body.hide-cursor .player.has-video[data-status="playing"] .controls,
+.player.has-video[data-status="playing"].hide-cursor .controls,
 .player.has-video[data-status="playing"]:not(:hover):not(:active) .controls {
     opacity: 0;
     transform: translateY(100%);
@@ -231,42 +232,40 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 }
 
 .chat {
-    width: 20%;
+    width: 15%;
     min-width: 20em;
     display: flex;
-    z-index: 128;
-    position: relative;
+    flex: 0 0 auto;
     flex-direction: column;
-    background: #f6f6f6;
+    overflow: hidden;
+    background: inherit;
     transition: transform 0.4s ease-in-out;
 }
 
 @media (max-width: 50em) {
     .chat {
-        margin-right: -20em;
+        position: absolute;
+        top: 0;
+        left: 100%;
+        bottom: 0;
+        z-index: 128;
     }
 
-    .chat .tab {
+    .chat-tab {
         position: absolute;
-        left: -2em;
+        right: 0;
         bottom: 0;
-        text-align: right;
         border-top: 2em solid transparent;
-        border-right: 2em solid #222;
+        border-right: 2em solid #1a1a1a;
         transition: opacity 0.4s ease-in-out;
     }
 
-    .chat:hover {
+    .chat:hover, .chat-tab:hover + .chat {
         transform: translateX(-100%);
     }
 
-    .chat:hover .tab,
-    body.theatre.hide-cursor .chat .tab {
-        opacity: 0;
-    }
-
-    body.theatre .player .controls {
-        padding-right: 2em;  /* +1em to move the "collapse" button from under the tab */
+    .player:not(.is-fullscreen) .controls {
+        padding-right: 2em;  /* +1em to move the buttons from under the tab */
     }
 }
 
@@ -281,11 +280,11 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
     font-size: 1.2em;
     font-weight: bold;
     text-align: center;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid rgba(127,127,127,0.5);
 }
 
 .chat .log {
-    flex: 1;
+    flex: 1 1 0;
     margin: 0;
     list-style: none;
     word-wrap: break-word;
@@ -314,21 +313,6 @@ body.hide-cursor .player.has-video[data-status="playing"] .controls,
 
 .chat .ins-emoji:before {
     content: '\f118';  /* smile-o */
-}
-
-body.theatre #content {
-    padding: 0;
-    height: 100%;
-}
-
-body.theatre .chat {
-    background: #111;
-    color: #eee;
-}
-
-body.theatre .chat h1 {
-    border-color: #333;
-    color: #fff;
 }
 
 .player[data-status="playing"] svg,
