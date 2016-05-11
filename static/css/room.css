@@ -1,3 +1,9 @@
+@media (min-width: 80em) {
+    .center-block {
+        max-width: 80em;
+    }
+}
+
 .player-block {
     display: flex;
     overflow: hidden;

@@ -46,12 +46,6 @@ img, svg, video, audio, canvas {
     box-sizing: border-box;
 }
 
-@media (min-width: 100em) {
-    .center-block {
-        max-width: 80em;
-    }
-}
-
 .center-block-small {
     max-width: 30em;
 }
