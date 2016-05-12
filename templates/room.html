@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
-    <body data-stream-id="{{.ID}}" {{- if not .Meta.HasVideo}} class="no-video" {{- end}} data-server="{{.Meta.Server}}">
+    <body {{- if not .Meta.HasVideo}} class="no-video" {{- end}}>
     {{- if .Owned }}
         <template id="edit-name-template">
             <form method="POST" action="/user/set-stream-name">
@@ -26,7 +26,13 @@
             </form>
         </template>
     {{- end }}
-        <article id="content" data-scrollbar>
+        <template id="chat-message-template">
+            <li class="message">
+                <span class="name"></span>
+                <span class="text"></span>
+            </li>
+        </template>
+        <article id="content" data-scrollbar data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
             {{ template "nav.html" . }}
             <section class="player-block invert-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
@@ -49,12 +55,6 @@
                     <ul class="log" data-scrollbar>
                         <li class="empty-message">No messages.</li>
                     </ul>
-                    <template class="message-template">
-                        <li class="message">
-                            <span class="name"></span>
-                            <span class="text"></span>
-                        </li>
-                    </template>
                     <div class="offline-message">Chat offline.</div>
                     <div class="error-message"></div>
                     <form class="login-form">

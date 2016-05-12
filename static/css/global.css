@@ -100,15 +100,15 @@ img, svg, video, audio, canvas {
     border-bottom-width: 4px;
 }
 
-[data-markup], [data-markup-html] p {
-    white-space: pre-line;
-}
-
-[data-markup-html] + [data-markup] {
+[data-markup] + [data-markup] {
     display: none;
 }
 
-[data-markup-html] pre {
+[data-markup=""], [data-markup] p {
+    white-space: pre-line;
+}
+
+[data-markup] pre {
     overflow-x: auto;
 }
 

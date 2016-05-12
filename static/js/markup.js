@@ -51,7 +51,7 @@ let markup = {
         'text':    (m, a)    => a,
     },
 
-    parse: (text) => {
+    parse(text) {
         let key = 'break';
         let block = [];
         let result = '';
@@ -73,13 +73,13 @@ let markup = {
         return result + markup.blockFn[key](block);
     },
 
-    escape: (x) =>
+    escape: x =>
         x.replace(/[&<>"]/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[x]),
 
-    inline: (x) =>
+    inline: x =>
         markup.inlineSafe(markup.escape(x)),
 
-    inlineSafe: (x) => {
+    inlineSafe(x) {
         let result = '';
         while (x !== "") {
             let best = {key: 'text', start: x.length, end: x.length, groups: ['']};
@@ -100,9 +100,9 @@ let markup = {
 };
 
 
-$init['[data-markup]'] = (e) => {
+$init['[data-markup]'] = e => {
     let r = document.createElement('div');
-    r.setAttribute('data-markup-html', '');
+    r.dataset.markup = 'html';
     r.innerHTML = markup.parse(e.textContent);
     new MutationObserver(() => {
         r.innerHTML = markup.parse(e.textContent);
