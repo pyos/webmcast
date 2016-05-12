@@ -1,4 +1,4 @@
-"use strict";  /* global init */
+"use strict";  /* global $init */
 
 
 let markup = {
@@ -100,7 +100,7 @@ let markup = {
 };
 
 
-init['[data-markup]'] = (e) => {
+$init['[data-markup]'] = (e) => {
     let r = document.createElement('div');
     r.setAttribute('data-markup-html', '');
     r.innerHTML = markup.parse(e.textContent);

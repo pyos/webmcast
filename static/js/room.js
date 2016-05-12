@@ -1,4 +1,4 @@
-'use strict'; /* global screenfull, init, form */
+'use strict'; /* global screenfull, $init, $form */
 
 if (screenfull.enabled) {
     document.addEventListener(screenfull.raw.fullscreenchange, () => {
@@ -53,11 +53,9 @@ let RPC = function(url) {
 
 
 RPC.prototype.send = function (method, ...params) {
-    return new Promise((resolve, reject) => {
-        let id = this.nextID++ & 0xFFFF;
-        this.socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-        this.requests[id] = { resolve, reject };
-    });
+    let id = this.nextID++ & 0xFFFF;
+    this.socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+    return new Promise((resolve, reject) => { this.requests[id] = { resolve, reject }; });
 };
 
 
@@ -292,13 +290,13 @@ let Meta = function (rpc, meta, about, stream) {
         ev.preventDefault();
 
         let name = meta.querySelector('.name');
-        let t = init.all(document.importNode(document.getElementById('edit-name-template').content, true));
+        let t = $init.all(document.importNode(document.getElementById('edit-name-template').content, true));
         let f = t.querySelector('form');
         let i = f.querySelector('input');
         f.addEventListener('reset', () => f.remove());
         f.addEventListener('submit', (ev) => {
             ev.preventDefault();
-            form.submit(f).then(() => {
+            $form.submit(f).then(() => {
                 name.textContent = i.value || '#' + stream;
                 f.remove();
             });
@@ -311,7 +309,7 @@ let Meta = function (rpc, meta, about, stream) {
     let createPanelEditor = (ev) => {
         ev.preventDefault();
 
-        let t = init.all(document.importNode(document.getElementById('edit-panel-template').content, true));
+        let t = $init.all(document.importNode(document.getElementById('edit-panel-template').content, true));
         let f = t.querySelector('form');
         let i = f.querySelector('textarea');
         f.addEventListener('reset', () => f.remove());
@@ -340,7 +338,7 @@ let Meta = function (rpc, meta, about, stream) {
 };
 
 
-init['[data-stream-id]'] = (root) => {
+$init['[data-stream-id]'] = (root) => {
     let stream = root.getAttribute('data-stream-id');
     let server = root.getAttribute('data-server');
     let owned  = root.hasAttribute('data-owned');

@@ -16,11 +16,11 @@ const nativeScrollbarWidth = (() => {
 })();
 
 
-let init = {
+let $init = {
     all: (e) => {
-        for (let f in init) if (init.hasOwnProperty(f) && f != 'all')
+        for (let f in $init) if ($init.hasOwnProperty(f) && f != 'all')
             for (let c of e.querySelectorAll(f))
-                init[f](c);
+                $init[f](c);
         return e;
     },
 
@@ -109,7 +109,7 @@ let init = {
         close.addEventListener('click', (e) => outer.remove());
         // if the [data-scrollbar] initializer has already run, this element would be left
         // uninitialized. good thing that particular initializer is idempotent...
-        init['[data-scrollbar]'](scroll);
+        $init['[data-scrollbar]'](scroll);
     },
 
     'body': (e) => {
@@ -140,14 +140,14 @@ let init = {
 
             let it = document.importNode(document.querySelector('#login-form').content, true);
             it.firstElementChild.setAttribute('data-tabs', tab);
-            document.body.appendChild(init.all(it));
+            document.body.appendChild($init.all(it));
         });
     },
 
     'form[data-xhrable]': (e) => {
         e.addEventListener('submit', (ev) => {
             ev.preventDefault();
-            form.submit(e).then((xhr) => {
+            $form.submit(e).then((xhr) => {
                 if (xhr.status === 204)
                     window.location.reload();
                 else
@@ -163,25 +163,24 @@ let init = {
 };
 
 
-let form = {
+let $form = {
     enable: (e) => {
         e.removeAttribute('data-status');
-        for (let input of e.querySelectorAll(':enabled'))
+        for (let input of e.querySelectorAll('[disabled="by-$form"]'))
             input.removeAttribute('disabled', '');
     },
 
     disable: (e) => {
         e.setAttribute('data-status', 'loading');
-        e.setAttribute('data-status-with-bg', '');
-        for (let input of e.querySelectorAll(':disabled'))
-            input.setAttribute('disabled', '');
+        for (let input of e.querySelectorAll(':enabled'))
+            input.setAttribute('disabled', 'by-$form');
     },
 
     submit: (e) => new Promise((resolve, reject) => {
         let xhr = new XMLHttpRequest();
 
         xhr.onload = (ev) => {
-            form.enable(e);
+            $form.enable(e);
             if (xhr.status >= 400)
                 reject(xhr, false);
             else
@@ -189,7 +188,7 @@ let form = {
         };
 
         xhr.onerror = (ev) => {
-            form.enable(e);
+            $form.enable(e);
             reject(xhr, true);
         };
 
@@ -197,9 +196,9 @@ let form = {
         xhr.open(e.getAttribute('method'), e.getAttribute('action'));
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.send(new FormData(e));
-        form.disable(e);
+        $form.disable(e);
     }),
 };
 
 
-document.addEventListener('DOMContentLoaded', () => init.all(document));
+document.addEventListener('DOMContentLoaded', () => $init.all(document));
