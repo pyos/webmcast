@@ -164,11 +164,11 @@ input[type="password"]:disabled {
     background-color: #fafafa;
 }
 
-form.error textarea,
-form.error input[type="text"],
-form.error input[type="email"],
-form.error input[type="password"] {
-    background: #fff8f8;
+form.error textarea:not(:disabled),
+form.error input[type="text"]:not(:disabled),
+form.error input[type="email"]:not(:disabled),
+form.error input[type="password"]:not(:disabled) {
+    background: #fdd;
     border-color: #dcb0a3;
 }
 
@@ -384,18 +384,6 @@ footer {
     margin-top: -0.5em;  /* alternatively, `top: calc(50% - 0.5em);`... */
     margin-left: -0.5em;
     z-index: 2;
-}
-
-[data-status][data-status-with-bg]:after {
-    display: block;
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-    background: rgba(255,255,255,0.7);
 }
 
 [data-status="loading"]:before {

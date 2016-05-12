@@ -318,6 +318,36 @@ body.no-video .chat {
     color: #777;
 }
 
+.chat .error-message {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    padding: 1em;
+    margin: 0.5em 1em;
+    background: rgba(0,0,0,0.8);
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+}
+
+.chat .error-message:after {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -1em;
+    border-top: 1em solid rgba(0,0,0,0.8);
+    border-left: 1em solid transparent;
+    border-right: 1em solid transparent;
+    content: ' ';
+}
+
+.chat .error-message.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .chat .name {
     font-weight: bold;
 }
@@ -329,6 +359,7 @@ body.no-video .chat {
 }
 
 .chat form {
+    position: relative;
     padding: 0 1em 1em 1em;
 }
 

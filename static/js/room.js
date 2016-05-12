@@ -192,6 +192,7 @@ let View = function (rpc, root, uri) {
 let Chat = function (rpc, root) {
     let log  = root.querySelector('.log');
     let msg  = root.querySelector('.message-template');
+    let err  = root.querySelector('.error-message');
     let form = root.querySelector('.input-form');
     let text = root.querySelector('.input-form .input');
 
@@ -202,30 +203,50 @@ let Chat = function (rpc, root) {
             log.scrollTop = log.scrollHeight;
     };
 
+    let handleErrors = (form, promise, withMessage) => {
+        $form.disable(form);
+        return promise.then(() => {
+            $form.enable(form);
+            form.classList.remove('error');
+            err.classList.remove('visible');
+            err.textContent = '';
+        }).catch((e) => {
+            $form.enable(form);
+            form.classList.add('error');
+            if (withMessage) {
+                form.appendChild(err);
+                err.textContent = e.message;
+                err.classList.add('visible');
+            }
+            throw e;
+        });
+    };
+
+    err.addEventListener('click', () =>
+        err.classList.remove('visible'));
+
     root.querySelector('.login-form').addEventListener('submit', function (ev) {
         ev.preventDefault();
         // TODO catch errors
-        rpc.send('Chat.SetName', this.querySelector('.input').value);
+        handleErrors(this, rpc.send('Chat.SetName', this.querySelector('.input').value));
     });
 
     form.addEventListener('submit', (ev) => {
         ev.preventDefault();
         // TODO catch errors
-        rpc.send('Chat.SendMessage', text.value).then(() => {
+        handleErrors(form, rpc.send('Chat.SendMessage', text.value), true).then(() => {
             log.scrollTop = log.scrollHeight;
             text.value = '';
             text.select();
         });
     });
 
-    text.addEventListener('keydown', (ev) =>
-        // do not input line breaks without shift
-        ev.keyCode === 13 && !ev.shiftKey ? ev.preventDefault() : null);
-
-    text.addEventListener('keyup', (ev) =>
-        // send the message on Enter (but not Shift+Enter)
-        ev.keyCode === 13 && !ev.shiftKey ?
-            form.dispatchEvent(new Event('submit', {cancelable: true})) : null);
+    text.addEventListener('keydown', (ev) => {
+        if (ev.keyCode === 13 && !ev.shiftKey) {  // carriage return
+            ev.preventDefault();
+            form.dispatchEvent(new Event('submit', {cancelable: true}));
+        }
+    });
 
     let stringColor = (str) => {
         let h = 0;
@@ -240,7 +261,6 @@ let Chat = function (rpc, root) {
 
     rpc.connect('Chat.Message', (name, text, login, isReal) => {
         autoscroll(() => {
-            console.log(stringColor(login));
             let entry = document.importNode(msg.content, true);
             let e = entry.querySelector('.name');
             // TODO maybe do this server-side? that'd allow us to hash the IP instead...
@@ -259,8 +279,9 @@ let Chat = function (rpc, root) {
 
     rpc.connect('Chat.AcquiredName', (name, login) => {
         autoscroll(() => {
-            if (name === "") {
+            if (login === "") {
                 root.classList.remove('logged-in');
+                root.querySelector('.login-form').classList.add('error');
             } else {
                 root.classList.add('logged-in');
                 text.select();
