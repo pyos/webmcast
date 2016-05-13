@@ -25,24 +25,40 @@ Element.prototype.button = function (selector, f) {
 };
 
 
-let RPC = function(url) {
+let RPC = function() {
     this.nextID   = 0;
     this.events   = {};
     this.requests = {};
     this.objects  = [];
-    this.socket   = new WebSocket(url);
     this.state    = 0;
 
-    this.socket.onopen = _ => {
+    this.connect('RPC.Redirect', url => {
+        if (url.substr(0, 2) == "//")
+            url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
+        this.state = 3;
+        this.open(url);
+    });
+
+    this.connect('RPC.Loaded', () => {
         for (let object of this.objects)
             object.load();
         this.state = 1;
-    };
+    });
+};
 
+
+RPC.prototype.open = function (url) {
+    if (this.socket)
+        this.socket.close();
+
+    this.state  = 0;
+    this.socket = new WebSocket(this.url = url);
     this.socket.onclose = _ => {
-        for (let object of this.objects)
-            object.unload();
-        this.state = 2;
+        if (this.state !== 3) {
+            for (let object of this.objects)
+                object.unload();
+            this.state = 2;
+        }
     };
 
     this.socket.onmessage = ev => {
@@ -132,11 +148,9 @@ $form.onDocumentReload = body => {
 
 $init = Object.assign($init, {
     '[data-stream-id]'(e) {
-        let server = e.dataset.server || location.host;
-        if (server[0] === ':')
-            server = location.hostname + server;
-        e.url = `${location.protocol}//${server}/stream/${encodeURIComponent(e.dataset.streamId)}`;
-        e.rpc = new RPC(e.url.replace('http', 'ws'));
+        let proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        e.rpc = new RPC();
+        e.rpc.open(`${proto}://${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`);
     },
 
     '.player-block'(e) {
@@ -221,7 +235,7 @@ $init = Object.assign($init, {
             stream.rpc.register({
                 load() {
                     // TODO measure connection speed, request a stream
-                    video.src = stream.url;
+                    video.src = stream.rpc.url.replace('ws', 'http');
                     video.play();
                 },
 

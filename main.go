@@ -48,15 +48,13 @@ func (ctx UnsafeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	bind := flag.String("bind", ":8000", "[network]:port to bind on")
-	addr := flag.String("addr", "", "The public address of this server, which will run in pure retransmission mode.")
-	ui_mode := flag.Bool("ui", false, "Run in pure ui node. Required to use ephemeral storage.")
-	devnull := flag.Bool("ephemeral", false, "Use a process-local in-memory userless database. Can only be enabled in joint mode.")
+	bind := flag.String("bind", ":8000", "The network ([ip]:port) to bind on.")
+	addr := flag.String("addr", "", "The public address (host[:port]) of this node. If not set, no other nodes must be active.")
+	ephemeral := flag.Bool("ephemeral", false, "Use a process-local in-memory userless database. Can only be enabled in joint mode.")
 	flag.Parse()
 
-	if *devnull && (*ui_mode || *addr != "") {
-		log.Print("-ephemeral cannot be used with -ui or -addr")
-		log.Fatal("These modes require coordination through a persistent database.")
+	if *ephemeral && *addr != "" {
+		log.Fatal("-ephemeral cannot be used with -addr. Running as a part of a cluster requires coordination through a database.")
 	}
 
 	ctx := Context{
@@ -64,7 +62,7 @@ func main() {
 		SecureKey:       []byte("12345678901234567890123456789012"),
 		StreamKeepAlive: 10 * time.Second,
 	}
-	if !*devnull {
+	if !*ephemeral {
 		var err error
 		if ctx.Database, err = NewSQLDatabase(*addr, "sqlite3", "development.db"); err != nil {
 			log.Fatal("Could not connect to database: ", err)
@@ -73,11 +71,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
-	if *addr != "" || !*ui_mode {
-		mux.Handle("/stream/", http.StripPrefix("/stream", UnsafeHandler{NewRetransmissionHandler(&ctx)}))
-	}
-	if *addr == "" {
-		mux.Handle("/", UnsafeHandler{NewUIHandler(&ctx)})
-	}
+	mux.Handle("/stream/", UnsafeHandler{NewRetransmissionHandler(&ctx)})
+	mux.Handle("/", UnsafeHandler{NewUIHandler(&ctx)})
 	log.Fatal(http.ListenAndServe(*bind, mux))
 }

@@ -30,7 +30,7 @@
                 <span class="text"></span>
             </li>
         </template>
-        <article id="content" data-scrollbar data-stream-id="{{.ID}}" data-server="{{.Meta.Server}}">
+        <article id="content" data-scrollbar data-stream-id="{{.ID}}">
             {{ template "nav.html" . }}
             <section class="player-block invert-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
@@ -38,7 +38,7 @@
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
                         so instead we enforce the size of this element with an empty image. */}}
                     <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
-                    <video></video><div class="controls">
+                    <video crossorigin></video><div class="controls">
                         <a href="#" class="button mute" title="Mute"></a>
                         <div tabindex="0" class="volume" title="Volume"><div class="slider"></div></div>
                         <div class="status">not connected</div>

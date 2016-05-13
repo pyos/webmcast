@@ -156,7 +156,7 @@ func (c *Chat) Close() {
 func (chat *Chat) RunRPC(ws *websocket.Conn, user *UserData) {
 	chatter := chat.Connect(ws, user)
 	defer chat.Disconnect(chatter)
-
+	RPCPushEvent(ws, "RPC.Loaded", true)
 	server := rpc.NewServer()
 	server.RegisterName("Chat", chatter)
 	server.ServeCodec(jsonrpc2.NewServerCodec(ws, server))
@@ -178,7 +178,7 @@ func (x *RPCSingleStringArg) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-func RPCPushEvent(ws *websocket.Conn, name string, args []interface{}) error {
+func RPCPushEvent(ws *websocket.Conn, name string, args ...interface{}) error {
 	return websocket.JSON.Send(ws, map[string]interface{}{
 		"jsonrpc": "2.0", "method": name, "params": args,
 	})
@@ -210,14 +210,13 @@ func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
 }
 
 func (ctx *chatter) pushName(name, login string) error {
-	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", []interface{}{name, login})
+	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", name, login)
 }
 
 func (ctx *chatter) pushMessage(msg ChatMessage) error {
-	return RPCPushEvent(ctx.socket, "Chat.Message",
-		[]interface{}{msg.name, msg.text, msg.login, msg.authed})
+	return RPCPushEvent(ctx.socket, "Chat.Message", msg.name, msg.text, msg.login, msg.authed)
 }
 
 func (ctx *chatter) pushViewerCount() error {
-	return RPCPushEvent(ctx.socket, "Stream.ViewerCount", []interface{}{len(ctx.chat.Users)})
+	return RPCPushEvent(ctx.socket, "Stream.ViewerCount", len(ctx.chat.Users))
 }

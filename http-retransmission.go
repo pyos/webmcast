@@ -71,23 +71,42 @@ func NewRetransmissionHandler(c *Context) *RetransmissionHandler {
 
 func (ctx *RetransmissionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	switch {
-	case r.URL.Path == "/" || strings.ContainsRune(r.URL.Path[1:], '/'):
+	case r.URL.Path == "/stream/" || strings.ContainsRune(r.URL.Path[8:], '/'):
 		return RenderError(w, http.StatusNotFound, "")
 	case r.Method == "GET":
-		return ctx.watch(w, r, r.URL.Path[1:])
+		return ctx.watch(w, r, r.URL.Path[8:])
 	case r.Method == "POST" || r.Method == "PUT":
-		return ctx.stream(w, r, r.URL.Path[1:])
+		return ctx.stream(w, r, r.URL.Path[8:])
 	default:
 		return RenderInvalidMethod(w, "GET, PUT, POST")
 	}
 }
 
+func wantsWebsocket(r *http.Request) bool {
+	if upgrade, ok := r.Header["Upgrade"]; ok {
+		for i := range upgrade {
+			if strings.ToLower(upgrade[i]) == "websocket" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, id string) error {
 	stream, ok := ctx.Readable(id)
 	if !ok {
-		switch _, err := ctx.GetStreamServer(id); err {
+		switch server, err := ctx.GetStreamServer(id); err {
 		case ErrStreamNotHere:
-			return RenderError(w, http.StatusNotFound, "Wrong server.")
+			if wantsWebsocket(r) {
+				// simply redirecting won't do -- browsers will throw an error.
+				websocket.Handler(func(ws *websocket.Conn) {
+					RPCPushEvent(ws, "RPC.Redirect", "//"+server+r.URL.Path)
+				}).ServeHTTP(w, r)
+				return nil
+			}
+			http.Redirect(w, r, "//"+server+r.URL.Path, http.StatusTemporaryRedirect)
+			return nil
 		case ErrStreamOffline, nil:
 			return RenderError(w, http.StatusNotFound, "Stream offline.")
 		case ErrStreamNotExist:
@@ -97,29 +116,26 @@ func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	if upgrade, ok := r.Header["Upgrade"]; ok {
-		for i := range upgrade {
-			if strings.ToLower(upgrade[i]) == "websocket" {
-				auth, err := ctx.GetAuthInfo(r)
-				if err != nil && err != ErrUserNotExist {
-					return err
-				}
-				websocket.Handler(func(ws *websocket.Conn) {
-					ctx.chatLock.Lock()
-					chat, ok := ctx.chats[id]
-					if !ok {
-						chat = NewChat(20)
-						ctx.chats[id] = chat
-					}
-					ctx.chatLock.Unlock()
-					chat.RunRPC(ws, auth)
-				}).ServeHTTP(w, r)
-				return nil
-			}
+	if wantsWebsocket(r) {
+		auth, err := ctx.GetAuthInfo(r)
+		if err != nil && err != ErrUserNotExist {
+			return err
 		}
+		websocket.Handler(func(ws *websocket.Conn) {
+			ctx.chatLock.Lock()
+			chat, ok := ctx.chats[id]
+			if !ok {
+				chat = NewChat(20)
+				ctx.chats[id] = chat
+			}
+			ctx.chatLock.Unlock()
+			chat.RunRPC(ws, auth)
+		}).ServeHTTP(w, r)
+		return nil
 	}
 
 	header := w.Header()
+	header.Set("Access-Control-Allow-Origin", "*")
 	header.Set("Cache-Control", "no-cache")
 	header.Set("Content-Type", "video/webm")
 	w.WriteHeader(http.StatusOK)
