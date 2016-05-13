@@ -107,9 +107,8 @@ RPC.prototype.connect = function (event, cb) {
 let delayedPair = (delay, f, g) => {
     let t;
     return _ => {
-        if (t === undefined)
-            f();
-        else
+        f();
+        if (t !== undefined)
             window.clearTimeout(t);
         t = window.setTimeout(() => { t = undefined; g(); }, delay);
     };
@@ -205,6 +204,11 @@ $init = Object.assign($init, {
                 e.classList.add('muted');
             else
                 e.classList.remove('muted');
+            localStorage.setItem('volume', String(video.volume));
+            if (video.muted)
+                localStorage.setItem('muted', '1');
+            else
+                localStorage.removeItem('muted');
         };
 
         let onVolumeSelect = ev => {
@@ -214,6 +218,11 @@ $init = Object.assign($init, {
             video.volume = Math.min(1, Math.max(0, x));
             video.muted  = false;
         };
+
+        let savedVolume = parseFloat(localStorage.getItem('volume'));
+        if (!isNaN(savedVolume) && 0 <= savedVolume && savedVolume <= 1)
+            video.volume = savedVolume;
+        video.muted = !!localStorage.getItem('muted');
 
         video.addEventListener('volumechange', onVolumeChange);
         // when styling <input type="range"> is too hard
