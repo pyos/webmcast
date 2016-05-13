@@ -108,6 +108,28 @@ let getParentStream = e => {
 };
 
 
+$form.onDocumentReload = body => {
+    let move = (src, dst, selector) => {
+        let a = src.querySelector(selector);
+        let b = dst.querySelector(selector);
+        if (a && b) {
+            b.parentElement.replaceChild(a, b);
+            if (dst === document)
+                $init.all(a);
+            b.remove();
+        }
+    };
+
+    move(document, body, '.user-header .viewers');
+    move(body, document, '.user-header');
+    move(body, document, 'nav');
+    move(body, document, '.about');
+    for (let modal of document.querySelectorAll('.modal-bg'))
+        modal.remove();
+    return true;
+};
+
+
 $init = Object.assign($init, {
     '[data-stream-id]'(e) {
         let server = e.dataset.server || location.host;
@@ -217,15 +239,6 @@ $init = Object.assign($init, {
             let f = t.querySelector('form');
             let i = f.querySelector('input');
             f.addEventListener('reset',  _  => f.remove());
-            f.addEventListener('submit', ev => {
-                ev.preventDefault();
-                if (i.value === '')
-                    return f.remove();
-                $form.submit(f).then(() => {
-                    name.textContent = i.value;
-                    f.remove();
-                });
-            });
             f.insertThisBefore(ev.currentTarget);
             i.value = name.textContent;
             i.focus();
@@ -256,7 +269,7 @@ $init = Object.assign($init, {
             }
 
             f.insertThisBefore(ev.currentTarget);
-            i.value = ev.currentTarget.parentElement.querySelector('[data-markup]').textContent;
+            i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
             i.focus();
         });
     },

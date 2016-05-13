@@ -61,16 +61,11 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 }
 
 func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
-	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" && code == http.StatusSeeOther {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	} else {
-		ref := r.Referer()
-		if ref == "" {
-			ref = fallback
-		}
-		http.Redirect(w, r, ref, code)
+	ref := r.Referer()
+	if ref == "" {
+		ref = fallback
 	}
+	http.Redirect(w, r, ref, code)
 	return nil
 }
 
@@ -286,7 +281,7 @@ func (ctx UIHandler) userControl(w http.ResponseWriter, r *http.Request, path st
 		}
 
 		if err == nil {
-			w.WriteHeader(http.StatusNoContent)
+			err = redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
 		}
 		return err
 

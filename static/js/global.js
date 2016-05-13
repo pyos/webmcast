@@ -18,9 +18,15 @@ const nativeScrollbarWidth = (() => {
 
 let $init = {
     all(e) {
-        for (let f in $init) if ($init.hasOwnProperty(f) && f != 'all' && f !== 'template')
-            for (let c of e.querySelectorAll(f))
-                $init[f](c);
+        let isElem = e instanceof Element;
+        for (let f in $init) {
+            if ($init.hasOwnProperty(f) && f != 'all' && f !== 'template') {
+                if (isElem && e.matches(f))
+                    $init[f](e);
+                for (let c of e.querySelectorAll(f))
+                    $init[f](c);
+            }
+        }
         return e;
     },
 
@@ -151,23 +157,39 @@ let $init = {
     'form[data-xhrable]'(e) {
         e.addEventListener('submit', ev => {
             ev.preventDefault();
-            $form.submit(e).then(xhr => {
-                if (xhr.status === 204)
-                    window.location.reload();
-                else
-                    window.location = xhr.responseURL;
-            }).catch((xhr, isNetworkError) => {
-                e.classList.add('error');
-                e.querySelector('.error').textContent =
-                    isNetworkError ? 'Could not connect to server.'
-                                   : xhr.response.getElementById('message').textContent;
-            });
+            $form.submit(e)
+                 .then  (xhr => $form.onXHRSuccess(xhr, e))
+                 .catch (err => $form.onXHRError(err, e));
         });
     },
 };
 
 
 let $form = {
+    onDocumentReload(body) {
+        return false;  // override & return `true` if preserving some state is desired
+    },
+
+    onXHRSuccess(xhr, form) {
+        try {
+            $form.disable(form);
+            if (xhr.responseURL === location.href && $form.onDocumentReload(xhr.response))
+                return $form.enable(form);
+            // TODO replace the whole `body`, like InstantClick does?
+            //      gotta use `history.pushState` then, too...
+        } catch (e) {
+            console.log('failed to async-reload document:', e);
+        }
+        location.href = xhr.responseURL;
+    },
+
+    onXHRError(xhr, form) {
+        form.classList.add('error');
+        form.querySelector('.error').textContent =
+            xhr.response ? xhr.response.getElementById('message').textContent
+                         : 'Could not connect to server.';
+    },
+
     enable(e) {
         delete e.dataset.status;
         for (let input of e.querySelectorAll('[disabled="by-$form"]'))
@@ -185,15 +207,15 @@ let $form = {
 
         xhr.onload = ev => {
             $form.enable(e);
-            if (xhr.status >= 400)
-                reject(xhr, false);
+            if (xhr.status >= 300)
+                reject(xhr);
             else
                 resolve(xhr);
         };
 
         xhr.onerror = ev => {
             $form.enable(e);
-            reject(xhr, true);
+            reject(xhr);
         };
 
         xhr.responseType = 'document';

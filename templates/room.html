@@ -7,10 +7,9 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast -- {{.ID}}</title>
     </head>
-    <body {{- if not .Meta.HasVideo}} class="no-video" {{- end}}>
-    {{- if .Owned }}
+    <body class="{{if not .Meta.HasVideo}}no-video{{end}}">
         <template id="edit-name-template">
-            <form method="POST" action="/user/set-stream-name">
+            <form method="POST" action="/user/set-stream-name" data-xhrable>
                 <input type="text" name="value" />
                 <button type="submit">Save</button>
             </form>
@@ -25,7 +24,6 @@
                 <button type="reset" class="remove">Remove</button>
             </form>
         </template>
-    {{- end }}
         <template id="chat-message-template">
             <li class="message">
                 <span class="name"></span>
