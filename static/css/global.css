@@ -108,8 +108,49 @@ img, svg, video, audio, canvas {
     white-space: pre-line;
 }
 
+[data-markup] h1 { font-size: 1.3em; }
+[data-markup] h2 { font-size: 1.2em; }
+[data-markup] h3 { font-size: 1.1em; }
+
+[data-markup] a:after {
+    font: normal 1em/1 FontAwesome;
+    content: '\f14c';  /* external-link-square */
+    margin-left: 0.33em;
+}
+
+[data-markup] a[title]:after {
+    content: '\f06a';  /* exclamation-circle */
+}
+
+[data-markup] blockquote {
+    margin: 0;
+    padding-left: 1em;
+    border-left: 3px solid;
+}
+
+[data-markup] hr {
+    border: 0;
+    border-bottom: 1px dashed;
+    margin: 0 2em;
+    background: #777;
+    opacity: 0.33;
+}
+
 [data-markup] pre {
     overflow-x: auto;
+}
+
+[data-markup] ul,
+[data-markup] ol {
+    padding-left: 2em;
+}
+
+[data-markup] .spoiler {
+    border-bottom: 1px dashed;
+}
+
+[data-markup] .spoiler:not(:hover):not(:focus) {
+    background: currentColor;
 }
 
 form {
@@ -347,6 +388,7 @@ footer {
     margin: 0;
     font-size: 1.6em;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
 }
 

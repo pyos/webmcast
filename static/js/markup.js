@@ -46,7 +46,7 @@ let markup = {
         'italic':  (m, a)    => '<i>'                    + markup.inlineSafe(a) + '</i>',
         'strike':  (m, a)    => '<del>'                  + markup.inlineSafe(a) + '</del>',
         'spoiler': (m, a)    => '<span class="spoiler">' + markup.inlineSafe(a) + '</span>',
-        'link':    (m, a, b) => `<a href="${b}" target="_blank">${a}</a>`,
+        'link':    (m, a, b) => `<a href="${b}" ${b !== a ? `title="${b}"` : ''} target="_blank" rel="noopener noreferrer">${a}</a>`,
         'mdash':   (m)       => '&mdash;',
         'text':    (m, a)    => a,
     },
