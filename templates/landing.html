@@ -7,21 +7,6 @@
         <title>webmcast</title>
         <style>
             h1 { font: bold 2.5em monospace; }
-
-            section:last-of-type {
-                text-align: center;
-                font-size: 1.2em;
-            }
-
-            .bg {
-                background: linear-gradient(180deg, #dde3e5, #dde3e5 246px, #e7e7e7 266px, #e7e7e7) #dde3e5;
-            }
-
-            .row img {
-                border-radius: 2em;
-                max-width: calc(100vw - 4em);
-            }
-
             .row:nth-child(2n+1) { flex-direction: row-reverse; }
             .row { padding: 1em; }
             .row > * { padding: 1em; }
@@ -29,11 +14,12 @@
             .row > :last-child { min-width: 200px; align-self: center; }
             .row > :last-child > :first-child { margin-top: 0; }
             .row > :last-child > :last-child { margin-bottom: 0; }
+            .row img { border-radius: 2em; max-width: calc(100vw - 4em); }
         </style>
     </head>
     <body>
         <article id="content" data-scrollbar>
-            <div class="bg">
+            <div style="background:linear-gradient(180deg, #dde3e5, #dde3e5 246px, #e7e7e7 266px, #e7e7e7) #dde3e5">
                 {{ template "nav.html" . }}
                 <div class="center-block row">
                     <div><img src="/static/img/aware-of-dog.png" alt="" /></div>
@@ -70,7 +56,7 @@
                        at the same time.</p>
                 </div>
             </section>
-            <section class="center-block">
+            <section class="center-block" style="text-align:center">
             {{- if .User }}
                 <h2>Oh, look, you've already signed up.</h2>
                 <p>Sorry, the streaming guide is not ready yet. Figure it out yourself.</p>
@@ -81,7 +67,6 @@
             </section>
             {{ template "footer.html" }}
         </article>
-
         <script src="/static/js/global.js"></script>
     </body>
 </html>

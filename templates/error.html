@@ -3,15 +3,39 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="/static/css/error.css" />
         <title>webmcast: error {{.Code}}</title>
+        <style>
+            html, body { height: 100%; }
+            body {
+                margin: 0;
+                padding: 2em;
+                display: flex;
+                box-sizing: border-box;
+                flex-direction: column;
+                justify-content: space-between;
+                font: normal 18px monospace;
+                background: #118;
+                color: #fff;
+            }
+
+            h1, h2 {
+                font: bold 28px monospace;
+                text-transform: uppercase;
+            }
+
+            h2 { text-align: center; }
+            h2:before {
+                content: 'NO SIGNAL / ';
+                opacity: 0.5;
+            }
+
+            a { color: #fff; }
+            a:hover { text-shadow: 0 0 5px #fff; }
+        </style>
     </head>
     <body>
-        <div id="content">
-            <h1><a href="/">webmcast</a>
-             // <span id="code">{{.Code}}</span>
-             // <span id="message">{{.DisplayMessage}}</span></h1>
-            <h2>* {{.DisplayComment}}</h2>
-        </div>
+        <h1><a href="/">webmcast</a> error #<span id="code">{{.Code}}</span></h1>
+        <h2 id="message">{{.DisplayMessage}}</h2>
+        <p>* {{.DisplayComment}}</p>
     </body>
 </html>
