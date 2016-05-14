@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
         <link rel="stylesheet" href="/static/css/room.css" />
-        <title>webmcast -- {{.ID}}</title>
+        <title>webmcast // {{.ID}}</title>
     </head>
     <body class="{{if not .Meta.HasVideo}}no-video{{end}}">
         <template id="edit-name-template">
@@ -54,11 +54,11 @@
                         <li class="empty-message">No messages.</li>
                     </ul>
                     <div class="offline-message">Chat offline.</div>
-                    <div class="error-message"></div>
                     <form class="login-form">
                         <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
                         <button tabindex="1" type="submit">Join</button>
                     </form>
+                    <div class="error-message"></div>
                     <form class="input-form">
                         <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="Write a message"></textarea>
                         <button tabindex="1" type="submit">Send</button>
@@ -66,35 +66,33 @@
                     </form>
                 </aside>
             </section>
-            <section class="stream-info center-block">
-                <div class="user-header">
-                    <img class="avatar" alt="{{.ID}}" src="{{.Meta.Avatar 60}}" />
-                    <div>
-                        {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
-                        <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                        <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                        {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
-                    </div>
-                    <div>
-                        {{- if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end -}}
-                    </div>
+            <section class="stream-header user-header center-block">
+                <img class="avatar" alt="{{.ID}}" src="{{.Meta.Avatar 60}}" />
+                <div>
+                    {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
+                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
+                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
+                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
                 </div>
-                <div class="about">
-                {{- range $id, $_ := .Meta.Panels }}
-                    <div class="panel">
-                    {{- if $.Owned }}
-                        <h1 class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></h1>
-                    {{- end }}
-                        <p data-markup>{{.Text}}</p>
-                    </div>
-                {{- end }}
-                {{- if .Owned }}
-                    <div class="panel new-panel">
-                        <h1 class="edit"><a href="#" title="New panel..."></a></h1>
-                        <p data-markup>*Edit this to create a new panel*</p>
-                    </div>
-                {{- end }}
+                <div>
+                    {{- if .Online }}<h2 class="viewers" title="Viewers">???</h2>{{ end -}}
                 </div>
+            </section>
+            <section class="stream-about center-block">
+            {{- range $id, $_ := .Meta.Panels }}
+                <div class="panel">
+                {{- if $.Owned }}
+                    <h1 class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></h1>
+                {{- end }}
+                    <p data-markup>{{.Text}}</p>
+                </div>
+            {{- end }}
+            {{- if .Owned }}
+                <div class="panel new-panel">
+                    <h1 class="edit"><a href="#" title="New panel..."></a></h1>
+                    <p data-markup>*Edit this to create a new panel*</p>
+                </div>
+            {{- end }}
             </section>
             {{ template "footer.html" }}
         </article>

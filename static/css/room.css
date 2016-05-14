@@ -147,32 +147,32 @@
     content: '\f040';  /* pencil */
 }
 
-.user-header .creator:before {
+.stream-header .creator:before {
     content: 'by ';
 }
 
-.user-header .viewers:before {
+.stream-header .viewers:before {
     font: normal 1em FontAwesome;
     content: '\f06e';  /* eye */
     margin-right: 0.5em;
 }
 
-.user-header .edit {
+.stream-header .edit {
     float: left;
     margin-right: 0.33em;
 }
 
-.user-header form + .edit,
-.user-header form + .edit + .name {
+.stream-header form + .edit,
+.stream-header form + .edit + .name {
     display: none;
 }
 
-.user-header form input,
-.user-header form button {
+.stream-header form input,
+.stream-header form button {
     min-height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
 }
 
-.about {
+.stream-about {
     column-gap: 1em;
     -moz-column-gap: 1em;
     -webkit-column-gap: 1em;
@@ -183,14 +183,14 @@
 }
 
 @media (max-width: 50em) {
-    .about {
+    .stream-about {
         column-count: 1;
         -moz-column-count: 1;
         -webkit-column-count: 1;
     }
 }
 
-.about .panel {
+.stream-about .panel {
     position: relative;
     background: #fafaf6;
     min-height: 200px;
@@ -203,20 +203,20 @@
     -webkit-column-break-inside: avoid;
 }
 
-.about .panel:not(:last-child) {
+.stream-about .panel:not(:last-child) {
     margin-bottom: 1em;
 }
 
-.about .edit {
+.stream-about .edit {
     float: right;
     margin-left: 1em;
 }
 
-.about form ~ * {
+.stream-about form ~ * {
     visibility: hidden;
 }
 
-.about form {
+.stream-about form {
     position: absolute;
     top: 0;
     left: 0;
@@ -226,7 +226,7 @@
     padding: 0.5em;
 }
 
-.about form textarea {
+.stream-about form textarea {
     display: block;
     margin-bottom: 1em;
     width: 100%;

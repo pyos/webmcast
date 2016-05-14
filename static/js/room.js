@@ -2,11 +2,11 @@
 
 if (screenfull.enabled)
     document.addEventListener(screenfull.raw.fullscreenchange, _ => {
-        if (screenfull.isFullscreen)
-            // browser support for :fullscreen is abysmal.
-            screenfull.element.classList.add('is-fullscreen');
-        else for (let e of document.querySelectorAll('.is-fullscreen'))
+        // browser support for :fullscreen is abysmal.
+        for (let e of document.querySelectorAll('.is-fullscreen'))
             e.classList.remove('is-fullscreen');
+        if (screenfull.element)
+            screenfull.element.classList.add('is-fullscreen');
     });
 else
     document.body.classList.add('no-fullscreen');
@@ -25,25 +25,25 @@ Element.prototype.button = function (selector, f) {
 };
 
 
-let RPC = function() {
+let RPC = function () {
     this.nextID   = 0;
-    this.events   = {};
-    this.requests = {};
-    this.objects  = [];
     this.state    = 0;
+    this.objects  = [];
+    this.awaiting = {};
+    this.handlers = {
+        'RPC.Redirect': url => {
+            if (url.substr(0, 2) == "//")
+                url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
+            this.state = 3;
+            this.open(url);
+        },
 
-    this.connect('RPC.Redirect', url => {
-        if (url.substr(0, 2) == "//")
-            url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
-        this.state = 3;
-        this.open(url);
-    });
-
-    this.connect('RPC.Loaded', () => {
-        for (let object of this.objects)
-            object.load();
-        this.state = 1;
-    });
+        'RPC.Loaded': _ => {
+            for (let object of this.objects)
+                object.load();
+            this.state = 1;
+        }
+    };
 };
 
 
@@ -65,12 +65,12 @@ RPC.prototype.open = function (url) {
         let msg = JSON.parse(ev.data);
 
         if (msg.id === undefined)
-            if (msg.method in this.events)
-                this.events[msg.method](...msg.params);
+            if (msg.method in this.handlers)
+                this.handlers[msg.method](...msg.params);
 
-        if (msg.id in this.requests) {
-            let cb = this.requests[msg.id];
-            delete this.requests[msg.id];
+        if (msg.id in this.awaiting) {
+            let cb = this.awaiting[msg.id];
+            delete this.awaiting[msg.id];
             if (msg.error === undefined)
                 cb.resolve(msg.result);
             else
@@ -90,17 +90,9 @@ RPC.prototype.register = function (obj) {
 
 
 RPC.prototype.send = function (method, ...params) {
-    let id = this.nextID++ & 0xFFFF;
+    let id = this.nextID++;
     this.socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-    return new Promise((resolve, reject) => { this.requests[id] = { resolve, reject }; });
-};
-
-
-RPC.prototype.connect = function (event, cb) {
-    if (cb === undefined)
-        delete this.events[event];
-    else
-        this.events[event] = cb;
+    return new Promise((resolve, reject) => { this.awaiting[id] = { resolve, reject }; });
 };
 
 
@@ -108,8 +100,7 @@ let delayedPair = (delay, f, g) => {
     let t;
     return _ => {
         f();
-        if (t !== undefined)
-            window.clearTimeout(t);
+        window.clearTimeout(t);
         t = window.setTimeout(() => { t = undefined; g(); }, delay);
     };
 };
@@ -129,23 +120,23 @@ $form.onDocumentReload = doc => {
         let b = dst.querySelector(selector);
         if (a && b) {
             b.parentElement.replaceChild(a, b);
+            b.remove();
             if (dst === document)
                 $init.all(a);
-            b.remove();
         }
     };
 
-    move(document, doc, '.user-header .viewers');
-    move(doc, document, '.user-header');
+    move(document, doc, '.stream-header .viewers');
+    move(doc, document, '.stream-header');
+    move(doc, document, '.stream-about');
     move(doc, document, 'nav');
-    move(doc, document, '.about');
     for (let modal of document.querySelectorAll('.modal-bg'))
         modal.remove();
     return true;
 };
 
 
-$init = Object.assign($init, {
+Object.assign($init, {
     '[data-stream-id]'(e) {
         let proto = location.protocol === 'https:' ? 'wss' : 'ws';
         e.rpc = new RPC();
@@ -255,7 +246,7 @@ $init = Object.assign($init, {
         }
     },
 
-    '.stream-info .user-header'(e) {
+    '.stream-header'(e) {
         e.button('.edit', ev => {
             let name = e.querySelector('.name');
             let t = $init.template('edit-name-template');
@@ -269,11 +260,11 @@ $init = Object.assign($init, {
 
         let stream = getParentStream(e);
         if (stream)
-            stream.rpc.connect('Stream.ViewerCount', n =>
-                e.querySelector('.viewers').textContent = n);
+            stream.rpc.handlers['Stream.ViewerCount'] = n =>
+                e.querySelector('.viewers').textContent = n;
     },
 
-    '.stream-info .about'(e) {
+    '.stream-about'(e) {
         e.button('.edit', ev => {
             let t = $init.template('edit-panel-template');
             let f = t.querySelector('form');
@@ -366,7 +357,7 @@ $init = Object.assign($init, {
             return `hsl(${h % 359},${s[(h / 359|0) % s.length]}%,${l[((h / 359|0) / s.length|0) % l.length]}%)`;
         };
 
-        rpc.connect('Chat.Message', (name, text, login, isReal) => {
+        rpc.handlers['Chat.Message'] = (name, text, login, isReal) =>
             autoscroll(() => {
                 let entry = $init.template('chat-message-template');
                 let e = entry.querySelector('.name');
@@ -382,9 +373,8 @@ $init = Object.assign($init, {
                 entry.querySelector('.text').textContent = text;
                 log.appendChild(entry);
             });
-        });
 
-        rpc.connect('Chat.AcquiredName', (name, login) => {
+        rpc.handlers['Chat.AcquiredName'] = (name, login) =>
             autoscroll(() => {
                 if (login === "") {
                     root.classList.remove('logged-in');
@@ -394,7 +384,6 @@ $init = Object.assign($init, {
                     text.select();
                 }
             });
-        });
 
         rpc.register({
             load() {
