@@ -168,7 +168,7 @@ let $init = {
 let $form = {
     onDocumentReload(doc) {
         document.documentElement.replaceChild(doc.body, document.body);
-        $init.all(doc.body);
+        $init.all(document.body);
         return true;
     },
 
