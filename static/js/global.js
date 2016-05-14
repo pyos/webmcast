@@ -166,8 +166,10 @@ let $init = {
 
 
 let $form = {
-    onDocumentReload(body) {
-        return false;  // override & return `true` if preserving some state is desired
+    onDocumentReload(doc) {
+        document.documentElement.replaceChild(doc.body, document.body);
+        $init.all(doc.body);
+        return true;
     },
 
     onXHRSuccess(xhr, form) {

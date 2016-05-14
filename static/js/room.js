@@ -123,7 +123,7 @@ let getParentStream = e => {
 };
 
 
-$form.onDocumentReload = body => {
+$form.onDocumentReload = doc => {
     let move = (src, dst, selector) => {
         let a = src.querySelector(selector);
         let b = dst.querySelector(selector);
@@ -135,10 +135,10 @@ $form.onDocumentReload = body => {
         }
     };
 
-    move(document, body, '.user-header .viewers');
-    move(body, document, '.user-header');
-    move(body, document, 'nav');
-    move(body, document, '.about');
+    move(document, doc, '.user-header .viewers');
+    move(doc, document, '.user-header');
+    move(doc, document, 'nav');
+    move(doc, document, '.about');
     for (let modal of document.querySelectorAll('.modal-bg'))
         modal.remove();
     return true;
