@@ -112,14 +112,10 @@ img, svg, video, audio, canvas {
 [data-markup] h2 { font-size: 1.2em; }
 [data-markup] h3 { font-size: 1.1em; }
 
-[data-markup] a:after {
+[data-markup] a[title]:after {
     font: normal 1em/1 FontAwesome;
     content: '\f14c';  /* external-link-square */
     margin-left: 0.33em;
-}
-
-[data-markup] a[title]:after {
-    content: '\f06a';  /* exclamation-circle */
 }
 
 [data-markup] blockquote {
