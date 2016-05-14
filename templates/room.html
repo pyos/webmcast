@@ -68,7 +68,7 @@
             </section>
             <section class="stream-info center-block">
                 <div class="user-header">
-                    <img class="avatar" alt="{{.ID}}" src="{{.Meta.GravatarURL 60}}" />
+                    <img class="avatar" alt="{{.ID}}" src="{{.Meta.Avatar 60}}" />
                     <div>
                         {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
                         <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>

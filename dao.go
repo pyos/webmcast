@@ -92,11 +92,11 @@ func gravatarURL(email string, size int) string {
 	return fmt.Sprintf("//www.gravatar.com/avatar/%s?s=%d", hexhash, size)
 }
 
-func (u *UserData) GravatarURL(size int) string {
+func (u *UserData) Avatar(size int) string {
 	return gravatarURL(u.Email, size)
 }
 
-func (s *StreamMetadata) GravatarURL(size int) string {
+func (s *StreamMetadata) Avatar(size int) string {
 	return gravatarURL(s.Email, size)
 }
 

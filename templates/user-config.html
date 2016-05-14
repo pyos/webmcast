@@ -10,7 +10,7 @@
         <article id="content" data-scrollbar>
             {{ template "nav.html" . }}
             <div class="user-header center-block">
-                <img class="avatar" src="{{.User.GravatarURL 60}}" alt="Gravatar" />
+                <img class="avatar" src="{{.User.Avatar 60}}" alt="Gravatar" />
                 <div>
                     <h1>Hey there, {{.User.Name}}.</h1>
                     <h2>Stream URL:
