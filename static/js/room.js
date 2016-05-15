@@ -1,4 +1,4 @@
-'use strict'; /* global screenfull, $init, $form */
+'use strict'; /* global screenfull, $init, $form, sha1 */
 
 if (screenfull.enabled)
     document.addEventListener(screenfull.raw.fullscreenchange, _ => {
@@ -348,13 +348,8 @@ Object.assign($init, {
         });
 
         let stringColor = (str) => {
-            let h = 0;
-            for (let i = 0; i < str.length; i++)
-                // Java's `String.hashCode`.
-                h = h * 31 + str.charCodeAt(i) | 0;
-            let s = [30, 50, 70, 90];
-            let l = [60, 70, 80, 90];
-            return `hsl(${h % 359},${s[(h / 359|0) % s.length]}%,${l[((h / 359|0) / s.length|0) % l.length]}%)`;
+            let h = parseInt(sha1(str).slice(32), 16);
+            return `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
         };
 
         rpc.handlers['Chat.Message'] = (name, text, login, isReal) =>
