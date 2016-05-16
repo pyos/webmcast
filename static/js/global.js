@@ -57,10 +57,19 @@ let $init = {
             }
         };
 
-        let trigger = ev => {
+        let innermost = ev => {
             for (let t = ev.target; t !== null; t = t.parentElement)
-                if (t.hasAttribute('data-scrollbar'))
-                    return window.requestAnimationFrame(t === e ? show : hide);
+                if (t.hasAttribute('data-scrollbar') && t.scrollHeight > t.clientHeight)
+                    return t;
+        };
+
+        let trigger = ev =>
+            window.requestAnimationFrame(innermost(ev) === e ? show : hide);
+
+        let ignoreOvershoot = ev => {
+            let t = innermost(ev);
+            if ((ev.deltaY > 0 && t.scrollTop >= t.scrollHeight - t.clientHeight) || (ev.deltaY < 0 && t.scrollTop === 0))
+                ev.preventDefault();
         };
 
         e.style.overflowY   = 'scroll';
@@ -69,6 +78,7 @@ let $init = {
         e.addEventListener('mouseleave', _ => window.requestAnimationFrame(hide));
         e.addEventListener('mousemove',  trigger);
         e.addEventListener('scroll',     trigger);
+        e.addEventListener('wheel',      ignoreOvershoot);
     },
 
     '[data-tabs]'(e) {
