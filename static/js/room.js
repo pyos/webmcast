@@ -326,13 +326,11 @@ Object.assign($init, {
 
         root.querySelector('.login-form').addEventListener('submit', function (ev) {
             ev.preventDefault();
-            // TODO catch errors
             handleErrors(this, rpc.send('Chat.SetName', this.querySelector('.input').value));
         });
 
         form.addEventListener('submit', (ev) => {
             ev.preventDefault();
-            // TODO catch errors
             handleErrors(form, rpc.send('Chat.SendMessage', text.value), true).then(() => {
                 log.scrollTop = log.scrollHeight;
                 text.value = '';
@@ -352,14 +350,14 @@ Object.assign($init, {
             return `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
         };
 
-        rpc.handlers['Chat.Message'] = (name, text, login, isReal) =>
+        rpc.handlers['Chat.Message'] = (name, text, login) =>
             autoscroll(() => {
                 let entry = $init.template('chat-message-template');
                 let e = entry.querySelector('.name');
                 // TODO maybe do this server-side? that'd allow us to hash the IP instead...
-                e.style.color = stringColor(login);
+                e.style.color = stringColor(`${name.length}:${name}${login}`);
                 e.textContent = name;
-                if (!isReal) {
+                if (!login) {
                     e.setAttribute('title', 'Anonymous user');
                     e.classList.add('anon');
                 } else {
@@ -371,7 +369,7 @@ Object.assign($init, {
 
         rpc.handlers['Chat.AcquiredName'] = (name, login) =>
             autoscroll(() => {
-                if (login === "") {
+                if (name === "") {
                     root.classList.remove('logged-in');
                     root.querySelector('.login-form').classList.add('error');
                 } else {

@@ -12,15 +12,13 @@ import (
 type Chat struct {
 	events  chan interface{}
 	Users   map[*chatter]int // A hash set. Values are ignored.
-	Names   map[string]*chatter
 	History ChatMessageQueue
 }
 
 type ChatMessage struct {
-	name   string
-	login  string
-	text   string
-	authed bool
+	name  string
+	login string
+	text  string
 }
 
 type ChatMessageQueue struct {
@@ -31,14 +29,8 @@ type ChatMessageQueue struct {
 type chatter struct {
 	name   string
 	login  string
-	authed bool
 	socket *websocket.Conn
 	chat   *Chat
-}
-
-type chatSetNameEvent struct {
-	user *chatter
-	name string
 }
 
 func (q *ChatMessageQueue) Push(x ChatMessage) {
@@ -66,7 +58,6 @@ func NewChat(qsize int) *Chat {
 	ctx := &Chat{
 		events:  make(chan interface{}),
 		Users:   make(map[*chatter]int),
-		Names:   make(map[string]*chatter),
 		History: ChatMessageQueue{make([]ChatMessage, 0, qsize), 0},
 	}
 	go ctx.handle()
@@ -89,41 +80,15 @@ func (c *Chat) handle() {
 		case *chatter:
 			if _, exists := c.Users[event]; exists {
 				delete(c.Users, event)
-				if event.login != "" {
-					delete(c.Names, event.login)
-				}
 				if closed && len(c.Users) == 0 {
 					return // if these events were left unhandled, senders would block forever
 				}
 			} else {
 				c.Users[event] = 0
-				if event.login != "" {
-					if old, exists := c.Names[event.login]; exists {
-						old.name = ""
-						old.login = ""
-						old.pushName("", "")
-					}
-					c.Names[event.login] = event
-					event.pushName(event.name, event.login)
-				}
 			}
 			for u := range c.Users {
 				u.pushViewerCount()
 			}
-
-		case chatSetNameEvent:
-			if _, ok := c.Names[event.name]; ok {
-				event.user.pushName(event.user.name, event.user.login)
-				continue
-			}
-			c.Names[event.name] = event.user
-			if event.user.login != "" {
-				delete(c.Names, event.user.login)
-			}
-			event.user.name = event.name
-			event.user.login = event.name
-			event.user.authed = false
-			event.user.pushName(event.name, event.name)
 
 		case ChatMessage:
 			c.History.Push(event)
@@ -139,7 +104,7 @@ func (c *Chat) Connect(ws *websocket.Conn, auth *UserData) *chatter {
 	if auth != nil {
 		chatter.name = auth.Name
 		chatter.login = auth.Login
-		chatter.authed = true
+		chatter.pushName()
 	}
 	c.events <- chatter
 	return chatter
@@ -189,15 +154,16 @@ func (ctx *chatter) SetName(args *RPCSingleStringArg, _ *interface{}) error {
 	if err := ValidateUsername(name); err != nil {
 		return err
 	}
-	ctx.chat.events <- chatSetNameEvent{ctx, name}
+	ctx.name = name
+	ctx.pushName()
 	return nil
 }
 
 func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error {
-	if ctx.login == "" {
+	if ctx.name == "" {
 		return errors.New("must obtain a name first")
 	}
-	msg := ChatMessage{ctx.name, ctx.login, strings.TrimSpace(args.First), ctx.authed}
+	msg := ChatMessage{ctx.name, ctx.login, strings.TrimSpace(args.First)}
 	if len(msg.text) == 0 || len(msg.text) > 256 {
 		return errors.New("message must have between 1 and 256 characters")
 	}
@@ -209,12 +175,12 @@ func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
 	return ctx.chat.History.Iterate(ctx.pushMessage)
 }
 
-func (ctx *chatter) pushName(name, login string) error {
-	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", name, login)
+func (ctx *chatter) pushName() error {
+	return RPCPushEvent(ctx.socket, "Chat.AcquiredName", ctx.name, ctx.login)
 }
 
 func (ctx *chatter) pushMessage(msg ChatMessage) error {
-	return RPCPushEvent(ctx.socket, "Chat.Message", msg.name, msg.text, msg.login, msg.authed)
+	return RPCPushEvent(ctx.socket, "Chat.Message", msg.name, msg.text, msg.login)
 }
 
 func (ctx *chatter) pushViewerCount() error {
