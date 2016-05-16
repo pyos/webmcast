@@ -50,15 +50,13 @@
                 <aside class="chat-tab"></aside>
                 <aside class="chat">
                     <h1>{{.ID}}</h1>
-                    <ul class="log" data-scrollbar>
-                        <li class="empty-message">No messages.</li>
-                    </ul>
+                    <ul class="log" data-scrollbar></ul>
+                    <div class="error-message"></div>
                     <div class="offline-message">Chat offline.</div>
                     <form class="login-form">
                         <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
                         <button tabindex="1" type="submit">Join</button>
                     </form>
-                    <div class="error-message"></div>
                     <form class="input-form">
                         <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="Write a message"></textarea>
                         <button tabindex="1" type="submit">Send</button>

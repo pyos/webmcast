@@ -287,51 +287,50 @@ body.no-video .chat {
     }
 }
 
-.chat h1,
-.chat .log,
-.chat .offline-message {
-    padding: 1em;
-}
-
 .chat h1 {
-    margin: 0 2em;
+    margin: 0 0.8em;
+    padding: 1em;
     font-size: 1.2em;
     font-weight: bold;
     text-align: center;
-    border-bottom: 1px solid rgba(127,127,127,0.5);
+    border-bottom: 1px solid rgba(127,127,127,0.33);
 }
 
 .chat .log {
     flex: 1 1 0;
     margin: 0;
+    padding: 1em 1em 0 1em;
+    display: flex;
     list-style: none;
     word-wrap: break-word;
+    flex-direction: column;
 }
 
-.chat .empty-message,
+.chat .log:before {
+    content: '';
+    margin-top: auto;
+}
+
 .chat .offline-message {
     opacity: 0.5;
+    padding: 1em;
 }
 
 .chat .error-message {
+    display: none;
     position: absolute;
-    left: 0;
-    right: 0;
+    left: 1em;
+    right: 1em;
     bottom: 100%;
     padding: 1em;
-    margin: 0.5em 1em;
     background: rgba(0,0,0,0.8);
     border-radius: 5px;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-    pointer-events: none;
 }
 
 .chat .error-message:after {
     position: absolute;
     top: 100%;
-    left: 50%;
-    margin-left: -1em;
+    left: calc(50% - 1em);
     border-top: 1em solid rgba(0,0,0,0.8);
     border-left: 1em solid transparent;
     border-right: 1em solid transparent;
@@ -339,8 +338,7 @@ body.no-video .chat {
 }
 
 .chat .error-message.visible {
-    opacity: 1;
-    pointer-events: auto;
+    display: block;
 }
 
 .chat .name {
@@ -355,10 +353,10 @@ body.no-video .chat {
 
 .chat form {
     position: relative;
-    padding: 0 1em 1em 1em;
+    padding: 1em;
 }
 
-.chat form > * {
+.chat form > :not(:first-child) {
     margin-top: 1em;
 }
 
@@ -384,7 +382,6 @@ body.no-video .chat {
 .player-block.theatre .player .fullscreen,
 .player-block:not(.theatre) .player:not(.is-fullscreen) .collapse,
 .no-fullscreen .player .fullscreen,
-.chat .empty-message:not(:only-of-type),
 .chat.online .offline-message,
 .chat.logged-in .login-form,
 .chat:not(.online) form,
