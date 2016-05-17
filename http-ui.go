@@ -1,28 +1,22 @@
 // GET /<name>
 //     Open a simple HTML5-based player with a stream-local chat.
 //
+// GET /user/
+// POST /user/
+//     >> password-old string, username, displayname, email, password, about optional[string]
+//
 // POST /user/new
-//     Create a new user, duh.
-//     Parameters: username string, password string, email string
+//     >> username, password, email string
 //
 // POST /user/login
-//     Obtain a session cookie.
-//     Parameters: username string, password string
+//     >> username, password string
 //
 // POST /user/restore
-//     Request a password reset.
-//     Parameters: username string OR email string
+//     >> username string OR email string
 //
 // GET /user/logout
-//     Remove the session cookie.
-//
-// GET,POST /user/cfg
-//     View/update the current user's data.
-//     Parameters: password-old string,
-//                 username, displayname, email, password, about string optional
 //
 // POST /user/new-token
-//     Request a new stream token.
 //
 package main
 
@@ -40,26 +34,6 @@ func NewUIHandler(c *Context) UIHandler {
 	return UIHandler{c}
 }
 
-func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
-	switch {
-	case r.URL.Path == "/":
-		if r.Method != "GET" {
-			return RenderInvalidMethod(w, "GET")
-		}
-		auth, err := ctx.GetAuthInfo(r)
-		if err != nil && err != ErrUserNotExist {
-			return err
-		}
-		return Render(w, http.StatusOK, Landing{auth})
-	case strings.HasPrefix(r.URL.Path, "/user/"):
-		return ctx.userControl(w, r, r.URL.Path[5:])
-	case !strings.ContainsRune(r.URL.Path[1:], '/'):
-		return ctx.player(w, r, r.URL.Path[1:])
-	default:
-		return RenderError(w, http.StatusNotFound, "")
-	}
-}
-
 func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code int) error {
 	ref := r.Referer()
 	if ref == "" {
@@ -69,122 +43,51 @@ func redirectBack(w http.ResponseWriter, r *http.Request, fallback string, code 
 	return nil
 }
 
-func (ctx UIHandler) player(w http.ResponseWriter, r *http.Request, id string) error {
-	if r.Method != "GET" {
-		return RenderInvalidMethod(w, "GET")
-	}
-
-	auth, err := ctx.GetAuthInfo(r)
+func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
+	user, err := ctx.GetAuthInfo(r)
 	if err != nil && err != ErrUserNotExist {
 		return err
 	}
 
-	tpl := Room{ID: id, Owned: auth != nil && id == auth.Login, Online: true, User: auth}
-	tpl.Meta, err = ctx.GetStreamMetadata(id)
-	switch err {
-	default:
-		return err
-	case ErrStreamNotExist:
-		return RenderError(w, http.StatusNotFound, "Invalid stream name.")
-	case ErrStreamOffline:
-		tpl.Online = false
-	case nil:
-	}
-	return Render(w, http.StatusOK, tpl)
-}
-
-func (ctx UIHandler) userControl(w http.ResponseWriter, r *http.Request, path string) error {
-	switch path {
-	case "/new":
-		switch r.Method {
-		case "GET":
-			return Render(w, http.StatusOK, UserNew(0))
-
-		case "POST":
-			username := strings.TrimSpace(r.FormValue("username"))
-			password := r.FormValue("password")
-			email := r.FormValue("email")
-
-			switch user, err := ctx.NewUser(username, email, []byte(password)); err {
-			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
-				return RenderError(w, http.StatusBadRequest, err.Error())
-			case ErrNotSupported:
-				return RenderError(w, http.StatusNotImplemented, "Authentication is disabled.")
-			case nil:
-				if err = ctx.SetAuthInfo(w, user.ID); err != nil {
-					return err
-				}
-				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
-				return nil
-			default:
-				return err
-			}
-		}
-		return RenderInvalidMethod(w, "GET, POST")
-
-	case "/login":
-		switch r.Method {
-		case "GET":
-			_, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
-				return Render(w, http.StatusOK, UserLogin(0))
-			}
-			if err == nil {
-				http.Redirect(w, r, "/user/cfg", http.StatusSeeOther)
-			}
-			return err
-
-		case "POST":
-			uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
-			if err == ErrUserNotExist {
-				return RenderError(w, http.StatusForbidden, "Invalid username/password.")
-			}
-			if err = ctx.SetAuthInfo(w, uid); err != nil {
-				return err
-			}
-			return redirectBack(w, r, "/", http.StatusSeeOther)
-		}
-		return RenderInvalidMethod(w, "GET, POST")
-
-	case "/restore":
-		switch r.Method {
-		case "GET":
-			return Render(w, http.StatusOK, UserRestore(0))
-
-		case "POST":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
-		}
-		return RenderInvalidMethod(w, "GET, POST")
-
-	case "/logout": // TODO some protection against XSS?
+	if r.URL.Path != "/" && !strings.ContainsRune(r.URL.Path[1:], '/') {
 		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
 		}
-		ctx.SetAuthInfo(w, -1) // should not fail
-		return redirectBack(w, r, "/", http.StatusSeeOther)
 
-	case "/cfg":
+		id := r.URL.Path[1:]
+		meta, err := ctx.GetStreamMetadata(id)
+		switch err {
+		default:
+			return err
+		case ErrStreamNotExist:
+			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
+		case err, ErrStreamOffline:
+		}
+		return Render(w, http.StatusOK, Room{ID: id, Meta: meta, User: user, Online: err == nil, Owned: user != nil && meta.OwnerID == user.ID})
+	}
+
+	switch r.URL.Path {
+	default:
+		return RenderError(w, http.StatusNotFound, "")
+
+	case "/":
+		if r.Method != "GET" {
+			return RenderInvalidMethod(w, "GET")
+		}
+		return Render(w, http.StatusOK, Landing{user})
+
+	case "/user/":
 		switch r.Method {
 		case "GET":
-			user, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
+			if user == nil {
 				http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 				return nil
-			}
-			if err != nil {
-				return err
 			}
 			return Render(w, http.StatusOK, UserConfig{user})
 
 		case "POST":
-			//     Parameters: password-old string,
-			//                 username, displayname, email, password, about string optional
-			user, err := ctx.GetAuthInfo(r)
-			if err == ErrUserNotExist {
+			if user == nil {
 				return RenderError(w, http.StatusForbidden, "Must be logged in.")
-			}
-			if err != nil {
-				return err
 			}
 			switch err = user.CheckPassword([]byte(r.FormValue("password-old"))); err {
 			default:
@@ -206,29 +109,85 @@ func (ctx UIHandler) userControl(w http.ResponseWriter, r *http.Request, path st
 			case ErrStreamActive:
 				return RenderError(w, http.StatusForbidden, "Stop streaming first.")
 			case nil:
-				return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+				return redirectBack(w, r, "/user/", http.StatusSeeOther)
 			}
 		}
 		return RenderInvalidMethod(w, "GET")
 
-	case "/new-token":
-		if r.Method != "POST" {
-			return RenderInvalidMethod(w, "POST")
-		}
-		user, err := ctx.GetAuthInfo(r)
-		if err == ErrUserNotExist {
-			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if err = ctx.NewStreamToken(user.ID); err != nil {
-			return err
-		}
-		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+	case "/user/new":
+		switch r.Method {
+		case "GET":
+			if user != nil {
+				http.Redirect(w, r, "/user/", http.StatusSeeOther)
+				return nil
+			}
+			return Render(w, http.StatusOK, UserNew(0))
 
-	case "/activate":
+		case "POST":
+			if user != nil {
+				return RenderError(w, http.StatusForbidden, "Already logged in.")
+			}
+			username := strings.TrimSpace(r.FormValue("username"))
+			password := r.FormValue("password")
+			email := r.FormValue("email")
+			switch user, err = ctx.NewUser(username, email, []byte(password)); err {
+			default:
+				return err
+			case ErrInvalidUsername, ErrInvalidPassword, ErrInvalidEmail, ErrUserNotUnique:
+				return RenderError(w, http.StatusBadRequest, err.Error())
+			case ErrNotSupported:
+				return RenderError(w, http.StatusNotImplemented, "Authentication is disabled.")
+			case nil:
+			}
+			if err = ctx.SetAuthInfo(w, user.ID); err != nil {
+				return err
+			}
+			return redirectBack(w, r, "/user/", http.StatusSeeOther)
+		}
+		return RenderInvalidMethod(w, "GET, POST")
+
+	case "/user/login":
+		switch r.Method {
+		case "GET":
+			if user != nil {
+				http.Redirect(w, r, "/user/", http.StatusSeeOther)
+				return nil
+			}
+			return Render(w, http.StatusOK, UserLogin(0))
+
+		case "POST":
+			if user != nil {
+				return RenderError(w, http.StatusForbidden, "Already logged in.")
+			}
+			uid, err := ctx.GetUserID(r.FormValue("username"), []byte(r.FormValue("password")))
+			if err == ErrUserNotExist {
+				return RenderError(w, http.StatusForbidden, "Invalid username/password.")
+			}
+			if err = ctx.SetAuthInfo(w, uid); err != nil {
+				return err
+			}
+			return redirectBack(w, r, "/user/", http.StatusSeeOther)
+		}
+		return RenderInvalidMethod(w, "GET, POST")
+
+	case "/user/restore":
+		switch r.Method {
+		case "GET":
+			return Render(w, http.StatusOK, UserRestore(0))
+
+		case "POST":
+			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+		}
+		return RenderInvalidMethod(w, "GET, POST")
+
+	case "/user/logout": // TODO some protection against XSS?
+		if r.Method != "GET" {
+			return RenderInvalidMethod(w, "GET")
+		}
+		ctx.SetAuthInfo(w, -1) // should not fail
+		return redirectBack(w, r, "/", http.StatusSeeOther)
+
+	case "/user/activate":
 		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
 		}
@@ -243,45 +202,45 @@ func (ctx UIHandler) userControl(w http.ResponseWriter, r *http.Request, path st
 		if err != nil {
 			return err
 		}
-		return redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+		return redirectBack(w, r, "/user/", http.StatusSeeOther)
 
-	case "/set-stream-name", "/add-stream-panel", "/set-stream-panel", "/del-stream-panel":
+	case "/user/new-token", "/user/set-stream-name", "/user/set-stream-panel", "/user/del-stream-panel":
 		if r.Method != "POST" {
 			return RenderInvalidMethod(w, "POST")
 		}
-
-		auth, err := ctx.GetAuthInfo(r)
-		if err == ErrUserNotExist {
+		if user == nil {
 			return RenderError(w, http.StatusForbidden, "You own no streams.")
 		}
-		if err != nil {
-			return err
-		}
 
-		switch path {
-		case "/set-stream-panel":
+		switch r.URL.Path {
+		case "/user/new-token":
+			err = ctx.NewStreamToken(user.ID)
+
+		case "/user/set-stream-name":
+			err = ctx.SetStreamName(user.ID, r.FormValue("value"))
+
+		case "/user/set-stream-panel":
 			// TODO image
 			if r.FormValue("id") != "" {
 				id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 				if err != nil {
 					return RenderError(w, http.StatusBadRequest, "Invalid panel id.")
 				}
-				err = ctx.SetStreamPanel(auth.ID, id, r.FormValue("value"))
+				err = ctx.SetStreamPanel(user.ID, id, r.FormValue("value"))
 			} else {
-				err = ctx.AddStreamPanel(auth.ID, r.FormValue("value"))
+				err = ctx.AddStreamPanel(user.ID, r.FormValue("value"))
 			}
-		case "/del-stream-panel":
+
+		case "/user/del-stream-panel":
 			id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
 			if err != nil {
 				return RenderError(w, http.StatusBadRequest, "Invalid panel id.")
 			}
-			err = ctx.DelStreamPanel(auth.ID, id)
-		default:
-			err = ctx.SetStreamName(auth.ID, r.FormValue("value"))
+			err = ctx.DelStreamPanel(user.ID, id)
 		}
 
 		if err == nil {
-			err = redirectBack(w, r, "/user/cfg", http.StatusSeeOther)
+			return redirectBack(w, r, "/user/", http.StatusSeeOther)
 		}
 		return err
 

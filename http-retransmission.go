@@ -1,4 +1,4 @@
-// POST /<name> or PUT /<name>
+// POST /stream/<name> or PUT /stream/<name>
 //     Broadcast a WebM video/audio file.
 //
 //     Accepted input: valid WebM split into arbitrarily many requests in absolutely
@@ -7,12 +7,12 @@
 //     Otherwise any connected decoders will error and have to restart. Changing,
 //     for example, bitrate or tags is fine.)
 //
-// GET /<name>
+// GET /stream/<name>
 //     Receive a published WebM stream. Note that the server makes no attempt
 //     at buffering; if the stream is being broadcast faster than its native framerate,
 //     the client will have to buffer and/or drop frames.
 //
-// GET /<name> with Upgrade: websocket
+// GET /stream/<name> [Upgrade: websocket]
 //     Connect to a JSON-RPC v2.0 node.
 //
 //     Methods of `Chat`:
