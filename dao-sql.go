@@ -23,7 +23,7 @@ type sqlDAO struct {
 		ActivateUser    *sql.Stmt "update users set actoken = NULL where id = ? and actoken = ?"
 		GetUserID       *sql.Stmt "select id, pwhash from users where login = ?"
 		GetUserInfo     *sql.Stmt "select name, login, email, pwhash, about, actoken, sectoken from users where id = ?"
-		GetStreamInfo   *sql.Stmt "select users.name, about, email, streams.name, server, video, audio, width, height, streams.id from users join streams on users.id = streams.user where login = ?"
+		GetStreamInfo   *sql.Stmt "select users.id, users.name, about, email, streams.name, server, video, audio, width, height, streams.id from users join streams on users.id = streams.user where login = ?"
 		SetStreamToken  *sql.Stmt "update users set sectoken = ? where id = ?"
 		SetStreamName   *sql.Stmt "update streams set name = ? where user = ?"
 		SetStreamTracks *sql.Stmt "update streams set video = ?, audio = ?, width = ?, height = ? where user in (select id from users where login = ?)"
@@ -200,7 +200,7 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 		if err != nil {
 			return "", err
 		}
-		query += "password = ?, "
+		query += "pwhash = ?, "
 		params = append(params, hash)
 	}
 
@@ -209,7 +209,7 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 
 	r, err := d.Exec(query, params...)
 	if err != nil {
-		if (name != "" || email != "") && d.userExists(name, email) {
+		if (login != "" || email != "") && d.userExists(login, email) {
 			return "", ErrUserNotUnique
 		}
 		return "", err
@@ -327,7 +327,7 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.prepared.GetStreamInfo.QueryRow(id).Scan(
-		&meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server, &meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
+		&meta.OwnerID, &meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server, &meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist

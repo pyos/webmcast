@@ -55,6 +55,7 @@ type StreamMetadata struct {
 	Name      string
 	Email     string
 	Server    string
+	OwnerID   int64
 	Panels    []StreamMetadataPanel
 	StreamTrackInfo
 }
