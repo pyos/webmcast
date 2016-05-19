@@ -68,7 +68,8 @@ let $init = {
 
         let ignoreOvershoot = ev => {
             let t = innermost(ev);
-            if ((ev.deltaY > 0 && t.scrollTop >= t.scrollHeight - t.clientHeight) || (ev.deltaY < 0 && t.scrollTop === 0))
+            if (t && ((ev.deltaY > 0 && t.scrollTop >= t.scrollHeight - t.clientHeight)
+                   || (ev.deltaY < 0 && t.scrollTop === 0)))
                 ev.preventDefault();
         };
 
