@@ -32,7 +32,7 @@
         </template>
         <article id="content" data-scrollbar data-stream-id="{{.ID}}">
             {{ template "nav.html" . }}
-            <section class="player-block invert-block">
+            <section class="player-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
                                   {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
@@ -47,7 +47,7 @@
                         <a href="#" class="button collapse" title="Normal view"></a>
                     </div>
                 </div>
-                <aside class="chat-tab"></aside>
+                <div class="chat-tab"></div>
                 <aside class="chat">
                     <h1>{{.ID}}</h1>
                     <ul class="log" data-scrollbar></ul>

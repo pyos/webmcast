@@ -1,6 +1,6 @@
-@media (min-width: 80em) {
+@media (min-width: 70rem) {
     .center-block {
-        max-width: 80em;
+        max-width: 70rem;
     }
 }
 
@@ -12,9 +12,11 @@
 }
 
 .player {
+    max-width: 55rem;
     overflow: hidden;
     position: relative;
     background: #000;
+    color: #fff;
 }
 
 .player svg,
@@ -34,14 +36,13 @@
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
     z-index: 256;
 }
 
 .player.is-fullscreen,
 .player.is-fullscreen svg,
 .player.is-fullscreen video,
+.player-block.theatre,
 .player-block.theatre .player,
 .player-block.theatre .player svg,
 .player-block.theatre .player video {
@@ -234,7 +235,7 @@
 
 .chat {
     width: 15%;
-    min-width: 20em;
+    min-width: 15rem;
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
@@ -244,7 +245,7 @@
 }
 
 body.no-video {
-    margin-right: 20em;
+    margin-right: 15rem;
 }
 
 body.no-video .chat {
@@ -252,7 +253,7 @@ body.no-video .chat {
     top: 0;
     right: 0;
     bottom: 0;
-    width: 20em;
+    width: 15rem;
     z-index: 128;
 }
 

@@ -40,14 +40,14 @@ img, svg, video, audio, canvas {
 }
 
 .center-block {
-    max-width: 60em;
+    max-width: 52.5rem;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
 }
 
 .center-block-small {
-    max-width: 30em;
+    max-width: 26.25rem;
 }
 
 .warning-block {
@@ -56,7 +56,7 @@ img, svg, video, audio, canvas {
 }
 
 .warning-block > .center-block {
-    padding: 2em;
+    padding: 2rem;
 }
 
 [data-scrollbar] {
