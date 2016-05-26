@@ -10,12 +10,10 @@ import (
 	"time"
 )
 
-type disallowDirectoryListing struct {
-	http.FileSystem
-}
+type disallowDirectoryListing http.Dir
 
 func (fs disallowDirectoryListing) Open(name string) (http.File, error) {
-	f, err := fs.FileSystem.Open(name)
+	f, err := http.Dir(fs).Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +68,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/static/", http.FileServer(disallowDirectoryListing{http.Dir(".")}))
+	mux.Handle("/static/", http.FileServer(disallowDirectoryListing(".")))
 	mux.Handle("/stream/", UnsafeHandler{NewRetransmissionHandler(&ctx)})
 	mux.Handle("/", UnsafeHandler{NewUIHandler(&ctx)})
 	log.Fatal(http.ListenAndServe(*bind, mux))
