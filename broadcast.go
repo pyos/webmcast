@@ -140,23 +140,20 @@ func (t ebmlTag) Skip(data []byte) []byte {
 }
 
 type BroadcastSet struct {
-	mutex   sync.Mutex // protects `streams`
+	mutex   sync.Mutex
 	streams map[string]*Broadcast
 	// How long to keep a stream alive after a call to `Close`.
 	Timeout time.Duration
-
+	// Called right after a stream is destroyed. (`Timeout` seconds after a `Close`.)
 	OnStreamClose     func(id string)
 	OnStreamTrackInfo func(id string, info *StreamTrackInfo)
 }
 
 type Broadcast struct {
 	StreamTrackInfo
-	onTrackInfoChange func()
-
 	closing time.Duration
 	Closed  bool
-	vlock   sync.Mutex // protects `viewers`. not RWMutex because there's only one reader.
-	viewers map[chan<- []byte]*viewer
+	dirty   bool // (Has unseen data in `StreamTrackInfo`.)
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
@@ -172,6 +169,9 @@ type Broadcast struct {
 	rateUnit float64
 	RateMean float64
 	RateVar  float64
+
+	vlock   sync.Mutex
+	viewers map[chan<- []byte]*viewer
 }
 
 type viewer struct {
@@ -184,9 +184,8 @@ type viewer struct {
 	// We group blocks into indeterminate-length clusters. So long as
 	// the cluster's timecode has not changed, there's no need to start a new one.
 	skipCluster bool
-	// To avoid decoding errors due to missing reference frames, the first
-	// frame of each track received by a viewer must be a keyframe.
-	// Each track for which a keyframe has been sent is marked by a bit here.
+	// Bit vector of tracks for which the viewer has both reference frames
+	// (the previous frame and the last keyframe.)
 	seenKeyframes uint32
 }
 
@@ -213,35 +212,21 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 		cast.closing = -1
 		return cast, true
 	}
-	emitInfo := false
-	cast := NewBroadcast()
-	cast.onTrackInfoChange = func() {
-		emitInfo = true
+	cast := Broadcast{
+		closing: -1,
+		viewers: make(map[chan<- []byte]*viewer),
 	}
 	ctx.streams[id] = &cast
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		for range ticker.C {
-			if emitInfo {
-				emitInfo = false
+			if cast.dirty {
+				cast.dirty = false
 				ctx.OnStreamTrackInfo(id, &cast.StreamTrackInfo)
 			}
 			if cast.closing >= 0 {
 				if cast.closing += time.Second; cast.closing > ctx.Timeout {
-					ctx.mutex.Lock()
-					delete(ctx.streams, id)
-					ctx.mutex.Unlock()
-					ticker.Stop()
-
-					cast.Closed = true
-					cast.vlock.Lock()
-					for _, cb := range cast.viewers {
-						cb.write([]byte{})
-					}
-					cast.vlock.Unlock()
-					if ctx.OnStreamClose != nil {
-						ctx.OnStreamClose(id)
-					}
+					break
 				}
 			}
 			// exponentially weighted moving moments at a = 0.5
@@ -251,15 +236,22 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 			cast.RateVar += cast.rateUnit*cast.rateUnit - cast.RateVar/2
 			cast.rateUnit = -cast.RateMean
 		}
+		ticker.Stop()
+
+		ctx.mutex.Lock()
+		delete(ctx.streams, id)
+		ctx.mutex.Unlock()
+		cast.Closed = true
+		cast.vlock.Lock()
+		for _, cb := range cast.viewers {
+			cb.write([]byte{})
+		}
+		cast.vlock.Unlock()
+		if ctx.OnStreamClose != nil {
+			ctx.OnStreamClose(id)
+		}
 	}()
 	return &cast, true
-}
-
-func NewBroadcast() Broadcast {
-	return Broadcast{
-		closing: -1,
-		viewers: make(map[chan<- []byte]*viewer),
-	}
 }
 
 func (cast *Broadcast) Close() error {
@@ -279,7 +271,7 @@ func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
 	}
 
 	cast.vlock.Lock()
-	cast.viewers[ch] = &viewer{write, skipHeaders, false, 0}
+	cast.viewers[ch] = &viewer{write: write}
 	cast.vlock.Unlock()
 }
 
@@ -350,10 +342,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 		case ebmlTagSegment:
-			cast.HasVideo = false
-			cast.HasAudio = false
-			cast.Width = 0
-			cast.Height = 0
+			cast.StreamTrackInfo = StreamTrackInfo{}
 			cast.tracks = append([]byte{}, buf...)
 			// Will recalculate this when the first block arrives.
 			cast.timecodeShift = 0
@@ -362,7 +351,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			// Default timecode resolution in Matroska is 1 ms. This value is required
 			// in WebM; we'll check just in case. Obviously, our timecode rewriting
 			// logic won't work with non-millisecond resolutions.
-			var scale uint64 = 0
+			scale := uint64(0)
 
 			for buf2 := tag.Contents(buf); len(buf2) != 0; {
 				tag2 := ebmlParseTag(buf2)
@@ -407,7 +396,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 				case ebmlTagTrackNumber:
 					// go needs sizeof.
-					if t := fixedUint(tag2.Contents(buf2)); t >= 32 {
+					if fixedUint(tag2.Contents(buf2)) >= 32 {
 						return 0, errors.New("too many tracks?")
 					}
 
@@ -439,9 +428,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 
 			cast.tracks = append(cast.tracks, buf...)
-			if cast.onTrackInfoChange != nil {
-				cast.onTrackInfoChange()
-			}
+			cast.dirty = true
 
 		case ebmlTagTracks:
 			cast.tracks = append(cast.tracks, buf...)
@@ -512,15 +499,11 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					if !cb.write(cast.header) || !cb.write(cast.tracks) {
 						continue
 					}
-
 					cb.skipHeaders = true
-					cb.skipCluster = false
 				}
-
 				if key {
 					cb.seenKeyframes |= trackMask
 				}
-
 				if cb.seenKeyframes&trackMask != 0 {
 					if !cb.skipCluster || ctc != cast.sentClusterTimecode {
 						cb.skipCluster = cb.write(cluster)
@@ -530,7 +513,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					}
 				}
 			}
-
 			cast.vlock.Unlock()
 			cast.sentClusterTimecode = ctc
 
