@@ -47,7 +47,7 @@ func (ctx UnsafeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	bind := flag.String("bind", ":8000", "The network ([ip]:port) to bind on.")
-	addr := flag.String("addr", "", "The public address (host[:port]) of this node. If not set, no other nodes must be active.")
+	addr := flag.String("addr", "", "The public address (host[:port]) of this node.")
 	ephemeral := flag.Bool("ephemeral", false, "Use a process-local in-memory userless database. Can only be enabled in joint mode.")
 	flag.Parse()
 
