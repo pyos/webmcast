@@ -22,9 +22,13 @@ Let's say a client connects at some point.
 
 ![Barely in time for the best part.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/3-client.png)
 
-So we give it the file header and an infinite segment with
-a description of tracks, then start forwarding clusters/blocks starting
-from the (chronologically) next keyframe!
+Naturally, we have to send the EBML header and track descriptions first.
+We can't just start forwarding frames yet, though. Each WebM frame may depend on three
+previously-seen frames: the last keyframe, the previous frame, and an Alternate
+Reference frame, none of which the client has yet, causing a decoding error if one
+is needed. The solution is to only start from the next keyframe, which, by definition,
+references nothing; sending it is always OK. Further frames cannot reference any frame
+that came before the keyframe, so we can proceed as normal.
 
 ![Oops, sorry, it was dropped.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/4-clients-data.png)
 
