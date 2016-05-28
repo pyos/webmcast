@@ -12,6 +12,10 @@ By setting the Segment's length to one of 7 reserved values
 (all of which mean "indeterminate"), it's possible to produce
 an infinite stream.
 
+>There is only one reserved word for Element Size encoding, which is an Element Size
+>encoded to all 1's. Such a coding indicates that the size of the Element is unknown,
+>which is a special case that we believe will be useful for live streaming purposes.
+
 ![Infinite EBML.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/2-webm-indeterminate.png)
 
 Let's say a client connects at some point.
@@ -33,7 +37,7 @@ Kind of like adaptive streaming, see?
 ![It's not the size of a cluster, it's the contents.](https://raw.githubusercontent.com/pyos/webmcast/resource-fork/README.md/5-many-segments-such-stream.png)
 
 Sounds simple, huh? So simple, in fact, someone probably already
-thought to do that. That's correct! We're
+thought to do that. That's right! We're
 [live-streaming Matroska](https://matroska.org/technical/streaming/index.html)!
 
 ### The Implementation
