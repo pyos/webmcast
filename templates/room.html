@@ -7,32 +7,32 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast // {{.ID}}</title>
     </head>
-    <body class="{{if not .Meta.HasVideo}}no-video{{end}}">
-        <template id="edit-name-template">
-            <form method="POST" action="/user/set-stream-name" data-xhrable>
-                <input type="text" name="value" />
-                <button type="submit">Save</button>
-            </form>
-        </template>
-        <template id="edit-panel-template">
-            <form method="POST" action="/user/set-stream-panel" data-xhrable>
-                <input type="hidden" name="id" value="" />
-                <textarea name="value" rows="6" cols="10"></textarea>
-                <p class="error"></p>
-                <button type="submit">Save</button>
-                <button type="reset">Cancel</button>
-                <button type="reset" class="remove">Remove</button>
-            </form>
-        </template>
-        <template id="chat-message-template">
-            <li class="message">
-                <span class="name"></span>
-                <span class="text"></span>
-            </li>
-        </template>
-        <article id="content" data-scrollbar data-stream-id="{{.ID}}">
-            {{ template "nav.html" . }}
-            <section class="player-block">
+    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}" data-stream-id="{{.ID}}">
+        <div data-scrollbar>
+            <template id="edit-name-template">
+                <form method="POST" action="/user/set-stream-name" data-xhrable>
+                    <input type="text" name="value" />
+                    <button type="submit">Save</button>
+                </form>
+            </template>
+            <template id="edit-panel-template">
+                <form method="POST" action="/user/set-stream-panel" data-xhrable>
+                    <input type="hidden" name="id" value="" />
+                    <textarea name="value" rows="6" cols="10"></textarea>
+                    <p class="error"></p>
+                    <button type="submit">Save</button>
+                    <button type="reset">Cancel</button>
+                    <button type="reset" class="remove">Remove</button>
+                </form>
+            </template>
+            <template id="chat-message-template">
+                <li class="message">
+                    <span class="name"></span>
+                    <span class="text"></span>
+                </li>
+            </template>
+            <div class="bg">{{ template "nav.html" . }}</div>
+            <section class="player-block bg">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
                                   {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
@@ -49,23 +49,23 @@
                 </div>
                 <div class="chat-tab"></div>
                 <aside class="chat">
-                    <h1>{{.ID}}</h1>
+                    <h1>#{{.ID}}</h1>
                     <ul class="log" data-scrollbar></ul>
                     <div class="error-message"></div>
                     <div class="offline-message">Chat offline.</div>
                     <form class="login-form">
-                        <input tabindex="1" type="text" class="input" placeholder="What's your name?" />
-                        <button tabindex="1" type="submit">Join</button>
+                        <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?"></textarea>
+                        <a href="#" class="button join" title="Join" data-submit></a>
                     </form>
                     <form class="input-form">
-                        <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="Write a message"></textarea>
-                        <button tabindex="1" type="submit">Send</button>
+                        <textarea tabindex="1" class="input" cols="1" rows="1"></textarea>
                         <a href="#" class="button ins-emoji" title="Emoji..."></a>
+                        <a href="#" class="button send" title="Send" data-submit></a>
                     </form>
                 </aside>
             </section>
-            <section class="stream-header user-header center-block">
-                <img class="avatar" alt="{{.ID}}" src="{{.Meta.Avatar 60}}" />
+            <section class="stream-header user-header">
+                <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
                 <div>
                     {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
@@ -76,7 +76,7 @@
                     <h2 class="viewers" title="Viewers">0</h2>
                 </div>
             </section>
-            <section class="stream-about center-block">
+            <section class="stream-about">
             {{- range $id, $_ := .Meta.Panels }}
                 <div class="panel">
                 {{- if $.Owned }}
@@ -93,11 +93,10 @@
             {{- end }}
             </section>
             {{ template "footer.html" }}
-        </article>
-
-        <script src="/static/js/vendored.min.js"></script>
-        <script src="/static/js/global.js"></script>
-        <script src="/static/js/markup.js"></script>
-        <script src="/static/js/room.js"></script>
+            <script src="/static/js/vendored.min.js"></script>
+            <script src="/static/js/global.js"></script>
+            <script src="/static/js/markup.js"></script>
+            <script src="/static/js/room.js"></script>
+        </div>
     </body>
 </html>

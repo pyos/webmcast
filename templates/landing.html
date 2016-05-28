@@ -6,67 +6,28 @@
         <link rel="stylesheet" href="/static/css/global.css" />
         <title>webmcast</title>
         <style>
-            h1 { font: bold 2.5em monospace; }
-            .row:nth-child(2n+1) { flex-direction: row-reverse; }
-            .row { padding: 1em; }
-            .row > * { padding: 1em; }
-            .row > :first-child { flex: 0 0; align-self: top; }
-            .row > :last-child { min-width: 200px; align-self: center; }
-            .row > :last-child > :first-child { margin-top: 0; }
-            .row > :last-child > :last-child { margin-bottom: 0; }
-            .row img { border-radius: 2em; max-width: calc(100vw - 4em); }
+            body {
+                background: #dde3e5;
+            }
+
+            #fullscreen {
+                display: flex;
+                padding: 0 2em;
+                flex-direction: column;
+                justify-content: center;
+                min-height: calc(100vh - 7.3em);
+            }
         </style>
     </head>
     <body>
-        <article id="content" data-scrollbar>
-            <div style="background:linear-gradient(180deg, #dde3e5, #dde3e5 246px, #e7e7e7 266px, #e7e7e7) #dde3e5">
-                {{ template "nav.html" . }}
-                <div class="center-block row">
-                    <div><img src="/static/img/aware-of-dog.png" alt="" /></div>
-                    <div>
-                        <h1>watch dog.</h1>
-                        <h2>Dogspotting as a Service</h2>
-                        <p>* (It's kinda hard to show the most popular streams when there are
-                              no streams at all, so have a stupid landing page instead.)</p>
-                    </div>
-                </div>
-            </div>
-            <section class="center-block row">
-                <div><img src="/static/img/observing-dog.png" alt="" /></div>
-                <div>
-                    <h2>1. Observe the dog</h2>
-                    <p>Mount a camera onto a sentry station and point it
-                       directly at your best friend.</p>
-                </div>
-            </section>
-            <section class="center-block row">
-                <div><img src="about:blank" width="350" height="233" alt="TODO" /></div>
-                <div>
-                    <h2>2. Broadcast the dog</h2>
-                    <p>Use cutting-edge opensource software to encode the video
-                       as a WebM file and send it over here.</p>
-                </div>
-            </section>
-            <section class="center-block row">
-                <div><img src="about:blank" width="350" height="233" alt="TODO" /></div>
-                <div>
-                    <h2>3. Watch the dog</h2>
-                    <p>View the stream over the 'net (short for internet)
-                       while discussing it with others in a conveniently placed chat
-                       at the same time.</p>
-                </div>
-            </section>
-            <section class="center-block" style="text-align:center;font-size:1.2em">
-            {{- if .User }}
-                <h2>Oh, look, you've already signed up.</h2>
-                <p>Sorry, the streaming guide is not ready yet. Figure it out yourself.</p>
-            {{- else }}
-                <h2>Yeah, uh...you have to sign up first.</h2>
-                <a class="text-button" href="/user/new">Okay!</a>
-            {{- end }}
+        <div data-scrollbar>
+            {{ template "nav.html" . }}
+            <section id="fullscreen">
+                <h1>...</h1>
+                <p>...</p>
             </section>
             {{ template "footer.html" }}
-        </article>
-        <script src="/static/js/global.js"></script>
+            <script src="/static/js/global.js"></script>
+        </div>
     </body>
 </html>

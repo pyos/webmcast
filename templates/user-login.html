@@ -7,12 +7,10 @@
         <title>webmcast // log in</title>
     </head>
     <body>
-        <article id="content" data-scrollbar>
+        <div data-scrollbar>
             {{ template "nav.html" }}
-            <section class="center-block center-block-small">
-                {{ template "form-user-login.html" }}
-            </section>
+            {{ template "form-user-login.html" }}
             {{ template "footer.html" }}
-        </article>
+        </div>
     </body>
 </html>

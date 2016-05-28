@@ -7,10 +7,10 @@
         <title>webmcast // user config</title>
     </head>
     <body>
-        <article id="content" data-scrollbar>
+        <div data-scrollbar>
             {{ template "nav.html" . }}
-            <div class="user-header center-block">
-                <img class="avatar" src="{{.User.Avatar 60}}" alt="Gravatar" />
+            <section class="user-header">
+                <img width="60" height="60" src="{{.User.Avatar 60}}" alt="Gravatar" />
                 <div>
                     <h1>Hey there, {{.User.Name}}.</h1>
                     <h2>Stream URL:
@@ -18,23 +18,21 @@
                      // <a href="/{{.User.Login}}">View</a>
                      // <a href="/stream/{{.User.Login}}">Download</a></h2>
                 </div>
-            </div>
-        {{ if not .User.Activated }}
-            <section class="warning-block">
-                <div class="center-block">
-                    <h2>Your account is not activated.</h2>
-                    <p>You will not be able to broadcast until you confirm
-                       your email address, {{.User.Email}}. (Check the inbox.)</p>
-                    <form method="GET" action="/user/activate">
-                        {{/* TODO remove this and instead offer to send another email. */}}
-                        <input type="hidden" name="uid" value="{{.User.ID}}" />
-                        <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
-                        <button type="submit">Or click here. Mail is not implemented yet.</button>
-                    </form>
-                </div>
             </section>
-        {{- end -}}
-            <section class="row center-block">
+        {{- if not .User.Activated }}
+            <section class="warning-block">
+                <h2>Your account is not activated.</h2>
+                <p>You will not be able to broadcast until you confirm
+                   your email address, {{.User.Email}}. (Check the inbox.)</p>
+                <form method="GET" action="/user/activate">
+                    {{/* TODO remove this and instead offer to send another email. */}}
+                    <input type="hidden" name="uid" value="{{.User.ID}}" />
+                    <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
+                    <button type="submit">Or click here. Mail is not implemented yet.</button>
+                </form>
+            </section>
+        {{- end }}
+            <section class="row">
                 <div class="form-wrapper">
                     <form method="POST" action="/user/new-token" data-xhrable>
                         <label>Your avatar is provided by Gravatar.</label>
@@ -69,8 +67,7 @@
                 </div>
             </section>
             {{ template "footer.html" }}
-        </article>
-
-        <script src="/static/js/global.js"></script>
+            <script src="/static/js/global.js"></script>
+        </div>
     </body>
 </html>

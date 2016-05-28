@@ -338,12 +338,19 @@ Object.assign($init, {
             });
         });
 
-        text.addEventListener('keydown', (ev) => {
-            if (ev.keyCode === 13 && !ev.shiftKey) {  // carriage return
-                ev.preventDefault();
-                form.dispatchEvent(new Event('submit', {cancelable: true}));
-            }
+        let submitParentForm = (ev) => {
+            ev.preventDefault();
+            for (let e = ev.target; e !== null; e = e.parentElement)
+                if (e.tagName === 'FORM')
+                    return e.dispatchEvent(new Event('submit', {cancelable: true}));
+        };
+
+        root.addEventListener('keydown', (ev) => {
+            if (ev.keyCode === 13 && !ev.shiftKey)  // carriage return
+                submitParentForm(ev);
         });
+
+        root.button('.button[data-submit]', submitParentForm);
 
         let stringColor = (str) => {
             let h = parseInt(sha1(str).slice(32), 16);
