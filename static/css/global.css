@@ -428,6 +428,7 @@ footer {
 
 .form-wrapper {
     padding: 2em;
+    min-width: 10rem;
 }
 
 body > * > .form-wrapper {

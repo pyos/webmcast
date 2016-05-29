@@ -1,9 +1,3 @@
-body.aside-chat nav,
-body.aside-chat section:not(.player-block),
-body.aside-chat footer {
-    max-width: 52.5rem;
-}
-
 .bg {
     background: #111;
     color: #fff;
@@ -30,7 +24,7 @@ body.aside-chat footer {
     max-height: calc(100vh - 3.8em);  /* - total height of nav */
 }
 
-.player.has-video {
+.player {
     max-width: 62rem;
 }
 
@@ -64,6 +58,10 @@ body.aside-chat footer {
         repeating-linear-gradient(90deg,transparent,transparent 49px,#111 49px,#111 50px),
         repeating-linear-gradient(180deg,#000,#000 49px,#111 49px,#111 50px);
     background-position: 50% 50%;
+}
+
+.player:not(.has-video)[data-status="playing"]:before {
+    content: '\f001';  /* music */
 }
 
 .player[data-status="error"]:before {
@@ -130,7 +128,7 @@ body.aside-chat footer {
 
 .player:not(.has-video) {
     width: 100%;
-    height: 2.5em;
+    height: 3em;
     overflow: visible;
     background: none;
 }
@@ -276,24 +274,28 @@ body.aside-chat footer {
     transition: transform 0.4s ease-in-out;
 }
 
-body.aside-chat {
-    margin-right: 17.5rem;
-}
+@media (min-width: 50em) {
+    body.aside-chat .chat {
+        position: absolute;
+        top: 6.8em;
+        bottom: 0;
+        min-height: 20rem;
+        transform: translateX(-100%);
+        color: #222;
+    }
 
-body.aside-chat .chat {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 128;
-    background: #0a0a0a;
+    body.aside-chat .stream-header,
+    body.aside-chat .stream-about,
+    body.aside-chat footer {
+        padding-right: 22em;
+    }
+
+    body.aside-chat .player {
+        max-width: 70rem;
+    }
 }
 
 @media (max-width: 50em) {
-    body.aside-chat {
-        margin-right: 0;
-    }
-
     .chat {
         position: fixed;
         top: 0;
@@ -348,7 +350,7 @@ body.aside-chat .chat {
 
 .chat .offline-message {
     opacity: 0.5;
-    padding: 1em;
+    padding: 0.639em 1em;
 }
 
 .chat .error-message {
@@ -356,10 +358,12 @@ body.aside-chat .chat {
     position: absolute;
     left: 1em;
     right: 1em;
-    bottom: 100%;
+    bottom: calc(100% + 1em);
     padding: 1em;
-    background: rgba(0,0,0,0.8);
     border-radius: 5px;
+    text-align: center;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
 }
 
 .chat .error-message:after {
