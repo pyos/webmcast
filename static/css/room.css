@@ -60,10 +60,6 @@
     background-position: 50% 50%;
 }
 
-.player:not(.has-video)[data-status="playing"]:before {
-    content: '\f001';  /* music */
-}
-
 .player[data-status="error"]:before {
     content: '\f071';  /* exclamation-triangle */
 }
@@ -128,17 +124,25 @@
 
 .player:not(.has-video) {
     width: 100%;
-    height: 3em;
+    height: 2.75em;
     overflow: visible;
     background: none;
 }
 
-.player:not(.has-video):before {
-    left: 1em;
+.player:not(.has-video) .controls {
+    padding-left: 2em;
 }
 
-.player:not(.has-video) .controls {
-    padding-left: 6em;
+.player .play:before {
+    content: '\f04b';  /* play */
+}
+
+.player[data-status="ended"] .play:before {
+    content: '\f00d';
+}
+
+.player .stop:before {
+    content: '\f04d';  /* stop */
 }
 
 .player .mute:before {
@@ -202,14 +206,6 @@
 }
 
 @media (max-width: 30em) {
-    .player:not(.has-video):before {
-        left: 0;
-    }
-
-    .player:not(.has-video) .controls {
-        padding-left: 2em;
-    }
-
     .stream-about {
         padding: 0;
     }
@@ -277,7 +273,7 @@
 @media (min-width: 50em) {
     body.aside-chat .chat {
         position: absolute;
-        top: 6.8em;
+        top: 6.55em;
         bottom: 0;
         min-height: 20rem;
         transform: translateX(-100%);
@@ -417,6 +413,9 @@
 }
 
 .player[data-status="playing"] svg,
+.player[data-status="playing"] .play,
+.player[data-status="loading"] .play,
+.player:not([data-status="playing"]):not([data-status="loading"]) .stop,
 .player:not([data-status="playing"]) video,
 .player:not(.has-audio) .mute,
 .player:not(.has-audio) .volume,

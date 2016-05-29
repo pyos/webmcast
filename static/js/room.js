@@ -25,23 +25,29 @@ Element.prototype.button = function (selector, f) {
 };
 
 
+const RPC_STATE_INIT     = 0;
+const RPC_STATE_OPEN     = 1;
+const RPC_STATE_CLOSED   = 2;
+const RPC_STATE_REDIRECT = 3;
+
+
 let RPC = function () {
     this.nextID   = 0;
-    this.state    = 0;
+    this.state    = RPC_STATE_INIT;
     this.objects  = [];
     this.awaiting = {};
     this.handlers = {
         'RPC.Redirect': url => {
             if (url.substr(0, 2) == "//")
                 url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
-            this.state = 3;
+            this.state = RPC_STATE_REDIRECT;
             this.open(url);
         },
 
         'RPC.Loaded': _ => {
+            this.state = RPC_STATE_OPEN;
             for (let object of this.objects)
                 object.load();
-            this.state = 1;
         }
     };
 };
@@ -51,13 +57,13 @@ RPC.prototype.open = function (url) {
     if (this.socket)
         this.socket.close();
 
-    this.state  = 0;
+    this.state  = RPC_STATE_INIT;
     this.socket = new WebSocket(this.url = url);
     this.socket.onclose = _ => {
-        if (this.state !== 3) {
+        if (this.state !== RPC_STATE_REDIRECT) {
+            this.state = RPC_STATE_CLOSED;
             for (let object of this.objects)
                 object.unload();
-            this.state = 2;
         }
     };
 
@@ -81,9 +87,9 @@ RPC.prototype.open = function (url) {
 
 
 RPC.prototype.register = function (obj) {
-    if (this.state === 1)
+    if (this.state === RPC_STATE_OPEN)
         obj.load();
-    if (this.state === 2)
+    if (this.state === RPC_STATE_CLOSED)
         obj.unload();
     this.objects.push(obj);
 };
@@ -163,11 +169,13 @@ Object.assign($init, {
             // let leftPad = require('left-pad');
             setStatus('playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
 
-        let onError = code => setStatus('error',
+        let onError = code => setStatus(
+              code === 4 ? (stream && stream.rpc.state === RPC_STATE_OPEN ? 'stopped' : 'ended') :'error',
+
               code === 1 ? 'aborted'
             : code === 2 ? 'network error'
             : code === 3 ? 'decoding error'
-            : code === 4 ? 'stream ended'
+            : code === 4 ? (stream && stream.rpc.state === RPC_STATE_OPEN ? 'stopped' : 'stream ended')
             : 'unknown error');
 
         video.addEventListener('loadstart',      _ => setStatus('loading'));
@@ -176,6 +184,26 @@ Object.assign($init, {
         video.addEventListener('ended',          _ => onError(4 /* "unsupported media" */));
         video.addEventListener('error',          _ => onError(video.error.code));
 
+        let stream = getParentStream(e);
+        let play = () => {
+            if (stream && stream.rpc.state === RPC_STATE_OPEN) {
+                setStatus('loading');
+                // TODO measure connection speed, request a stream
+                video.src = stream.rpc.url.replace('ws', 'http');
+                video.play();
+            }
+        };
+
+        let stop = () => {
+            setStatus('loading');
+            video.src = '';
+        };
+
+        if (stream) {
+            setStatus('loading', 'connecting');
+            stream.rpc.register({ load: play, unload: stop });
+        }
+
         let showControls = delayedPair(3000,
             () => e.classList.remove('hide-controls'),
             () => e.classList.add('hide-controls'));
@@ -183,6 +211,8 @@ Object.assign($init, {
         e.addEventListener('mousemove', showControls);
         e.addEventListener('focusin',   showControls);
         e.addEventListener('keydown',   showControls);
+        e.button('.play', play);
+        e.button('.stop', stop);
         e.button('.mute',       _ => video.muted = !video.muted);
         e.button('.fullscreen', _ => screenfull.request(e));
         e.button('.collapse',   _ => screenfull.exit());
@@ -228,22 +258,6 @@ Object.assign($init, {
                          : ev.keyCode === 39 ? Math.min(1, video.volume + 0.05)  // right arrow
                          : video.volume);
         onVolumeChange(null);
-
-        let stream = getParentStream(e);
-        if (stream) {
-            setStatus('loading');
-            stream.rpc.register({
-                load() {
-                    // TODO measure connection speed, request a stream
-                    video.src = stream.rpc.url.replace('ws', 'http');
-                    video.play();
-                },
-
-                unload() {
-                    video.src = '';
-                },
-            });
-        }
     },
 
     '.stream-header'(e) {

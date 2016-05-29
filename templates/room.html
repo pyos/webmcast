@@ -34,11 +34,13 @@
             <div class="bg">{{ template "nav.html" . }}</div>
             <section class="player-block bg">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
-                                  {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="error">
+                                  {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="stopped">
                     {{- /* `video` with `height: auto` will always use the default aspect ratio.
                         so instead we enforce the size of this element with an empty image. */}}
                     <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                     <video crossorigin="anonymous"></video><div class="controls">
+                        <a href="#" class="button play" title="Play"></a>
+                        <a href="#" class="button stop" title="Stop"></a>
                         <a href="#" class="button mute" title="Mute"></a>
                         <div tabindex="0" class="volume" title="Volume"><div class="slider"></div></div>
                         <div class="status">not connected</div>
