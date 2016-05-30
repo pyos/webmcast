@@ -9,6 +9,11 @@
     justify-content: center;
 }
 
+.player-block .button.icon {
+    font-size: 1.66em;
+    color: inherit;
+}
+
 .player {
     overflow: hidden;
     position: relative;
@@ -21,16 +26,17 @@
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
-    max-height: calc(100vh - 3.8em);  /* - total height of nav */
+    max-height: calc(100vh - 3.5rem);
 }
 
 .player {
-    max-width: 62rem;
+    max-width: 70rem;
 }
 
+.chat,
 .player.has-video svg,
 .player.has-video video {
-    min-height: 240px;
+    min-height: 20rem;
 }
 
 .player-block.theatre {
@@ -53,17 +59,6 @@
     max-height: none;
 }
 
-.player:not([data-status="playing"]) {
-    background-image:
-        repeating-linear-gradient(90deg,transparent,transparent 49px,#111 49px,#111 50px),
-        repeating-linear-gradient(180deg,#000,#000 49px,#111 49px,#111 50px);
-    background-position: 50% 50%;
-}
-
-.player[data-status="error"]:before {
-    content: '\f071';  /* exclamation-triangle */
-}
-
 .player .controls {
     display: flex;
     position: absolute;
@@ -73,6 +68,17 @@
     padding: 0 0.5em;
     align-items: center;
     transition: opacity 0.3s ease-in-out;
+}
+
+.player:not([data-status="playing"]) {
+    background-image:
+        repeating-linear-gradient(90deg,transparent,transparent 49px,#111 49px,#111 50px),
+        repeating-linear-gradient(180deg,#000,#000 49px,#111 49px,#111 50px);
+    background-position: 50% 50%;
+}
+
+.player[data-status="error"]:before {
+    content: '\f071';  /* exclamation-triangle */
 }
 
 .player.has-video[data-status="playing"] .controls {
@@ -94,7 +100,6 @@
 .player .status {
     flex: 1;
     padding: 0.5em 1em;
-    font-size: 1.1em;
     overflow: hidden;
     font-weight: bold;
     text-overflow: ellipsis;
@@ -109,7 +114,7 @@
 .player .volume:before {
     content: ' ';
     display: block;
-    border-top: 1.66em /* = line-height */ solid transparent;
+    border-top: 1.5em solid transparent;
     border-right: 7em solid rgba(255,255,255,0.3);
 }
 
@@ -118,13 +123,13 @@
     top: 0;
     right: 0;
     bottom: 0;
-    border: 1px solid #fff;
+    border: 2px solid #fff;
     border-radius: 1px;
 }
 
 .player:not(.has-video) {
     width: 100%;
-    height: 2.75em;
+    height: 3rem;
     overflow: visible;
     background: none;
 }
@@ -133,56 +138,9 @@
     padding-left: 2em;
 }
 
-.player .play:before {
-    content: '\f04b';  /* play */
-}
-
-.player[data-status="ended"] .play:before {
-    content: '\f00d';
-}
-
-.player .stop:before {
-    content: '\f04d';  /* stop */
-}
-
-.player .mute:before {
-    content: '\f028';  /* volume-up */
-}
-
-.player.muted .mute:before {
-    content: '\f026';  /* volume-off */
-}
-
-.player .theatre:before {
-    content: '\f065';  /* expand */
-}
-
-.player .fullscreen:before {
-    content: '\f0b2';  /* arrows-alt */
-}
-
-.player .collapse:before {
-    content: '\f066';  /* compress */
-}
-
-.edit > a:before {
-    font: normal 1em FontAwesome;
-    content: '\f040';  /* pencil */
-}
-
-.stream-header .creator:before {
-    content: 'by ';
-}
-
-.stream-header .viewers:before {
-    font: normal 1em FontAwesome;
-    content: '\f06e';  /* eye */
-    margin-right: 0.5em;
-}
-
 .stream-header .edit {
     float: left;
-    margin-right: 0.33em;
+    font-size: 1.4em;
 }
 
 .stream-header form + .edit,
@@ -192,17 +150,17 @@
 
 .stream-header form input,
 .stream-header form button {
-    min-height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
+    height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
 }
 
 .stream-about {
-    column-gap: 1em;
-    -moz-column-gap: 1em;
-    -webkit-column-gap: 1em;
+    column-gap: 1rem;
+    -moz-column-gap: 1rem;
+    -webkit-column-gap: 1rem;
     column-count: 2;
     -moz-column-count: 2;
     -webkit-column-count: 2;
-    padding: 0 2em;
+    padding: 0 2rem;
 }
 
 @media (max-width: 30em) {
@@ -221,24 +179,25 @@
 
 .stream-about .panel {
     position: relative;
-    background: #fafaf6;
     min-height: 200px;
-    padding: 1px 1em;
+    padding: 1px 1rem;
     word-wrap: break-word;
     box-sizing: border-box;
     break-inside: avoid;
     page-break-inside: avoid;
     -moz-column-break-inside: avoid;
     -webkit-column-break-inside: avoid;
+    background: #fafaf6;
 }
 
 .stream-about .panel:not(:last-child) {
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
 }
 
 .stream-about .edit {
     float: right;
-    margin-left: 1em;
+    font-size: 1.33em;
+    margin-right: -1rem;
 }
 
 .stream-about form ~ * {
@@ -252,17 +211,17 @@
     right: 0;
     bottom: 0;
     z-index: 1;
-    padding: 0.5em;
+    padding: 0.5rem;
 }
 
 .stream-about form textarea {
+    width: 100%;
     display: block;
     margin-bottom: 1em;
-    width: 100%;
 }
 
 .chat {
-    width: 17.5rem;
+    width: 20rem;
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
@@ -273,9 +232,8 @@
 @media (min-width: 50em) {
     body.aside-chat .chat {
         position: absolute;
-        top: 6.55em;
+        top: 6.5rem;
         bottom: 0;
-        min-height: 20rem;
         transform: translateX(-100%);
         color: #222;
     }
@@ -283,11 +241,11 @@
     body.aside-chat .stream-header,
     body.aside-chat .stream-about,
     body.aside-chat footer {
-        padding-right: 22em;
+        padding-right: 22rem;
     }
 
     body.aside-chat .player {
-        max-width: 70rem;
+        max-width: 80rem;
     }
 }
 
@@ -346,7 +304,7 @@
 
 .chat .offline-message {
     opacity: 0.5;
-    padding: 0.639em 1em;
+    padding: 0.629em 1em;
 }
 
 .chat .error-message {
@@ -396,25 +354,12 @@
     width: 100%;
 }
 
-.chat .button:before {
-    font-size: 0.9em;
-}
-
-.chat .button.join:before {
-    content: '\f090';  /* sign-in */
-}
-
-.chat .button.ins-emoji:before {
-    content: '\f118';  /* smile-o */
-}
-
-.chat .button.send:before {
-    content: '\f1d8';  /* paper-plane = send */
-}
-
 .player[data-status="playing"] svg,
 .player[data-status="playing"] .play,
 .player[data-status="loading"] .play,
+.player[data-connected] .reload,
+.player:not([data-connected]) .play,
+.player:not([data-connected]) .stop,
 .player:not([data-status="playing"]):not([data-status="loading"]) .stop,
 .player:not([data-status="playing"]) video,
 .player:not(.has-audio) .mute,
@@ -423,6 +368,8 @@
 .player:not(.has-video) video,
 .player:not(.has-video) .theatre,
 .player:not(.has-video) .fullscreen,
+.player:not(.muted) .unmute,
+.player.muted .mute,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
 .player-block.theatre .player .theatre,

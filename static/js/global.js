@@ -120,14 +120,16 @@ let $init = {
         inner.classList.add('modal');
         close.classList.add('button');
         close.classList.add('close');
+        close.classList.add('icon');
+        close.setAttribute('href', '#');
         scroll.setAttribute('data-scrollbar', '');
         scroll.appendChild(e);
         parent.appendChild(outer);
         inner.appendChild(scroll);
         inner.appendChild(close);
         outer.appendChild(inner);
-        outer.addEventListener('click', (e) => e.target === e.currentTarget ? outer.remove() : 1);
-        close.addEventListener('click', (e) => outer.remove());
+        outer.addEventListener('click', (ev) => ev.target === ev.currentTarget ? outer.remove() : 1);
+        close.addEventListener('click', (ev) => (ev.preventDefault(), outer.remove()));
         // if the [data-scrollbar] initializer has already run, this element would be left
         // uninitialized. good thing that particular initializer is idempotent...
         $init['[data-scrollbar]'](scroll);

@@ -6,15 +6,15 @@
 }
 
 html, body {
+    margin: 0;
     height: 100%;
     overflow: hidden;
     position: relative;
 }
 
-body {
+html {
     font: normal 14px/1.5 sans-serif;
     color: #222;
-    margin: 0;
 }
 
 body > [data-scrollbar]:only-child {
@@ -30,13 +30,57 @@ a:link, a:visited {
     color: #a168ad;
 }
 
-a:link:not(:hover), a:visited:not(:hover) {
+a:not(:hover) {
     text-decoration: none;
 }
 
 img, svg, video, audio, canvas {
-    /* do not reserve space for descenders */
-    vertical-align: middle;
+    vertical-align: middle;  /* do not reserve space for descenders */
+}
+
+nav, section, footer {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+nav, footer {
+    display: flex;
+    padding: 0 1rem;
+    align-items: center;
+}
+
+nav {
+    height: 3.5rem;
+}
+
+nav > * {
+    margin: 0 1rem;
+}
+
+nav .brand {
+    color: inherit;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+footer {
+    color: #666;
+    flex-wrap: wrap;
+}
+
+footer > * {
+    padding: 1rem;
+}
+
+.icon {
+    font: 1em/1 FontAwesome;
+}
+
+.spacer {
+    flex: 1;
+    margin: 0;
 }
 
 [data-scrollbar] {
@@ -51,8 +95,8 @@ img, svg, video, audio, canvas {
     overflow: hidden;
     top: 5px;
     right: 5px;
-    bottom: 5px;
     width: 5px;
+    bottom: 5px;
     z-index: 255;
     border-radius: 2px;
     background: rgba(127,127,127,0.3);
@@ -74,11 +118,10 @@ img, svg, video, audio, canvas {
     cursor: pointer;
     margin: 0;
     padding: 0.5em 1em;
-    border-bottom: 1px solid #a168ad;
 }
 
 [data-tabs] > .tabbar > .active {
-    border-bottom-width: 4px;
+    border-bottom: 4px solid #a168ad;
 }
 
 [data-status]:before {
@@ -89,8 +132,7 @@ img, svg, video, audio, canvas {
     left: 50%;
     width: 1em;
     height: 1em;
-    margin-top: -0.5em;  /* alternatively, `top: calc(50% - 0.5em);`... */
-    margin-left: -0.5em;
+    margin: -0.5em 0 0 -0.5em;
     z-index: 2;
 }
 
@@ -108,7 +150,7 @@ img, svg, video, audio, canvas {
     100% {transform: rotate(359deg);}
 }
 
-[data-markup] + [data-markup] {
+[data-markup] + [data-markup=""] {
     display: none;
 }
 
@@ -120,12 +162,6 @@ img, svg, video, audio, canvas {
 [data-markup] h2 { font-size: 1.2em; }
 [data-markup] h3 { font-size: 1.1em; }
 
-[data-markup] a[title]:after {
-    font: normal 1em/1 FontAwesome;
-    content: '\f14c';  /* external-link-square */
-    margin-left: 0.33em;
-}
-
 [data-markup] blockquote {
     margin: 0;
     padding-left: 1em;
@@ -135,9 +171,7 @@ img, svg, video, audio, canvas {
 [data-markup] hr {
     border: 0;
     border-bottom: 1px dashed;
-    margin: 0 2em;
-    background: #777;
-    opacity: 0.33;
+    opacity: 0.5;
 }
 
 [data-markup] pre {
@@ -174,21 +208,16 @@ input[type="text"],
 input[type="email"],
 input[type="password"] {
     -webkit-appearance: none;
-    margin: 0;
-    height: 2em;
-    padding: 0.33em;
-    box-sizing: border-box;
-    vertical-align: middle;
-    font: inherit;
-    color: #444;
+    background: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
-    background: #fff;
-    transition: all linear 0.2s;
-}
-
-textarea {
-    height: auto;
+    box-sizing: border-box;
+    color: #444;
+    font: inherit;
+    margin: 0;
+    padding: 0.25em 0.5em;
+    transition: background-color linear 0.2s;
+    vertical-align: middle;
 }
 
 textarea:focus,
@@ -205,8 +234,8 @@ input[type="text"]:disabled,
 input[type="email"]:disabled,
 input[type="password"]:disabled {
     color: #999;
-    border-color: #ddd;
-    background-color: #fafafa;
+    background: #fafafa;
+    border-color: #dddddd;
 }
 
 form.error textarea:not(:disabled),
@@ -225,122 +254,60 @@ button::-moz-focus-inner {
 
 button {
     -webkit-appearance: none;
-    display: inline-block;
-    font: inherit;
-    margin: 0;
-    padding: 0 1em;
-    color: #444;
-    text-align: center;
-    text-transform: none;
-    vertical-align: middle;
-    min-height: 2.5em;
+    background: #f7d358;
     border: 1px solid rgba(0,0,0,0.06);
     border-radius: 6px;
-    background-color: #f7d358;
+    box-sizing: border-box;
+    color: #444;
+    font: inherit;
+    font-weight: bold;
+    margin: 0;
+    padding: 0.5em 1em;
+    vertical-align: middle;
 }
 
 button:not(:disabled) {
     cursor: pointer;
 }
 
-button:focus {
-    outline: none;
-    box-shadow: 0 0 5px #cfac33;
-}
-
 button:active {
-    background-color: #cfac33;
+    background: #cfac33;
 }
 
 button:disabled {
     color: #999;
+    background: #fafafa;
     border-color: rgba(0,0,0,0.06);
-    background-color: #fafafa;
 }
 
 button[type="reset"] {
-    background-color: #f0f0f0;
-}
-
-button[type="reset"]:focus {
-    box-shadow: 0 0 5px #ccc;
+    background: #f0f0f0;
 }
 
 button[type="reset"]:active {
-    background-color: #ddd;
+    background: #ddd;
 }
 
-a.text-button {
+a.button:not(.icon) {
+    background: #a168ad;
+    border-radius: 6px;
+    color: #eee;
     display: inline-block;
     padding: 0.5em 1em;
-    color: #eee;
-    border-radius: 6px;
-    background-color: #a168ad;
 }
 
-a.text-button:focus {
-    outline: 0;
-    box-shadow: 0 0 5px #a168ad;
+a.button:not(.icon):active {
+    background: #91489d;
 }
 
-a.text-button:active {
-    background-color: #91489d;
-}
-
-a.button {
-    font: normal 1.66em/1 FontAwesome;
+a.button.icon {
+    display: inline-block;
     width: 1em;
     height: 1em;
     padding: 0.33em;
-    color: inherit;
     text-align: center;
-    display: inline-block;
-    vertical-align: middle;
-    transition: text-shadow 0.1s ease-in-out;
-}
-
-a.button:hover,
-a.button:focus {
-    text-shadow: 0 0 0.33em;
     text-decoration: none;
-}
-
-nav {
-    display: flex;
-    padding: 1em 2em;
-    align-items: center;
-}
-
-nav > .brand {
-    color: inherit;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-nav > .spacer {
-    flex: 1;
-}
-
-nav > :not(:first-child) {
-    margin-left: 1.66em;
-}
-
-nav > button,
-nav > a.text-button {
-    margin-top: -0.5em;
-    margin-bottom: -0.5em;
-}
-
-nav, section, footer {
-    max-width: 70rem;
-    margin-left: auto;
-    margin-right: auto;
-    box-sizing: border-box;
-}
-
-footer {
-    padding: 1em 2em;
-    color: #777;
+    vertical-align: middle;
 }
 
 .modal-bg {
@@ -355,7 +322,7 @@ footer {
 
 .modal {
     margin: 0 auto;
-    max-width: 30em;
+    max-width: 30rem;
     overflow: hidden;
     position: relative;
     background: #fff;
@@ -369,11 +336,10 @@ footer {
     position: absolute;
     top: 0;
     right: 0;
-    color: #ccc;
 }
 
 .modal > .close:before {
-    content: '\f00d';  /* close */
+    content: '\f00d';
 }
 
 .row {
@@ -386,9 +352,23 @@ footer {
 }
 
 .user-header {
-    padding: 2em;
+    padding: 1.5rem;
     display: flex;
     align-items: center;
+}
+
+.user-header > * {
+    margin: 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.user-header > img {
+    flex-shrink: 0;
+}
+
+.user-header > img + * {
+    flex: 1;
 }
 
 .user-header h1 {
@@ -399,25 +379,12 @@ footer {
     text-overflow: ellipsis;
 }
 
-.user-header h2 {
-    display: inline-block;
-    margin: 0;
-    font-size: 1.2em;  /* (h1.font-size + h2.font-size) * line-height = 4.2em ~= 58.8px */
+.user-header h1 ~ * {
+    font-size: 1.2em;
 }
 
-.user-header > img {
-    flex-shrink: 0;
-}
-
-.user-header > :nth-child(2) {
-    flex: 1;
-    max-width: 100%;
-    overflow: hidden;
-}
-
-.user-header > :nth-child(2),
-.user-header > :nth-child(3) h2 {
-    margin-left: 1em;
+.user-header > .spacer ~ * {
+    text-align: center;
 }
 
 .warning-block {
@@ -426,28 +393,30 @@ footer {
     background: repeating-linear-gradient(-60deg, #ffc, #ffc 100px, #ffd 100px, #ffd 200px) #ffc;
 }
 
+.warning-block > h2 {
+    margin-top: 0;
+}
+
 .form-wrapper {
-    padding: 2em;
+    padding: 2rem;
     min-width: 10rem;
 }
 
 body > * > .form-wrapper {
+    margin: 0 auto;
     max-width: 20rem;
-    padding: 0 2em;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .form-wrapper > form > * {
     display: block;
 }
 
-.form-wrapper :not(label) + * {
-    margin-top: 1em;
-}
-
 .form-wrapper label {
     font-weight: bold;
+}
+
+.form-wrapper :not(label) + * {
+    margin-top: 1em;
 }
 
 .form-wrapper .notice {

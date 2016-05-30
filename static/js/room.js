@@ -188,6 +188,7 @@ Object.assign($init, {
         let play = () => {
             if (stream && stream.rpc.state === RPC_STATE_OPEN) {
                 setStatus('loading');
+                e.dataset.connected = 1;
                 // TODO measure connection speed, request a stream
                 video.src = stream.rpc.url.replace('ws', 'http');
                 video.play();
@@ -197,6 +198,8 @@ Object.assign($init, {
         let stop = () => {
             setStatus('loading');
             video.src = '';
+            if (stream && stream.rpc.state !== RPC_STATE_OPEN)
+                delete e.dataset.connected;
         };
 
         if (stream) {
@@ -213,7 +216,9 @@ Object.assign($init, {
         e.addEventListener('keydown',   showControls);
         e.button('.play', play);
         e.button('.stop', stop);
-        e.button('.mute',       _ => video.muted = !video.muted);
+        e.button('.reload',     _ => location.href = '');
+        e.button('.mute',       _ => video.muted = true);
+        e.button('.unmute',     _ => video.muted = false);
         e.button('.fullscreen', _ => screenfull.request(e));
         e.button('.collapse',   _ => screenfull.exit());
 

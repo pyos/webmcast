@@ -39,14 +39,16 @@
                         so instead we enforce the size of this element with an empty image. */}}
                     <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                     <video crossorigin="anonymous"></video><div class="controls">
-                        <a href="#" class="button play" title="Play"></a>
-                        <a href="#" class="button stop" title="Stop"></a>
-                        <a href="#" class="button mute" title="Mute"></a>
+                        <a href="#" class="button icon play" title="Play">&#xf04b;</a>
+                        <a href="#" class="button icon reload" title="Reload">&#xf021;</a>
+                        <a href="#" class="button icon stop" title="Stop">&#xf04d;</a>
+                        <a href="#" class="button icon mute" title="Mute">&#xf028;</a>
+                        <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
                         <div tabindex="0" class="volume" title="Volume"><div class="slider"></div></div>
                         <div class="status">not connected</div>
-                        <a href="#" class="button theatre" title="Theatre mode"></a>
-                        <a href="#" class="button fullscreen" title="Fullscreen"></a>
-                        <a href="#" class="button collapse" title="Normal view"></a>
+                        <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
+                        <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
+                        <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                     </div>
                 </div>
                 <div class="chat-tab"></div>
@@ -57,39 +59,37 @@
                     <div class="offline-message">Chat offline.</div>
                     <form class="login-form">
                         <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?"></textarea>
-                        <a href="#" class="button join" title="Join" data-submit></a>
+                        <a href="#" class="button icon join" title="Join" data-submit>&#xf090;</a>
                     </form>
                     <form class="input-form">
                         <textarea tabindex="1" class="input" cols="1" rows="1"></textarea>
-                        <a href="#" class="button ins-emoji" title="Emoji..."></a>
-                        <a href="#" class="button send" title="Send" data-submit></a>
+                        <a href="#" class="button icon ins-emoji" title="Emoji...">&#xf118;</a>
+                        <a href="#" class="button icon send" title="Send" data-submit>&#xf1d8;</a>
                     </form>
                 </aside>
             </section>
             <section class="stream-header user-header">
                 <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
                 <div>
-                    {{ if .Owned }}<h1 class="edit"><a href="#" title="Edit..."></a></h1>{{ end }}
+                    {{ if .Owned }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <h2 class="creator">{{or .Meta.UserName "anonymous"}}</h2>
-                    {{ if not .Online }}<h2 class="offline">is now offline.</h2>{{ end }}
+                    <span>by {{or .Meta.UserName "anonymous"}}</span>
                 </div>
-                <div>
-                    <h2 class="viewers" title="Viewers">0</h2>
-                </div>
+                <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
+                <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
             </section>
             <section class="stream-about">
             {{- range $id, $_ := .Meta.Panels }}
                 <div class="panel">
                 {{- if $.Owned }}
-                    <h1 class="edit" data-panel="{{$id}}" title="Edit panel..."><a href="#"></a></h1>
+                    <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
                 {{- end }}
                     <p data-markup>{{.Text}}</p>
                 </div>
             {{- end }}
             {{- if .Owned }}
                 <div class="panel new-panel">
-                    <h1 class="edit"><a href="#" title="New panel..."></a></h1>
+                    <a href="#" class="button icon edit" title="New panel...">&#xf040;</a>
                     <p data-markup>*Edit this to create a new panel*</p>
                 </div>
             {{- end }}
