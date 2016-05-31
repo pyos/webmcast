@@ -87,12 +87,17 @@ let $init = {
             window._will_reflow_columns = true;
             window.addEventListener('resize', () => {
                 for (let e of document.querySelectorAll('[data-columns]'))
-                    if (e._data_columns_reflow)
-                        e._data_columns_reflow();
+                    e.dataset.columns = '';
             });
         }
 
-        e._data_columns_reflow = () => {
+        let cb;
+        let opt = {attributes: true, childList: true, characterData: true, subtree: true};
+        let mut = new MutationObserver(cb = () => {
+            mut.disconnect();
+            // keep total size contant while inner elements are being repositioned
+            // to prevent the scroll from jumping up a little bit.
+            e.style.height = `${e.offsetHeight}px`;
             let cols = Array.from(e.children);
             let cells = [];
             for (let c of cols)
@@ -103,12 +108,14 @@ let $init = {
             for (let c of cells) {
                 let k = 0;
                 for (let i = 1; i < cols.length; i++)
-                    if (cols[i].getBoundingClientRect().bottom < cols[k].getBoundingClientRect().bottom)
+                    if (cols[i].offsetTop + cols[i].offsetHeight < cols[k].offsetTop + cols[k].offsetHeight)
                         k = i;
                 cols[k].appendChild(c);
             }
-        };
-        e._data_columns_reflow();
+            e.style.height = '';
+            mut.observe(e, opt);
+        });
+        cb();
     },
 
     '[data-tabs]'(e) {
@@ -118,11 +125,19 @@ let $init = {
             e.dataset.tabs = ev.target.dataset.tab || e.dataset.tabs);
 
         let tabs = {};
+        let init = e.dataset.tabs;
         for (let tab of e.querySelectorAll('[data-tab]')) {
-            if (tab.parentElement.parentElement !== e)
-                continue;
-            tabs[tab.dataset.tab] = {t: tab.parentElement, b: tab};
-            bar.appendChild(tab);
+            init = init || tab.dataset.tab;
+            if (tab.dataset.tabTitle) {
+                let item = document.createElement('span');
+                item.dataset.tab = tab.dataset.tab;
+                item.textContent = tab.dataset.tabTitle;
+                tabs[tab.dataset.tab] = {t: tab, b: item};
+                bar.appendChild(item);
+            } else if (tab.parentElement.parentElement === e) {
+                tabs[tab.dataset.tab] = {t: tab.parentElement, b: tab};
+                bar.appendChild(tab);
+            }
         }
 
         new MutationObserver(_ => {
@@ -136,7 +151,7 @@ let $init = {
         }).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
 
         e.insertBefore(bar, e.childNodes[0]);
-        e.dataset.tabs = e.dataset.tabs;
+        e.dataset.tabs = init;
     },
 
     '[data-modal]'(e) {

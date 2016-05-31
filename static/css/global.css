@@ -83,6 +83,10 @@ footer > * {
     margin: 0;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 [data-scrollbar] {
     position: relative;
     overflow-x: hidden;

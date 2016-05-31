@@ -134,7 +134,7 @@ $form.onDocumentReload = doc => {
 
     move(document, doc, '.stream-header .viewers');
     move(doc, document, '.stream-header');
-    move(doc, document, '.stream-about');
+    move(doc, document, '.stream-meta');
     move(doc, document, 'nav');
     for (let modal of document.querySelectorAll('.modal-bg'))
         modal.remove();

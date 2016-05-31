@@ -176,23 +176,43 @@
     height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
 }
 
-.stream-about > * {
-    width: 50%;
+.stream-meta {
+    padding: 0 2em;
 }
 
-@media (max-width: 50em) {
+.stream-about > * {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (min-width: 50em) {
     .stream-about > * {
-        width: 100%;
+        width: 50%;
+    }
+
+    .stream-about > :nth-child(2n+1) {
+        padding-right: 0.5em;
+    }
+
+    .stream-about > :nth-child(2n) {
+        padding-left: 0.5em;
     }
 }
 
 .stream-about .panel {
     position: relative;
-    word-wrap: break-word;
-    margin: 1rem;
-    padding: 1px 1rem;
     min-height: 14rem;
-    background: #fafaf6;
+}
+
+.stream-about .panel,
+.stream-owner {
+    word-wrap: break-word;
+    padding: 1px 1rem;
+    background: #f7f7f3;
+}
+
+.stream-about .panel:not(:last-child) {
+    margin-bottom: 1rem;
 }
 
 .stream-about .edit {
