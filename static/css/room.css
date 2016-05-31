@@ -1,5 +1,5 @@
 .bg {
-    background: #111;
+    background: #222;
     color: #fff;
 }
 
@@ -17,8 +17,10 @@
 .player {
     overflow: hidden;
     position: relative;
+    max-width: 70rem;
     background: #000;
     color: #fff;
+    text-shadow: 0 0 5px #000;
 }
 
 .player svg,
@@ -26,11 +28,11 @@
     width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
     height: auto;
     max-width: 100%;
-    max-height: calc(100vh - 3.5rem);
+    max-height: calc(100vh - 4rem);
 }
 
-.player {
-    max-width: 70rem;
+.player-block:not(.theatre) .player.has-video:not(.is-fullscreen) {
+    border-radius: 1em 1em 0 0;
 }
 
 .chat,
@@ -71,10 +73,7 @@
 }
 
 .player:not([data-status="playing"]) {
-    background-image:
-        repeating-linear-gradient(90deg,transparent,transparent 49px,#111 49px,#111 50px),
-        repeating-linear-gradient(180deg,#000,#000 49px,#111 49px,#111 50px);
-    background-position: 50% 50%;
+    background-image: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px);
 }
 
 .player[data-status="error"]:before {
@@ -82,7 +81,7 @@
 }
 
 .player.has-video[data-status="playing"] .controls {
-    background: rgba(0,0,0,0.7);
+    background: linear-gradient(0deg,rgba(0,0,0,0.7),transparent);
 }
 
 .player.has-video[data-status="playing"].hide-controls {
@@ -99,8 +98,10 @@
 
 .player .status {
     flex: 1;
-    padding: 0.5em 1em;
+    padding: 0 1em;
     overflow: hidden;
+    line-height: 1;
+    font-size: 1.1em;
     font-weight: bold;
     text-overflow: ellipsis;
     text-transform: uppercase;
@@ -108,23 +109,29 @@
 
 .player .volume {
     position: relative;
+    width: 7em;
+    padding: 1em 0;
     cursor: ew-resize;
 }
 
 .player .volume:before {
     content: ' ';
     display: block;
-    border-top: 1.5em solid transparent;
-    border-right: 7em solid rgba(255,255,255,0.3);
+    height: 0.4em;
+    background: rgba(255,255,255,0.3);
+    border-radius: 0.2em;
 }
 
 .player .volume .slider {
     position: absolute;
-    top: 0;
+    top: 50%;
     right: 0;
-    bottom: 0;
-    border: 2px solid #fff;
-    border-radius: 1px;
+    width: 1em;
+    height: 1em;
+    margin-top: -0.5em;
+    margin-right: -0.5em;
+    border-radius: 50%;
+    background: white;
 }
 
 .player:not(.has-video) {
@@ -138,9 +145,10 @@
     padding-left: 2em;
 }
 
-.stream-header .edit {
+.stream-header .edit.icon {
     float: left;
-    font-size: 1.4em;
+    padding: 0.25em;
+    font-size: 1.5em;
 }
 
 .stream-header form + .edit,
@@ -232,7 +240,7 @@
 @media (min-width: 50em) {
     body.aside-chat .chat {
         position: absolute;
-        top: 6.5rem;
+        top: 7rem;
         bottom: 0;
         transform: translateX(-100%);
         color: #222;
@@ -304,7 +312,9 @@
 
 .chat .offline-message {
     opacity: 0.5;
-    padding: 0.629em 1em;
+    padding: 0.91em 1em;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .chat .error-message {

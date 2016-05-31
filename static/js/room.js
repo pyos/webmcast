@@ -225,7 +225,6 @@ Object.assign($init, {
         let onVolumeChange = _ => {
             let s = volume.querySelector('.slider');
             s.style.right = `${100 - video.volume * 100}%`;
-            s.style.top   = `${100 - video.volume * 100}%`;
             if (video.muted)
                 e.classList.add('muted');
             else

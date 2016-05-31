@@ -52,7 +52,7 @@ nav, footer {
 }
 
 nav {
-    height: 3.5rem;
+    height: 4rem;
 }
 
 nav > * {
@@ -137,7 +137,7 @@ footer > * {
 }
 
 [data-status="loading"]:before {
-    animation: spin 0.66s infinite linear;
+    animation: spin 0.75s infinite linear;
     border: 0.1em solid rgba(255,255,255,0.2);
     border-radius: 50%;
     border-top-color: currentColor;
@@ -304,7 +304,7 @@ a.button.icon {
     display: inline-block;
     width: 1em;
     height: 1em;
-    padding: 0.33em;
+    padding: 0.5em;
     text-align: center;
     text-decoration: none;
     vertical-align: middle;
