@@ -82,6 +82,35 @@ let $init = {
         e.addEventListener('wheel',      ignoreOvershoot);
     },
 
+    '[data-columns]'(e) {
+        if (!window._will_reflow_columns) {
+            window._will_reflow_columns = true;
+            window.addEventListener('resize', () => {
+                for (let e of document.querySelectorAll('[data-columns]'))
+                    if (e._data_columns_reflow)
+                        e._data_columns_reflow();
+            });
+        }
+
+        e._data_columns_reflow = () => {
+            let cols = Array.from(e.children);
+            let cells = [];
+            for (let c of cols)
+                cells.splice(cells.length, 0, ...Array.from(c.children));
+            cells.sort((x, y) => parseInt(x.dataset.order) - parseInt(y.dataset.order));
+            for (let c of cols)
+                c.innerHTML = '';
+            for (let c of cells) {
+                let k = 0;
+                for (let i = 1; i < cols.length; i++)
+                    if (cols[i].getBoundingClientRect().bottom < cols[k].getBoundingClientRect().bottom)
+                        k = i;
+                cols[k].appendChild(c);
+            }
+        };
+        e._data_columns_reflow();
+    },
+
     '[data-tabs]'(e) {
         let bar = document.createElement('div');
         bar.classList.add('tabbar');

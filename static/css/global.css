@@ -342,13 +342,17 @@ a.button.icon {
     content: '\f00d';
 }
 
-.row {
+.row, [data-columns] {
     display: flex;
     flex-wrap: wrap;
 }
 
 .row > * {
     flex: 1 0;
+}
+
+[data-columns] {
+    align-items: flex-start;
 }
 
 .user-header {

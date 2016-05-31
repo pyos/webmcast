@@ -78,21 +78,24 @@
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
                 <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
             </section>
-            <section class="stream-about">
-            {{- range $id, $_ := .Meta.Panels }}
-                <div class="panel">
-                {{- if $.Owned }}
-                    <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
+            <section class="stream-about" data-columns>
+                <div>
+                {{- range $id, $_ := .Meta.Panels }}
+                    <div class="panel" data-order="{{$id}}">
+                    {{- if $.Owned }}
+                        <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
+                    {{- end }}
+                        <p data-markup>{{.Text}}</p>
+                    </div>
                 {{- end }}
-                    <p data-markup>{{.Text}}</p>
+                {{- if .Owned }}
+                    <div class="panel new-panel" data-order="{{len .Meta.Panels}}">
+                        <a href="#" class="button icon edit" title="New panel...">&#xf040;</a>
+                        <p data-markup>*Edit this to create a new panel*</p>
+                    </div>
+                {{- end }}
                 </div>
-            {{- end }}
-            {{- if .Owned }}
-                <div class="panel new-panel">
-                    <a href="#" class="button icon edit" title="New panel...">&#xf040;</a>
-                    <p data-markup>*Edit this to create a new panel*</p>
-                </div>
-            {{- end }}
+                <div></div>
             </section>
             {{ template "footer.html" }}
             <script src="/static/js/vendored.min.js"></script>
