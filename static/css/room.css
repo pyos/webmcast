@@ -9,18 +9,16 @@
     justify-content: center;
 }
 
-.player-block .button.icon {
-    font-size: 1.66em;
-    color: inherit;
-}
-
 .player {
     overflow: hidden;
     position: relative;
     max-width: 70rem;
-    background: #000;
+    background: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px) #000;
     color: #fff;
-    text-shadow: 0 0 5px #000;
+}
+
+.player[data-status="playing"] {
+    background: #000;
 }
 
 .player svg,
@@ -33,6 +31,10 @@
 
 .player-block:not(.theatre) .player.has-video:not(.is-fullscreen) {
     border-radius: 1em;
+}
+
+.player-block:not(.theatre) .player.has-video:not(.is-fullscreen) .controls {
+    border-radius: 0 0 1em 1em;
 }
 
 .chat,
@@ -61,27 +63,12 @@
     max-height: none;
 }
 
-.player .controls {
-    display: flex;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 0 0.5em;
-    align-items: center;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.player:not([data-status="playing"]) {
-    background-image: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px);
-}
-
 .player[data-status="error"]:before {
     content: '\f071';  /* exclamation-triangle */
 }
 
 .player.has-video[data-status="playing"] .controls {
-    background: linear-gradient(0deg,rgba(0,0,0,0.7),transparent);
+    background: rgba(0,0,0,0.5);
 }
 
 .player.has-video[data-status="playing"].hide-controls {
@@ -92,13 +79,40 @@
     opacity: 0;
 }
 
-.player .controls > :not(.button) {
+.player .controls {
+    display: flex;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0 0.5em;
+    align-items: center;
     white-space: nowrap;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.player-block .button {
+    font-size: 1.66em;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.1s ease-in-out;
+}
+
+.player-block .button:hover {
+    background: rgba(0,127,255,0.1);
+}
+
+.player-block .button:focus {
+    outline: 0;
+    background: rgba(0,127,255,0.3);
+}
+
+.player-block .button:active {
+    background: rgba(0,127,255,0.5);
 }
 
 .player .status {
     flex: 1;
-    padding: 0 1em;
     overflow: hidden;
     line-height: 1;
     font-size: 1.1em;
@@ -110,6 +124,7 @@
 .player .volume {
     position: relative;
     width: 7em;
+    margin: 0 1em;
     padding: 1em 0;
     cursor: ew-resize;
 }
@@ -142,7 +157,7 @@
 }
 
 .player:not(.has-video) .controls {
-    padding-left: 2em;
+    padding: 0 2em;
 }
 
 .stream-header .edit.icon {

@@ -216,7 +216,6 @@ Object.assign($init, {
         e.addEventListener('keydown',   showControls);
         e.button('.play', play);
         e.button('.stop', stop);
-        e.button('.reload',     _ => location.href = '');
         e.button('.mute',       _ => video.muted = true);
         e.button('.unmute',     _ => video.muted = false);
         e.button('.fullscreen', _ => screenfull.request(e));
