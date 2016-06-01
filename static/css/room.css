@@ -5,19 +5,47 @@
 
 .player-block {
     display: flex;
-    max-width: none;
     justify-content: center;
 }
 
-.player {
-    overflow: hidden;
-    position: relative;
-    max-width: 70rem;
-    background: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px) #000;
-    color: #fff;
+body:not(.aside-chat) .player-block:not(.theatre) {
+    max-width: 90rem;
 }
 
-.player[data-status="playing"] {
+.player-block .button {
+    color: inherit;
+    font-size: 1.66em;
+    text-decoration: none;
+}
+
+.player-block .button:active {
+    color: #666;
+}
+
+.player.has-video {
+    overflow: hidden;
+    position: relative;
+    background: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px) #000;
+}
+
+.player:not(.has-video) {
+    flex: 1;
+    padding: 0 2em;
+}
+
+.player-block:not(.theatre) .player:not(.is-fullscreen) {
+    border-radius: 1em;
+}
+
+.player-block:not(.theatre) .player:not(.is-fullscreen) .controls {
+    border-radius: 0 0 1em 1em;
+}
+
+.player[data-status="error"]:before {
+    content: '\f071';  /* exclamation-triangle */
+}
+
+.player.has-video[data-status="playing"] {
     background: #000;
 }
 
@@ -27,14 +55,6 @@
     height: auto;
     max-width: 100%;
     max-height: calc(100vh - 4rem);
-}
-
-.player-block:not(.theatre) .player.has-video:not(.is-fullscreen) {
-    border-radius: 1em;
-}
-
-.player-block:not(.theatre) .player.has-video:not(.is-fullscreen) .controls {
-    border-radius: 0 0 1em 1em;
 }
 
 .chat,
@@ -63,8 +83,19 @@
     max-height: none;
 }
 
-.player[data-status="error"]:before {
-    content: '\f071';  /* exclamation-triangle */
+.player .controls {
+    display: flex;
+    padding: 0 0.5em;
+    align-items: center;
+    white-space: nowrap;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.player.has-video .controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .player.has-video[data-status="playing"] .controls {
@@ -77,38 +108,6 @@
 
 .player.has-video[data-status="playing"].hide-controls .controls:not(:hover) {
     opacity: 0;
-}
-
-.player .controls {
-    display: flex;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 0 0.5em;
-    align-items: center;
-    white-space: nowrap;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.player-block .button {
-    font-size: 1.66em;
-    color: inherit;
-    text-decoration: none;
-    transition: background-color 0.1s ease-in-out;
-}
-
-.player-block .button:hover {
-    background: rgba(0,127,255,0.1);
-}
-
-.player-block .button:focus {
-    outline: 0;
-    background: rgba(0,127,255,0.3);
-}
-
-.player-block .button:active {
-    background: rgba(0,127,255,0.5);
 }
 
 .player .status {
@@ -130,34 +129,26 @@
 }
 
 .player .volume:before {
-    content: ' ';
+    content: '';
     display: block;
-    height: 0.4em;
-    background: rgba(255,255,255,0.3);
-    border-radius: 0.2em;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 2px;
+    margin-bottom: -4px;
 }
 
 .player .volume .slider {
-    position: absolute;
-    top: 50%;
-    right: 0;
-    width: 1em;
-    height: 1em;
-    margin-top: -0.5em;
-    margin-right: -0.5em;
-    border-radius: 50%;
-    background: white;
+    box-sizing: border-box;
+    border: 2px solid #f7d358;
+    border-radius: 2px;
 }
 
-.player:not(.has-video) {
-    width: 100%;
-    height: 3rem;
-    overflow: visible;
-    background: none;
-}
-
-.player:not(.has-video) .controls {
-    padding: 0 2em;
+.player .volume .slider:before {
+    content: '';
+    float: right;
+    display: block;
+    margin: -7px;
+    border: 7px solid #fff;
+    border-radius: 7px;
 }
 
 .stream-header .edit.icon {
@@ -199,46 +190,49 @@
     }
 }
 
-.stream-about .panel {
+.stream-meta .panel {
+    padding: 0 1rem;
     position: relative;
-    min-height: 14rem;
-}
-
-.stream-about .panel,
-.stream-owner {
     word-wrap: break-word;
-    padding: 1px 1rem;
     background: #f7f7f3;
+    border: 1px solid #f7f7f3;
 }
 
-.stream-about .panel:not(:last-child) {
+.stream-meta .new-panel {
+    background: none;
+    border: 3px dashed #f7f7f3;
+}
+
+.stream-meta .panel:not(:last-child) {
     margin-bottom: 1rem;
 }
 
-.stream-about .edit {
+.stream-meta .edit {
     float: right;
     font-size: 1.33em;
     margin-right: -1rem;
 }
 
-.stream-about form ~ * {
+.stream-meta form ~ * {
     visibility: hidden;
 }
 
-.stream-about form {
+.stream-meta form {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
     z-index: 1;
     padding: 0.5rem;
+    min-height: 100%;
+    text-align: right;
+    box-sizing: border-box;
+    background: #f7f7f3;
 }
 
-.stream-about form textarea {
+.stream-meta form textarea {
     width: 100%;
-    display: block;
-    margin-bottom: 1em;
+    margin-bottom: 0.5em;
 }
 
 .chat {
@@ -247,26 +241,21 @@
     flex: 0 0 auto;
     flex-direction: column;
     overflow: hidden;
-    transition: transform 0.4s ease-in-out;
 }
 
 @media (min-width: 50em) {
     body.aside-chat .chat {
-        position: absolute;
-        top: 7rem;
-        bottom: 0;
-        transform: translateX(-100%);
         color: #222;
+        position: fixed;
+        top: 7.33rem;
+        bottom: 0;
+        margin-left: -20rem;
     }
 
     body.aside-chat .stream-header,
-    body.aside-chat .stream-about,
+    body.aside-chat .stream-meta,
     body.aside-chat footer {
         padding-right: 22rem;
-    }
-
-    body.aside-chat .player {
-        max-width: 80rem;
     }
 }
 
@@ -278,6 +267,7 @@
         bottom: 0;
         z-index: 128;
         background: #0a0a0a;
+        transition: transform 0.4s ease-in-out;
     }
 
     .chat-tab {
@@ -287,7 +277,6 @@
         z-index: 127;
         border-top: 2em solid transparent;
         border-right: 2em solid #000;
-        transition: opacity 0.4s ease-in-out;
     }
 
     .chat:hover, .chat-tab:hover + .chat {
@@ -295,7 +284,7 @@
     }
 
     .player-block.theatre .player .controls {
-        padding-right: 2em;  /* +1em to move the buttons from under the tab */
+        padding-right: 2em;  /* avoid overlap with .chat-tab */
     }
 }
 
@@ -324,37 +313,9 @@
 }
 
 .chat .offline-message {
-    opacity: 0.5;
+    color: #666;
     padding: 0.91em 1em;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-.chat .error-message {
-    display: none;
-    position: absolute;
-    left: 1em;
-    right: 1em;
-    bottom: calc(100% + 1em);
-    padding: 1em;
-    border-radius: 5px;
-    text-align: center;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-}
-
-.chat .error-message:after {
-    position: absolute;
-    top: 100%;
-    left: calc(50% - 1em);
-    border-top: 1em solid rgba(0,0,0,0.8);
-    border-left: 1em solid transparent;
-    border-right: 1em solid transparent;
-    content: ' ';
-}
-
-.chat .error-message.visible {
-    display: block;
+    font-style: italic;
 }
 
 .chat .name {
@@ -367,14 +328,22 @@
     margin-right: 0.33em;
 }
 
+.chat .input {
+    width: 100%;
+}
+
 .chat form {
     position: relative;
     text-align: right;
     padding: 0 1em;
 }
 
-.chat .input {
-    width: 100%;
+.chat form .error {
+    margin: 1em 0 0 0;
+}
+
+body:not(.aside-chat) .chat form .error {
+    color: #f55;
 }
 
 .player[data-status="playing"] svg,

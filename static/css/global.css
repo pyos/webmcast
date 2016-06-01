@@ -128,6 +128,10 @@ footer > * {
     border-bottom: 4px solid #a168ad;
 }
 
+[data-status] {
+    position: relative;
+}
+
 [data-status]:before {
     font: normal 4em FontAwesome;
     display: block;
@@ -246,7 +250,7 @@ form.error textarea:not(:disabled),
 form.error input[type="text"]:not(:disabled),
 form.error input[type="email"]:not(:disabled),
 form.error input[type="password"]:not(:disabled) {
-    background: #fdd;
+    background: #fee;
     border-color: #dcb0a3;
 }
 

@@ -222,8 +222,7 @@ Object.assign($init, {
         e.button('.collapse',   _ => screenfull.exit());
 
         let onVolumeChange = _ => {
-            let s = volume.querySelector('.slider');
-            s.style.right = `${100 - video.volume * 100}%`;
+            volume.querySelector('.slider').style.width = `${video.volume * 100}%`;
             if (video.muted)
                 e.classList.add('muted');
             else
@@ -308,7 +307,6 @@ Object.assign($init, {
     '.chat'(root) {
         let rpc  = getParentStream(root).rpc;
         let log  = root.querySelector('.log');
-        let err  = root.querySelector('.error-message');
         let form = root.querySelector('.input-form');
         let text = root.querySelector('.input-form .input');
 
@@ -324,22 +322,13 @@ Object.assign($init, {
             return promise.then(() => {
                 $form.enable(form);
                 form.classList.remove('error');
-                err.classList.remove('visible');
-                err.textContent = '';
             }).catch((e) => {
                 $form.enable(form);
                 form.classList.add('error');
-                if (withMessage) {
-                    form.appendChild(err);
-                    err.textContent = e.message;
-                    err.classList.add('visible');
-                }
+                form.querySelector('.error').textContent = e.message;
                 throw e;
             });
         };
-
-        err.addEventListener('click', () =>
-            err.classList.remove('visible'));
 
         root.querySelector('.login-form').addEventListener('submit', function (ev) {
             ev.preventDefault();
