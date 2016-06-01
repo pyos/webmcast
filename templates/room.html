@@ -48,8 +48,8 @@
                             <div tabindex="0" class="volume" title="Volume"><div class="slider"></div></div>
                             <div class="status">not connected</div>
                             <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
-                            <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
+                            <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
                         </div>
                     </div>
                     <div class="chat-tab"></div>
@@ -83,7 +83,7 @@
             </section>
             <section class="stream-meta" data-tabs>
             {{- if or .Meta.Panels .Owned }}
-                <div class="stream-about" data-columns data-tab="stream" data-tab-title="Stream info">
+                <div class="stream-about" data-columns data-tab="stream" data-tab-title="Stream description">
                     <div>
                     {{- range $id, $_ := .Meta.Panels }}
                         <div class="panel" data-order="{{$id}}">
@@ -104,7 +104,7 @@
                 </div>
             {{- end }}
             {{- if .Meta.UserAbout }}
-                <div class="panel" data-tab="owner" data-tab-title="About them">
+                <div class="panel" data-tab="owner" data-tab-title="About {{.Meta.UserName}}">
                     <p data-markup>{{.Meta.UserAbout}}</p>
                 </div>
             {{- end }}

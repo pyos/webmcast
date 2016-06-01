@@ -5,6 +5,7 @@
 
 .player-block {
     display: flex;
+    position: relative;
     justify-content: center;
 }
 
@@ -31,14 +32,6 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 .player:not(.has-video) {
     flex: 1;
     padding: 0 2em;
-}
-
-.player-block:not(.theatre) .player:not(.is-fullscreen) {
-    border-radius: 1em;
-}
-
-.player-block:not(.theatre) .player:not(.is-fullscreen) .controls {
-    border-radius: 0 0 1em 1em;
 }
 
 .player[data-status="error"]:before {
@@ -245,11 +238,12 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 
 @media (min-width: 50em) {
     body.aside-chat .chat {
-        color: #222;
-        position: fixed;
-        top: 7.33rem;
-        bottom: 0;
+        position: absolute;
+        top: 100%;
+        height: 100vh;
+        max-height: 45rem;
         margin-left: -20rem;
+        color: #222;
     }
 
     body.aside-chat .stream-header,
@@ -281,6 +275,10 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 
     .chat:hover, .chat-tab:hover + .chat {
         transform: translateX(-100%);
+    }
+
+    .player .theatre {
+        display: none !important;
     }
 
     .player-block.theatre .player .controls {
@@ -359,14 +357,15 @@ body:not(.aside-chat) .chat form .error {
 .player:not(.has-video) svg,
 .player:not(.has-video) video,
 .player:not(.has-video) .theatre,
+.player:not(.has-video) .collapse,
 .player:not(.has-video) .fullscreen,
 .player:not(.muted) .unmute,
 .player.muted .mute,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
 .player-block.theatre .player .theatre,
-.player-block.theatre .player .fullscreen,
-.player-block:not(.theatre) .player:not(.is-fullscreen) .collapse,
+body.aside-chat .player .theatre,
+body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .collapse,
 .no-fullscreen .player .fullscreen,
 .chat.online .offline-message,
 .chat.logged-in .login-form,
