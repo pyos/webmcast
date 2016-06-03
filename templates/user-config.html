@@ -7,7 +7,7 @@
         <title>webmcast // user config</title>
     </head>
     <body>
-        <div data-scrollbar>
+        <main data-scrollbar>
             {{ template "nav.html" . }}
             <section class="user-header">
                 <img width="60" height="60" src="{{.User.Avatar 60}}" alt="Gravatar" />
@@ -34,7 +34,7 @@
         {{- end }}
             <section class="row">
                 <div class="form-wrapper">
-                    <form method="POST" action="/user/new-token" data-xhrable>
+                    <form method="POST" action="/user/new-token">
                         <label>Your avatar is provided by Gravatar.</label>
                         <span class="notice">
                             Visit <a href="https://gravatar.com/">gravatar.com</a> to change it.
@@ -48,7 +48,7 @@
                     </form>
                 </div>
                 <div class="form-wrapper">
-                    <form method="POST" action="" data-xhrable>
+                    <form method="POST" action="">
                         <label>Old password</label>
                         <input name="password-old" type="password" placeholder="Required to change anything." />
                         <label>Username</label>
@@ -68,6 +68,6 @@
             </section>
             {{ template "footer.html" }}
             <script src="/static/js/global.js"></script>
-        </div>
+        </main>
     </body>
 </html>

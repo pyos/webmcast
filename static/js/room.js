@@ -1,4 +1,4 @@
-'use strict'; /* global screenfull, $init, $form, sha1 */
+'use strict'; /* global $util, $init, $form, screenfull, sha1 */
 
 if (screenfull.enabled)
     document.addEventListener(screenfull.raw.fullscreenchange, _ => {
@@ -10,11 +10,6 @@ if (screenfull.enabled)
     });
 else
     document.body.classList.add('no-fullscreen');
-
-
-Element.prototype.insertThisBefore = function (e) {
-    return e.parentElement.insertBefore(this, e);
-};
 
 
 Element.prototype.button = function (selector, f) {
@@ -70,17 +65,16 @@ RPC.prototype.open = function (url) {
     this.socket.onmessage = ev => {
         let msg = JSON.parse(ev.data);
 
-        if (msg.id === undefined)
-            if (msg.method in this.handlers)
-                this.handlers[msg.method](...msg.params);
+        if (msg.method in this.handlers)
+            this.handlers[msg.method](...msg.params);
 
         if (msg.id in this.awaiting) {
             let cb = this.awaiting[msg.id];
             delete this.awaiting[msg.id];
-            if (msg.error === undefined)
-                cb.resolve(msg.result);
-            else
+            if (msg.error)
                 cb.reject(msg.error);
+            else
+                cb.resolve(msg.result);
         }
     };
 };
@@ -99,16 +93,6 @@ RPC.prototype.send = function (method, ...params) {
     let id = this.nextID++;
     this.socket.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
     return new Promise((resolve, reject) => { this.awaiting[id] = { resolve, reject }; });
-};
-
-
-let delayedPair = (delay, f, g) => {
-    let t;
-    return _ => {
-        f();
-        window.clearTimeout(t);
-        t = window.setTimeout(() => { t = undefined; g(); }, delay);
-    };
 };
 
 
@@ -136,7 +120,7 @@ $form.onDocumentReload = doc => {
     move(doc, document, '.stream-header');
     move(doc, document, '.stream-meta');
     move(doc, document, 'nav');
-    for (let modal of document.querySelectorAll('.modal-bg'))
+    for (let modal of document.querySelectorAll('x-modal-cover'))
         modal.remove();
     return true;
 };
@@ -207,7 +191,7 @@ Object.assign($init, {
             stream.rpc.register({ load: play, unload: stop });
         }
 
-        let showControls = delayedPair(3000,
+        let showControls = $util.delayedPair(3000,
             () => e.classList.remove('hide-controls'),
             () => e.classList.add('hide-controls'));
 
@@ -269,7 +253,7 @@ Object.assign($init, {
             let f = t.querySelector('form');
             let i = f.querySelector('input');
             f.addEventListener('reset',  _  => f.remove());
-            f.insertThisBefore(ev.currentTarget);
+            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
             i.value = name.textContent;
             i.focus();
         });
@@ -292,13 +276,13 @@ Object.assign($init, {
                 f.querySelector('[name="id"]').value = id;
                 f.querySelector('.remove').addEventListener('click', () => {
                     f.setAttribute('action', '/user/del-stream-panel');
-                    f.dispatchEvent(new Event('submit'));
+                    f.dispatchEvent(new Event('submit', {cancelable: true}));
                 });
             } else {
                 f.querySelector('.remove').remove();
             }
 
-            f.insertThisBefore(ev.currentTarget);
+            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
             i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
             i.focus();
         });
@@ -310,24 +294,23 @@ Object.assign($init, {
         let form = root.querySelector('.input-form');
         let text = root.querySelector('.input-form .input');
 
-        let autoscroll = (domModifier) => {
-            let atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight;
-            domModifier();
-            if (atBottom)
+        let autoscroll = (m) => (...args) => {
+            let scroll = log.scrollTop + log.clientHeight >= log.scrollHeight;
+            m(...args);
+            if (scroll)
                 log.scrollTop = log.scrollHeight;
         };
 
         let handleErrors = (form, promise, withMessage) => {
             $form.disable(form);
-            return promise.then(() => {
+            return promise.then(autoscroll(() => {
                 $form.enable(form);
                 form.classList.remove('error');
-            }).catch((e) => {
+            })).catch(autoscroll((e) => {
                 $form.enable(form);
                 form.classList.add('error');
                 form.querySelector('.error').textContent = e.message;
-                throw e;
-            });
+            }));
         };
 
         root.querySelector('.login-form').addEventListener('submit', function (ev) {
@@ -337,59 +320,43 @@ Object.assign($init, {
 
         form.addEventListener('submit', (ev) => {
             ev.preventDefault();
-            handleErrors(form, rpc.send('Chat.SendMessage', text.value), true).then(() => {
+            handleErrors(form, rpc.send('Chat.SendMessage', text.value).then(() => {
                 log.scrollTop = log.scrollHeight;
                 text.value = '';
                 text.select();
-            });
+            }), true);
         });
-
-        let submitParentForm = (ev) => {
-            ev.preventDefault();
-            for (let e = ev.target; e !== null; e = e.parentElement)
-                if (e.tagName === 'FORM')
-                    return e.dispatchEvent(new Event('submit', {cancelable: true}));
-        };
-
-        root.addEventListener('keydown', (ev) => {
-            if (ev.keyCode === 13 && !ev.shiftKey)  // carriage return
-                submitParentForm(ev);
-        });
-
-        root.button('.button[data-submit]', submitParentForm);
 
         let stringColor = (str) => {
             let h = parseInt(sha1(str).slice(32), 16);
             return `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
         };
 
-        rpc.handlers['Chat.Message'] = (name, text, login) =>
-            autoscroll(() => {
-                let entry = $init.template('chat-message-template');
-                let e = entry.querySelector('.name');
-                // TODO maybe do this server-side? that'd allow us to hash the IP instead...
-                e.style.color = stringColor(`${name.length}:${name}${login}`);
-                e.textContent = name;
-                if (!login) {
-                    e.setAttribute('title', 'Anonymous user');
-                    e.classList.add('anon');
-                } else {
-                    e.setAttribute('title', login);
-                }
-                entry.querySelector('.text').textContent = text;
-                log.appendChild(entry);
-            });
+        rpc.handlers['Chat.Message'] = autoscroll((name, text, login) => {
+            let entry = $init.template('chat-message-template');
+            let e = entry.querySelector('.name');
+            // TODO maybe do this server-side? that'd allow us to hash the IP instead...
+            e.style.color = stringColor(`${name.length}:${name}${login}`);
+            e.textContent = name;
+            if (!login) {
+                e.setAttribute('title', 'Anonymous user');
+                e.classList.add('anon');
+            } else {
+                e.setAttribute('title', login);
+            }
+            entry.querySelector('.text').textContent = text;
+            log.appendChild(entry);
+        });
 
-        rpc.handlers['Chat.AcquiredName'] = (name, login) =>
-            autoscroll(() => {
-                if (name === "") {
-                    root.classList.remove('logged-in');
-                    root.querySelector('.login-form').classList.add('error');
-                } else {
-                    root.classList.add('logged-in');
-                    text.select();
-                }
-            });
+        rpc.handlers['Chat.AcquiredName'] = autoscroll((name, login) => {
+            if (name === "") {
+                root.classList.remove('logged-in');
+                root.querySelector('.login-form').classList.add('error');
+            } else {
+                root.classList.add('logged-in');
+                text.select();
+            }
+        });
 
         rpc.register({
             load() {

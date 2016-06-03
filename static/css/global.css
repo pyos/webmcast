@@ -17,7 +17,7 @@ html {
     color: #222;
 }
 
-body > [data-scrollbar]:only-child {
+main[data-scrollbar] {
     /* this is easier than dealing with `overflow:scroll` on `body`. */
     height: 100%;
 }
@@ -36,6 +36,31 @@ a:not(:hover) {
 
 img, svg, video, audio, canvas {
     vertical-align: middle;  /* do not reserve space for descenders */
+}
+
+blockquote {
+    margin: 0;
+    color: #693;
+    border-left: 3px solid;
+    padding-left: 1em;
+}
+
+hr {
+    border: 0;
+    border-top: 1px dashed;
+    opacity: 0.5;
+}
+
+pre {
+    overflow-x: auto;
+}
+
+x-spoiler {
+    border-bottom: 1px dashed;
+}
+
+x-spoiler:not(:hover):not(:focus) {
+    background: currentColor;
 }
 
 nav, section, footer {
@@ -78,7 +103,7 @@ footer > * {
     font: 1em/1 FontAwesome;
 }
 
-.spacer {
+x-spacer {
     flex: 1;
     margin: 0;
 }
@@ -93,38 +118,40 @@ footer > * {
     overflow-y: auto;
 }
 
-[data-scrollbar] > .track {
-    pointer-events: none;
+x-scrollbar {
+    display: block;
     position: absolute;
-    overflow: hidden;
+    pointer-events: none;
     top: 5px;
     right: 5px;
     width: 5px;
     bottom: 5px;
     z-index: 255;
-    border-radius: 2px;
     background: rgba(127,127,127,0.3);
+    border-radius: 2px;
     transition: opacity 0.2s ease-in-out;
     opacity: 0;
 }
 
-[data-scrollbar] > .track > .thumb {
-    background: rgba(127,127,127,0.7);
+x-scrollbar-thumb {
+    display: block;
+    background: #888;
+    border-radius: 2px;
     height: 100%;
 }
 
-[data-tabs] > .tabbar {
+x-tabbar {
     display: flex;
 }
 
-[data-tabs] > .tabbar > * {
+x-tabbar > * {
     font: inherit;
     cursor: pointer;
     margin: 0;
     padding: 0.5em 1em;
 }
 
-[data-tabs] > .tabbar > .active {
+x-tabbar > .active {
     border-bottom: 4px solid #a168ad;
 }
 
@@ -169,35 +196,6 @@ footer > * {
 [data-markup] h1 { font-size: 1.3em; }
 [data-markup] h2 { font-size: 1.2em; }
 [data-markup] h3 { font-size: 1.1em; }
-
-[data-markup] blockquote {
-    margin: 0;
-    padding-left: 1em;
-    border-left: 3px solid;
-}
-
-[data-markup] hr {
-    border: 0;
-    border-bottom: 1px dashed;
-    opacity: 0.5;
-}
-
-[data-markup] pre {
-    overflow-x: auto;
-}
-
-[data-markup] ul,
-[data-markup] ol {
-    padding-left: 2em;
-}
-
-[data-markup] .spoiler {
-    border-bottom: 1px dashed;
-}
-
-[data-markup] .spoiler:not(:hover):not(:focus) {
-    background: currentColor;
-}
 
 form {
     position: relative;
@@ -317,7 +315,8 @@ a.button.icon {
     vertical-align: middle;
 }
 
-.modal-bg {
+x-modal-cover {
+    display: block;
     position: absolute;
     top: 0;
     left: 0;
@@ -327,7 +326,8 @@ a.button.icon {
     background: rgba(0,0,0,0.8);
 }
 
-.modal {
+x-modal-bg {
+    display: block;
     margin: 0 auto;
     max-width: 30rem;
     overflow: hidden;
@@ -335,31 +335,32 @@ a.button.icon {
     background: #fff;
 }
 
-.modal > [data-scrollbar] {
-    max-height: 100vh;
-}
-
-.modal > .close {
+x-modal-bg > .close {
     position: absolute;
     top: 0;
     right: 0;
 }
 
-.modal > .close:before {
+x-modal-bg > .close:before {
     content: '\f00d';
 }
 
-.row, [data-columns] {
+x-modal {
+    display: block;
+    max-height: 100vh;
+}
+
+x-columns, .row {
     display: flex;
     flex-wrap: wrap;
 }
 
-.row > * {
-    flex: 1 0;
+x-columns {
+    align-items: flex-start;
 }
 
-[data-columns] {
-    align-items: flex-start;
+.row > * {
+    flex: 1 0;
 }
 
 .user-header {
@@ -394,10 +395,6 @@ a.button.icon {
     font-size: 1.2em;
 }
 
-.user-header > .spacer ~ * {
-    text-align: center;
-}
-
 .warning-block {
     padding: 2rem;
     border: 1px solid #ffc;
@@ -413,7 +410,7 @@ a.button.icon {
     min-width: 10rem;
 }
 
-body > * > .form-wrapper {
+main > .form-wrapper {
     margin: 0 auto;
     max-width: 20rem;
 }

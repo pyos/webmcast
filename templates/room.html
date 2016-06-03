@@ -8,15 +8,15 @@
         <title>webmcast // {{.ID}}</title>
     </head>
     <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}" data-stream-id="{{.ID}}">
-        <div data-scrollbar>
+        <main data-scrollbar>
             <template id="edit-name-template">
-                <form method="POST" action="/user/set-stream-name" data-xhrable>
+                <form method="POST" action="/user/set-stream-name">
                     <input type="text" name="value" />
                     <button type="submit">Save</button>
                 </form>
             </template>
             <template id="edit-panel-template">
-                <form method="POST" action="/user/set-stream-panel" data-xhrable>
+                <form method="POST" action="/user/set-stream-panel">
                     <input type="hidden" name="id" value="" />
                     <textarea name="value" rows="6" cols="10"></textarea>
                     <p class="error"></p>
@@ -58,12 +58,12 @@
                         <ul class="log" data-scrollbar></ul>
                         <div class="offline-message">The chat is offline.</div>
                         <form class="login-form">
-                            <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?"></textarea>
+                            <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?" data-submit></textarea>
                             <p class="error"></p>
                             <a href="#" class="button icon join" title="Join" data-submit>&#xf090;</a>
                         </form>
                         <form class="input-form">
-                            <textarea tabindex="1" class="input" cols="1" rows="1"></textarea>
+                            <textarea tabindex="1" class="input" cols="1" rows="1" data-submit></textarea>
                             <p class="error"></p>
                             <a href="#" class="button icon ins-emoji" title="Emoji...">&#xf118;</a>
                             <a href="#" class="button icon send" title="Send" data-submit>&#xf1d8;</a>
@@ -83,7 +83,7 @@
             </section>
             <section class="stream-meta" data-tabs>
             {{- if or .Meta.Panels .Owned }}
-                <div class="stream-about" data-columns data-tab="stream" data-tab-title="Stream description">
+                <x-columns class="stream-about" data-tab="Stream description">
                     <div>
                     {{- range $id, $_ := .Meta.Panels }}
                         <div class="panel" data-order="{{$id}}">
@@ -101,10 +101,10 @@
                     {{- end }}
                     </div>
                     <div></div>
-                </div>
+                </x-columns>
             {{- end }}
             {{- if .Meta.UserAbout }}
-                <div class="panel" data-tab="owner" data-tab-title="About {{.Meta.UserName}}">
+                <div class="panel" data-tab="About {{.Meta.UserName}}">
                     <p data-markup>{{.Meta.UserAbout}}</p>
                 </div>
             {{- end }}
@@ -113,6 +113,6 @@
             <script src="/static/js/vendored.min.js"></script>
             <script src="/static/js/global.js"></script>
             <script src="/static/js/room.js"></script>
-        </div>
+        </main>
     </body>
 </html>
