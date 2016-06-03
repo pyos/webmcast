@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/oxtoacart/bpool"
 	"html/template"
 	"net/http"
 	"os"
@@ -10,30 +10,28 @@ import (
 	"time"
 )
 
-var (
-	root      = "templates"
-	buffers   = bpool.NewBufferPool(64)
-	parsed    *template.Template
-	lastParse time.Time
-)
+type templateSet struct {
+	root  string
+	data  *template.Template
+	mtime time.Time
+}
 
 type viewmodel interface {
 	TemplateFile() string
 }
 
-func Render(w http.ResponseWriter, code int, vm viewmodel) error {
+func (ts *templateSet) Render(w http.ResponseWriter, code int, vm viewmodel) error {
 	name := vm.TemplateFile()
-	stat, err := os.Stat(filepath.Join(root, name))
-	if parsed == nil || (err == nil && stat.ModTime().After(lastParse)) {
-		parsed, err = template.ParseGlob(filepath.Join(root, "*"))
+	stat, err := os.Stat(filepath.Join(ts.root, name))
+	if ts.data == nil || (err == nil && stat.ModTime().After(ts.mtime)) {
+		ts.data, err = template.ParseGlob(filepath.Join(ts.root, "*"))
 		if err != nil {
 			return err
 		}
-		lastParse = time.Now()
+		ts.mtime = time.Now()
 	}
-	if t := parsed.Lookup(name); t != nil {
-		buf := buffers.Get()
-		defer buffers.Put(buf)
+	if t := ts.data.Lookup(name); t != nil {
+		buf := &bytes.Buffer{}
 		if err = t.Execute(buf, vm); err != nil {
 			return err
 		}
@@ -44,6 +42,8 @@ func Render(w http.ResponseWriter, code int, vm viewmodel) error {
 	}
 	return fmt.Errorf("template not found: %s", name)
 }
+
+var Render = (&templateSet{root: "templates"}).Render
 
 type ErrorTemplate struct {
 	Code    int
