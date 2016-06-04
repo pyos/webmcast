@@ -96,7 +96,7 @@ footer {
 }
 
 footer > * {
-    padding: 1rem;
+    margin: 1rem;
 }
 
 .icon {
@@ -199,6 +199,14 @@ x-tabbar > .active {
 
 form {
     position: relative;
+}
+
+form label {
+    font-weight: bold;
+}
+
+form .notice {
+    color: #666;
 }
 
 form .error {
@@ -415,20 +423,12 @@ main > .form-wrapper {
     max-width: 20rem;
 }
 
-.form-wrapper > form > * {
+.form-wrapper > * {
     display: block;
-}
-
-.form-wrapper label {
-    font-weight: bold;
 }
 
 .form-wrapper :not(label) + * {
     margin-top: 1em;
-}
-
-.form-wrapper .notice {
-    color: #666;
 }
 
 .form-wrapper textarea,

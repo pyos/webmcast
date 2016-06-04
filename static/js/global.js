@@ -3,43 +3,39 @@
 NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
 
 
-let _nativeScrollbarWidth = (() => {
-    let b = document.body, e = document.createElement('div'), r;
-    e.style.position = 'fixed';
-    e.style.overflow = 'scroll';
-    b.appendChild(e);
-    r = e.offsetWidth - e.clientWidth;
-    b.removeChild(e);
-    return r;
-})();
+let $ = {
+    rules: {},
 
-
-let _reflowAllColumns = () => {
-    for (let e of document.querySelectorAll('x-columns'))
-        e.dataset.columns = '';
-};
-
-
-let $util = {
-    delayedPair(delay, f, g) {
-        let t;
-        return _ => t = (clearTimeout(t), f(), setTimeout(g, delay));
+    apply(rs, e) {
+        for (let f in rs) if (rs.hasOwnProperty(f)) {
+            if (e.matches && e.matches(f))
+                rs[f](e);
+            for (let c of e.querySelectorAll(f))
+                rs[f](c);
+        }
     },
+
+    init: (e) => ($.apply($.rules, e), e),
+
+    extend: (rs) => ($.apply(rs, document), Object.assign($.rules, rs)),
+
+    template: (id) =>
+        $.init(document.importNode(document.getElementById(id).content, true)),
 };
 
 
-let $markup = {
+$.markup = {
     blocks: [
         { re: /^ {4}|^\t/g,            f: x => `<pre>${x.join('\n')}</pre>` },
         { re: /^\s*$/g,                f: x => '' },
         { re: /^\s*(?:[*-]\s*){3,}$/g, f: x => '<hr/>' },
-        { re: /^\s*&gt;/g,             f: x => `<blockquote>${$markup.parse(x.join('\n'))}</blockquote>` },
-        { re: /^\s*\d+\.\s+/g,         f: x => `<ol><li>${x.map($markup.inline).join('</li><li>')}</li></ol>` },
-        { re: /^\s*[*+-]\s+/g,         f: x => `<ul><li>${x.map($markup.inline).join('</li><li>')}</li></ul>` },
-        { re: /^\s*###\s*/g,           f: x => `<h3>${x.map($markup.inline).join('</h3><h3>')}</h3>` },
-        { re: /^\s*##\s*/g,            f: x => `<h2>${x.map($markup.inline).join('</h2><h2>')}</h2>` },
-        { re: /^\s*#\s*/g,             f: x => `<h1>${x.map($markup.inline).join('</h1><h1>')}</h1>` },
-        { re: /^\s*/g,                 f: x => `<p>${$markup.inline(x.join('\n'))}</p>` },
+        { re: /^\s*&gt;/g,             f: x => `<blockquote>${$.markup.block(x.join('\n'))}</blockquote>` },
+        { re: /^\s*\d+\.\s+/g,         f: x => `<ol><li>${x.map($.markup.inline).join('</li><li>')}</li></ol>` },
+        { re: /^\s*[*+-]\s+/g,         f: x => `<ul><li>${x.map($.markup.inline).join('</li><li>')}</li></ul>` },
+        { re: /^\s*###\s*/g,           f: x => `<h3>${x.map($.markup.inline).join('</h3><h3>')}</h3>` },
+        { re: /^\s*##\s*/g,            f: x => `<h2>${x.map($.markup.inline).join('</h2><h2>')}</h2>` },
+        { re: /^\s*#\s*/g,             f: x => `<h1>${x.map($.markup.inline).join('</h1><h1>')}</h1>` },
+        { re: /^\s*/g,                 f: x => `<p>${$.markup.inline(x.join('\n'))}</p>` },
     ],
 
     inlineRe: [
@@ -56,18 +52,18 @@ let $markup = {
 
     inlineFn: {
         link:    (m, a, b) => `<a href="${(b||m).replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer">${a||m}</a>`,
-        code:    (m, a, b) => `<code>${$markup.inline(b)}</code>`,
-        bold:    (m, a)    => `<b>${$markup.inline(a)}</b>`,
-        italic:  (m, a)    => `<i>${$markup.inline(a)}</i>`,
-        strike:  (m, a)    => `<del>${$markup.inline(a)}</del>`,
-        spoiler: (m, a)    => `<x-spoiler>${$markup.inline(a)}</x-spoiler>`,
+        code:    (m, a, b) => `<code>${$.markup.inline(b)}</code>`,
+        bold:    (m, a)    => `<b>${$.markup.inline(a)}</b>`,
+        italic:  (m, a)    => `<i>${$.markup.inline(a)}</i>`,
+        strike:  (m, a)    => `<del>${$.markup.inline(a)}</del>`,
+        spoiler: (m, a)    => `<x-spoiler>${$.markup.inline(a)}</x-spoiler>`,
         mdash:   (m)       => '&mdash;',
         esc:     (m, a)    => a,
     },
 
-    parse(text) {
-        let last = $markup.blocks[1], block = [], result = '';
-        for (let line of text.split('\n')) for (let r of $markup.blocks) {
+    block(text) {
+        let last = $.markup.blocks[1], block = [], result = '';
+        for (let line of text.split('\n')) for (let r of $.markup.blocks) {
             if (r.re.lastIndex = 0, r.re.test(line)) {
                 if (r !== last)
                     result += last.f(block.splice(0, block.length));
@@ -81,7 +77,7 @@ let $markup = {
     inline(x) {
         for (let result = '';;) {
             let first = {start: x.length};
-            for (let r of $markup.inlineRe) for (let k in r) {
+            for (let r of $.markup.inlineRe) for (let k in r) {
                 r[k].lastIndex = 0;
                 let groups = r[k].exec(x);
                 if (groups && r[k].lastIndex - groups[0].length < first.start)
@@ -90,30 +86,71 @@ let $markup = {
 
             if (!first.k)
                 return result + x;
-            result += x.substr(0, first.start) + $markup.inlineFn[first.k](...first.groups);
+            result += x.substr(0, first.start) + $.markup.inlineFn[first.k](...first.groups);
             x = x.substr(first.end);
         }
     },
 };
 
 
-let $init = {
-    all(e) {
-        for (let f in $init) if ($init.hasOwnProperty(f) && f !== 'all' && f !== 'template') {
-            if (e.matches && e.matches(f))
-                $init[f](e);
-            for (let c of e.querySelectorAll(f))
-                $init[f](c);
-        }
-        return e;
+$.form = {
+    onDocumentReload(doc) {
+        document.documentElement.replaceChild(doc.body, document.body);
+        $.init(document.body);
+        return true;
     },
 
-    template(id) {
-        return $init.all(document.importNode(document.getElementById(id).content, true));
+    enable(e) {
+        delete e.dataset.status;
+        for (let i of e.querySelectorAll('[disabled="_"]'))
+            i.disabled = false;
     },
 
+    disable(e) {
+        e.dataset.status = 'loading';
+        for (let i of e.querySelectorAll(':enabled'))
+            i.setAttribute('disabled', '_');
+    },
+
+    submit: (e) => new Promise((resolve, reject) => {
+        let xhr = new XMLHttpRequest();
+        xhr.onload = xhr.onerror = ev => {
+            $.form.enable(e);
+            (xhr.response && xhr.status < 300 ? resolve : reject)(xhr);
+        };
+        xhr.responseType = 'document';
+        xhr.open(e.getAttribute('method'), e.getAttribute('action'));
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(new FormData(e));
+        $.form.disable(e);
+    }),
+};
+
+
+$.delayedPair = (delay, f, g, t /* undefined */) =>
+    () => t = (clearTimeout(t), f(), setTimeout(g, delay));
+
+
+$._nativeScrollbarWidth = (() => {
+    let b = document.body, e = document.createElement('div'), r;
+    e.style.position = 'fixed';
+    e.style.overflow = 'scroll';
+    b.appendChild(e);
+    r = e.offsetWidth - e.clientWidth;
+    b.removeChild(e);
+    return r;
+})();
+
+
+$._reflowAllColumns = () => {
+    for (let e of document.querySelectorAll('x-columns'))
+        e.dataset.columns = '';
+};
+
+
+$.extend({
     '[data-scrollbar]'(e) {
-        if (_nativeScrollbarWidth === 0 || e.style.marginRight !== '')
+        if ($._nativeScrollbarWidth === 0 || e.style.marginRight !== '')
             return;  // native scrollbar is already floating
 
         let track = document.createElement('x-scrollbar');
@@ -121,7 +158,7 @@ let $init = {
         track.appendChild(thumb);
 
         let hide = () => { track.style.opacity = 0; };
-        let show = $util.delayedPair(1000, () => {
+        let show = $.delayedPair(1000, () => {
             let st = e.scrollTop, sh = e.scrollHeight, ch = e.clientHeight;
             if (st + ch >= sh) {  // the scrollbar may be keeping the element from collapsing
                 track.style.transform = '';
@@ -141,7 +178,7 @@ let $init = {
         };
 
         e.style.overflowY   = 'scroll';
-        e.style.marginRight = `${-_nativeScrollbarWidth}px`;
+        e.style.marginRight = `${-$._nativeScrollbarWidth}px`;
         e.appendChild(track);
         e.addEventListener('scroll',     ev => window.requestAnimationFrame(show));
         e.addEventListener('mouseleave', ev => window.requestAnimationFrame(hide));
@@ -160,19 +197,16 @@ let $init = {
             e.dataset.tabs = ev.target.dataset.tab || e.dataset.tabs);
 
         let tabs = {};
-        let init = e.dataset.tabs;
-        for (let tab of e.querySelectorAll('[data-tab]')) {
-            init = init || tab.dataset.tab;
-            if (tab.parentElement === e) {
-                let item = document.createElement('span');
-                item.dataset.tab = tab.dataset.tab;
-                item.textContent = tab.dataset.tabTitle || tab.dataset.tab;
-                tabs[tab.dataset.tab] = {t: tab, b: item};
-                bar.appendChild(item);
-            } else if (tab.parentElement.parentElement === e) {
-                tabs[tab.dataset.tab] = {t: tab.parentElement, b: tab};
-                bar.appendChild(tab);
-            }
+        for (let tab of e.children) if (tab.dataset.tab) {
+            let item = document.createElement('div');
+            let head = tab.querySelector('[data-tab-title]');
+            if (head) {
+                item.innerHTML = head.innerHTML;
+                head.remove();
+            } else
+                item.textContent = tab.dataset.tab;
+            tabs[item.dataset.tab = tab.dataset.tab] = {t: tab, b: item};
+            bar.appendChild(item);
         }
 
         new MutationObserver(_ => {
@@ -185,15 +219,15 @@ let $init = {
             tabs[active].t.removeAttribute('hidden');
         }).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
 
-        e.insertBefore(bar, e.childNodes[0]);
-        e.dataset.tabs = init;
+        e.insertBefore(bar, e.children[0]);
+        e.dataset.tabs = e.dataset.tabs || bar.children[0].dataset.tab;
     },
 
     '[data-markup]'(e) {
         let r = document.createElement('div');
         r.dataset.markup = 'html';
-        r.innerHTML = $markup.parse(e.innerHTML);
-        new MutationObserver(() => r.innerHTML = $markup.parse(e.innerHTML)).observe(e, {childList: true, characterData: true});
+        r.innerHTML = $.markup.block(e.innerHTML);
+        new MutationObserver(() => r.innerHTML = $.markup.block(e.innerHTML)).observe(e, {childList: true, characterData: true});
         e.parentElement.insertBefore(r, e);
     },
 
@@ -220,26 +254,23 @@ let $init = {
         let mut = new MutationObserver(reflow);
         let opt = {attributes: true, childList: true, characterData: true, subtree: true};
         reflow();
-        window.addEventListener('resize', _reflowAllColumns);
+        window.addEventListener('resize', $._reflowAllColumns);
     },
 
     'x-modal'(e) {
-        let outer  = document.createElement('x-modal-cover');
-        let inner  = document.createElement('x-modal-bg');
-        let scroll = document.createElement('div');
-        let close  = document.createElement('a');
-        e.dataset.scrollbar = '';
+        let outer = document.createElement('x-modal-cover');
+        let inner = document.createElement('x-modal-bg');
+        let close = document.createElement('a');
         e.parentNode.appendChild(outer);
+        close.setAttribute('href', '#');
+        close.classList.add('button');
+        close.classList.add('close');
+        close.classList.add('icon');
         close.addEventListener('click', (ev) => (ev.preventDefault(), outer.remove()));
         outer.addEventListener('click', (ev) => ev.target === ev.currentTarget ? outer.remove() : 1);
         outer.appendChild(inner);
         inner.appendChild(e);
         inner.appendChild(close);
-        close.classList.add('button');
-        close.classList.add('close');
-        close.classList.add('icon');
-        close.setAttribute('href', '#');
-        $init['[data-scrollbar]'](e);
     },
 
     'body'(e) {
@@ -255,15 +286,14 @@ let $init = {
     },
 
     'a[href="/user/new"], a[href="/user/login"], a[href="/user/restore"]'(e) {
-        let tab = e.getAttribute('href').slice(6);
-
+        let tab = e.getAttribute('href');
         e.addEventListener('click', ev => {
             ev.preventDefault();
             for (let p = e.parentElement; p !== null; p = p.parentElement)
                 if (p.hasAttribute('data-tabs'))
                     return (p.dataset.tabs = tab);
 
-            let it = $init.template('login-form-template');
+            let it = $.template('login-form-template');
             it.querySelector('[data-tabs]').dataset.tabs = tab;
             document.body.appendChild(it);
         });
@@ -282,11 +312,11 @@ let $init = {
         if ((e.getAttribute('method') || '').toLowerCase() === 'post')
             e.addEventListener('submit', ev => {
                 ev.preventDefault();
-                $form.submit(e).then(xhr => {
+                $.form.submit(e).then(xhr => {
                     try {
-                        $form.disable(e);
-                        if (xhr.responseURL === location.href && $form.onDocumentReload(xhr.response))
-                            return $form.enable(e);
+                        $.form.disable(e);
+                        if (xhr.responseURL === location.href && $.form.onDocumentReload(xhr.response))
+                            return $.form.enable(e);
                     } catch (err) {
                         console.log('Error in onDocumentReload:', err);
                     }
@@ -299,41 +329,4 @@ let $init = {
                 });
             });
     },
-};
-
-
-let $form = {
-    onDocumentReload(doc) {
-        document.documentElement.replaceChild(doc.body, document.body);
-        $init.all(document.body);
-        return true;
-    },
-
-    enable(e) {
-        delete e.dataset.status;
-        for (let i of e.querySelectorAll('[disabled="_"]'))
-            i.disabled = false;
-    },
-
-    disable(e) {
-        e.dataset.status = 'loading';
-        for (let i of e.querySelectorAll(':enabled'))
-            i.setAttribute('disabled', '_');
-    },
-
-    submit: (e) => new Promise((resolve, reject) => {
-        let xhr = new XMLHttpRequest();
-        xhr.onload = xhr.onerror = ev => {
-            $form.enable(e);
-            (xhr.response && xhr.status < 300 ? resolve : reject)(xhr);
-        };
-        xhr.responseType = 'document';
-        xhr.open(e.getAttribute('method'), e.getAttribute('action'));
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.send(new FormData(e));
-        $form.disable(e);
-    }),
-};
-
-
-document.addEventListener('DOMContentLoaded', _ => $init.all(document));
+});

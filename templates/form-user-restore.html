@@ -1,13 +1,11 @@
-<div class="form-wrapper">
-    <h2 data-tab="restore">Password reset</h2>
-    <form method="POST" action="/user/reset">
-        <label>Username</label>
-        <input name="username" type="text" />
-        <p class="notice">&mdash; or &mdash;</p>
-        <label>Email</label>
-        <input name="email" type="email" />
-        <p class="notice">You'll receive further instructions by mail.</p>
-        <p class="error"></p>
-        <button type="submit">Reset</button>
-    </form>
-</div>
+<form method="POST" class="form-wrapper" action="/user/reset" data-tab="/user/restore">
+    <h2 data-tab-title>Password reset</h2>
+    <label>Username</label>
+    <input name="username" type="text" />
+    <p class="notice">&mdash; or &mdash;</p>
+    <label>Email</label>
+    <input name="email" type="email" />
+    <p class="notice">You'll receive further instructions by mail.</p>
+    <p class="error"></p>
+    <button type="submit">Reset</button>
+</form>

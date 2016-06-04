@@ -1,4 +1,4 @@
-'use strict'; /* global $util, $init, $form, screenfull, sha1 */
+'use strict'; /* global $, screenfull, sha1 */
 
 if (screenfull.enabled)
     document.addEventListener(screenfull.raw.fullscreenchange, _ => {
@@ -104,7 +104,7 @@ let getParentStream = e => {
 };
 
 
-$form.onDocumentReload = doc => {
+$.form.onDocumentReload = doc => {
     let move = (src, dst, selector) => {
         let a = src.querySelector(selector);
         let b = dst.querySelector(selector);
@@ -112,7 +112,7 @@ $form.onDocumentReload = doc => {
             b.parentElement.replaceChild(a, b);
             b.remove();
             if (dst === document)
-                $init.all(a);
+                $.init(a);
         }
     };
 
@@ -126,7 +126,7 @@ $form.onDocumentReload = doc => {
 };
 
 
-Object.assign($init, {
+$.extend({
     '[data-stream-id]'(e) {
         let proto = location.protocol === 'https:' ? 'wss' : 'ws';
         e.rpc = new RPC();
@@ -191,7 +191,7 @@ Object.assign($init, {
             stream.rpc.register({ load: play, unload: stop });
         }
 
-        let showControls = $util.delayedPair(3000,
+        let showControls = $.delayedPair(3000,
             () => e.classList.remove('hide-controls'),
             () => e.classList.add('hide-controls'));
 
@@ -249,7 +249,7 @@ Object.assign($init, {
     '.stream-header'(e) {
         e.button('.edit', ev => {
             let name = e.querySelector('.name');
-            let t = $init.template('edit-name-template');
+            let t = $.template('edit-name-template');
             let f = t.querySelector('form');
             let i = f.querySelector('input');
             f.addEventListener('reset',  _  => f.remove());
@@ -266,7 +266,7 @@ Object.assign($init, {
 
     '.stream-about'(e) {
         e.button('.edit', ev => {
-            let t = $init.template('edit-panel-template');
+            let t = $.template('edit-panel-template');
             let f = t.querySelector('form');
             let i = f.querySelector('textarea');
             f.addEventListener('reset', _ => f.remove());
@@ -302,12 +302,12 @@ Object.assign($init, {
         };
 
         let handleErrors = (form, promise, withMessage) => {
-            $form.disable(form);
+            $.form.disable(form);
             return promise.then(autoscroll(() => {
-                $form.enable(form);
+                $.form.enable(form);
                 form.classList.remove('error');
             })).catch(autoscroll((e) => {
-                $form.enable(form);
+                $.form.enable(form);
                 form.classList.add('error');
                 form.querySelector('.error').textContent = e.message;
             }));
@@ -333,7 +333,7 @@ Object.assign($init, {
         };
 
         rpc.handlers['Chat.Message'] = autoscroll((name, text, login) => {
-            let entry = $init.template('chat-message-template');
+            let entry = $.template('chat-message-template');
             let e = entry.querySelector('.name');
             // TODO maybe do this server-side? that'd allow us to hash the IP instead...
             e.style.color = stringColor(`${name.length}:${name}${login}`);
