@@ -437,3 +437,13 @@ main > .form-wrapper {
 .form-wrapper input[type="email"] {
     width: 100%;
 }
+
+.badge {
+    color: #fff;
+    font-size: 0.66em;
+    font-weight: bold;
+    padding: 0.25em 0.33em;
+    background: #d00;
+    border-radius: 0.5em;
+    vertical-align: top;
+}

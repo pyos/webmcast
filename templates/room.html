@@ -31,9 +31,7 @@
                         </div>
                     {{- if .Meta.NSFW }}
                         <div class="nsfw-message">
-                            <p><strong>This stream is for a mature audience only.</strong></p>
-                            <div class="nsfw-timeout"></div>
-                            <a href="#" class="button confirm-age">Proceed</a>
+                            <p>This stream is for a mature audience only. // <a href="#" class="confirm-age">Proceed</a></p>
                         </div>
                     {{- end }}
                     </div>
@@ -75,7 +73,7 @@
                 <div>
                     {{ if .Owned }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <span>by {{or .Meta.UserName "anonymous"}}</span>
+                    <span>by {{or .Meta.UserName "anonymous"}} {{ if .Meta.NSFW }}<span class="badge">18+</span>{{ end }}</span>
                 </div>
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
                 <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>

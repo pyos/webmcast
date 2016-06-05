@@ -132,20 +132,16 @@ $.form.onDocumentReload = doc => {
 $.extend({
     '[data-stream-id]'(e) {
         let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
+        e.button('.confirm-age', _ => {
+            localStorage.setItem('mature', '1');
+            e.classList.remove('unconfirmed');
+            e.rpc.open(url);
+        });
         e.rpc = new RPC();
+        if (!!localStorage.getItem('mature'))
+            e.classList.remove('unconfirmed');
         if (!e.classList.contains('unconfirmed'))
             e.rpc.open(url);
-        else if (!!localStorage.getItem('mature')) {
-            e.rpc.open(url);
-            setTimeout(_ => e.classList.remove('unconfirmed'), 3000);
-        } else {
-            e.classList.add('nsfw-prompt');
-            e.button('.confirm-age', _ => {
-                localStorage.setItem('mature', '1');
-                e.classList.remove('unconfirmed');
-                e.rpc.open(url);
-            });
-        }
     },
 
     '.player-block'(e) {

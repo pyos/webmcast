@@ -10,22 +10,12 @@
     right: 0;
     bottom: 0;
     display: flex;
+    font-size: 1.1em;
+    font-weight: bold;
     align-items: center;
     flex-direction: column;
     justify-content: center;
-    background: rgba(0,0,0,0.8);
-}
-
-.nsfw-message .nsfw-timeout {
-    width: 0;
-    height: 4px;
-    background: #fff;
-    animation: nsfw-timeout 3s 1 linear;
-}
-
-@keyframes nsfw-timeout {
-    0%   {width: 33%;}
-    100% {width: 0;}
+    background: rgba(34,34,34,0.8);
 }
 
 .player-block {
@@ -376,8 +366,6 @@ body:not(.aside-chat) .chat form .error {
 }
 
 [data-stream-id]:not(.unconfirmed) .nsfw-message,
-[data-stream-id]:not(.nsfw-prompt) .nsfw-message .confirm-age,
-[data-stream-id].nsfw-prompt .nsfw-message .nsfw-timeout,
 [data-stream-id].unconfirmed .player:before,
 .player[data-status="playing"] svg,
 .player[data-status="playing"] .play,
