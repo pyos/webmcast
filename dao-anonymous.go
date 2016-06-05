@@ -39,7 +39,7 @@ func (d anonymousDAO) NewStreamToken(id int64) error {
 	return ErrNotSupported
 }
 
-func (d anonymousDAO) SetStreamName(id int64, name string) error {
+func (d anonymousDAO) SetStreamName(id int64, name string, nsfw bool) error {
 	return ErrNotSupported
 }
 

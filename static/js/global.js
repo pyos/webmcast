@@ -306,6 +306,8 @@ $.extend({
             ev.keyCode === 13 && !ev.shiftKey ? submit(ev) : true;
         for (let c of e.querySelectorAll('a[data-submit]'))
             c.addEventListener('click', submit);
+        for (let c of e.querySelectorAll('input[type="checkbox"][data-submit]'))
+            c.addEventListener('change', submit);
         for (let c of e.querySelectorAll('textarea[data-submit]'))
             c.addEventListener('keydown', submitOnReturn);
 

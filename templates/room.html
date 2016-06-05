@@ -7,35 +7,13 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast // {{.ID}}</title>
     </head>
-    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}" data-stream-id="{{.ID}}">
+    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}} {{if (and .Meta.NSFW .Online)}}unconfirmed{{end}}" data-stream-id="{{.ID}}">
         <main data-scrollbar>
-            <template id="edit-name-template">
-                <form method="POST" action="/user/set-stream-name">
-                    <input type="text" name="value" />
-                    <button type="submit">Save</button>
-                </form>
-            </template>
-            <template id="edit-panel-template">
-                <form method="POST" action="/user/set-stream-panel">
-                    <input type="hidden" name="id" value="" />
-                    <textarea name="value" rows="6" cols="10"></textarea>
-                    <p class="error"></p>
-                    <button type="reset">Cancel</button>
-                    <button type="reset" class="remove">Remove</button>
-                    <button type="submit">Save</button>
-                </form>
-            </template>
-            <template id="chat-message-template">
-                <li class="message">
-                    <span class="name"></span>
-                    <span class="text"></span>
-                </li>
-            </template>
             <div class="bg">
                 {{ template "nav.html" . }}
                 <section class="player-block bg">
-                    <div class="player{{- if .Meta.HasVideo}} has-video{{end -}}
-                                      {{- if .Meta.HasAudio}} has-audio{{end -}}" data-status="stopped">
+                    <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
+                                      {{- if .Meta.HasAudio}} has-audio{{end}}" data-status="stopped">
                         {{- /* `video` with `height: auto` will always use the default aspect ratio.
                             so instead we enforce the size of this element with an empty image. */}}
                         <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
@@ -51,9 +29,22 @@
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                             <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
                         </div>
+                    {{- if .Meta.NSFW }}
+                        <div class="nsfw-message">
+                            <p><strong>This stream is for a mature audience only.</strong></p>
+                            <div class="nsfw-timeout"></div>
+                            <a href="#" class="button confirm-age">Proceed</a>
+                        </div>
+                    {{- end }}
                     </div>
                     <div class="chat-tab"></div>
                     <aside class="chat">
+                        <template id="chat-message-template">
+                            <li class="message">
+                                <span class="name"></span>
+                                <span class="text"></span>
+                            </li>
+                        </template>
                         <h1>#{{.ID}}</h1>
                         <ul class="log" data-scrollbar></ul>
                         <div class="offline-message">The chat is offline.</div>
@@ -72,6 +63,14 @@
                 </section>
             </div>
             <section class="stream-header user-header">
+                <template id="edit-name-template">
+                    <form method="POST" action="/user/set-stream-name">
+                        <input type="text" name="value" />
+                        <button type="submit">Save</button>
+                        <input type="checkbox" name="nsfw" value="yes" {{if .Meta.NSFW}}checked{{end}} />
+                        <label>Mature content</label>
+                    </form>
+                </template>
                 <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
                 <div>
                     {{ if .Owned }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
@@ -82,6 +81,16 @@
                 <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
             </section>
             <section class="stream-meta" data-tabs>
+                <template id="edit-panel-template">
+                    <form method="POST" action="/user/set-stream-panel">
+                        <input type="hidden" name="id" value="" />
+                        <textarea name="value" rows="6" cols="10"></textarea>
+                        <p class="error"></p>
+                        <button type="reset">Cancel</button>
+                        <button type="reset" class="remove">Remove</button>
+                        <button type="submit">Save</button>
+                    </form>
+                </template>
             {{- if or .Meta.Panels .Owned }}
                 <x-columns class="stream-about" data-tab="Stream description">
                     <div>

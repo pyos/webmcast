@@ -20,22 +20,21 @@ Element.prototype.button = function (selector, f) {
 };
 
 
-const RPC_STATE_INIT     = 0;
-const RPC_STATE_OPEN     = 1;
-const RPC_STATE_CLOSED   = 2;
-const RPC_STATE_REDIRECT = 3;
+const RPC_STATE_NULL     = 0;
+const RPC_STATE_INIT     = 1;
+const RPC_STATE_OPEN     = 2;
+const RPC_STATE_CLOSED   = 3;
 
 
 let RPC = function () {
     this.nextID   = 0;
-    this.state    = RPC_STATE_INIT;
+    this.state    = RPC_STATE_NULL;
     this.objects  = [];
     this.awaiting = {};
     this.handlers = {
         'RPC.Redirect': url => {
             if (url.substr(0, 2) == "//")
                 url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
-            this.state = RPC_STATE_REDIRECT;
             this.open(url);
         },
 
@@ -55,11 +54,9 @@ RPC.prototype.open = function (url) {
     this.state  = RPC_STATE_INIT;
     this.socket = new WebSocket(this.url = url);
     this.socket.onclose = _ => {
-        if (this.state !== RPC_STATE_REDIRECT) {
-            this.state = RPC_STATE_CLOSED;
-            for (let object of this.objects)
-                object.unload();
-        }
+        this.state = RPC_STATE_CLOSED;
+        for (let object of this.objects)
+            object.unload();
     };
 
     this.socket.onmessage = ev => {
@@ -77,13 +74,19 @@ RPC.prototype.open = function (url) {
                 cb.resolve(msg.result);
         }
     };
+
+    for (let object of this.objects)
+        if (object.open)
+            object.open();
 };
 
 
 RPC.prototype.register = function (obj) {
-    if (this.state === RPC_STATE_OPEN)
+    if (this.state >= RPC_STATE_INIT && obj.open)
+        obj.open();
+    if (this.state >= RPC_STATE_OPEN)
         obj.load();
-    if (this.state === RPC_STATE_CLOSED)
+    if (this.state >= RPC_STATE_CLOSED)
         obj.unload();
     this.objects.push(obj);
 };
@@ -128,9 +131,21 @@ $.form.onDocumentReload = doc => {
 
 $.extend({
     '[data-stream-id]'(e) {
-        let proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
         e.rpc = new RPC();
-        e.rpc.open(`${proto}://${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`);
+        if (!e.classList.contains('unconfirmed'))
+            e.rpc.open(url);
+        else if (!!localStorage.getItem('mature')) {
+            e.rpc.open(url);
+            setTimeout(_ => e.classList.remove('unconfirmed'), 3000);
+        } else {
+            e.classList.add('nsfw-prompt');
+            e.button('.confirm-age', _ => {
+                localStorage.setItem('mature', '1');
+                e.classList.remove('unconfirmed');
+                e.rpc.open(url);
+            });
+        }
     },
 
     '.player-block'(e) {
@@ -186,10 +201,8 @@ $.extend({
                 delete e.dataset.connected;
         };
 
-        if (stream) {
-            setStatus('loading', 'connecting');
-            stream.rpc.register({ load: play, unload: stop });
-        }
+        if (stream)
+            stream.rpc.register({ open: () => setStatus('loading', 'connecting'), load: play, unload: stop });
 
         let showControls = $.delayedPair(3000,
             () => e.classList.remove('hide-controls'),

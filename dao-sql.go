@@ -23,9 +23,9 @@ type sqlDAO struct {
 		ActivateUser    *sql.Stmt "update users set actoken = NULL where id = ? and actoken = ?"
 		GetUserID       *sql.Stmt "select id, pwhash from users where login = ?"
 		GetUserInfo     *sql.Stmt "select name, login, email, pwhash, about, actoken, sectoken from users where id = ?"
-		GetStreamInfo   *sql.Stmt "select users.id, users.name, about, email, streams.name, server, video, audio, width, height, streams.id from users join streams on users.id = streams.user where login = ?"
+		GetStreamInfo   *sql.Stmt "select users.id, users.name, about, email, streams.name, server, video, audio, width, height, nsfw, streams.id from users join streams on users.id = streams.user where login = ?"
 		SetStreamToken  *sql.Stmt "update users set sectoken = ? where id = ?"
-		SetStreamName   *sql.Stmt "update streams set name = ? where user = ?"
+		SetStreamName   *sql.Stmt "update streams set name = ?, nsfw = ? where user = ?"
 		SetStreamTracks *sql.Stmt "update streams set video = ?, audio = ?, width = ?, height = ? where user in (select id from users where login = ?)"
 		GetStreamPanels *sql.Stmt "select text, image from panels where stream = ?"
 		AddStreamPanel  *sql.Stmt "insert into panels(stream, text) select id, ? from streams where user = ?"
@@ -56,6 +56,7 @@ create table if not exists streams (
     user       integer      not null,
     video      boolean      not null default 1,
     audio      boolean      not null default 1,
+    nsfw       boolean      not null default 0,
     width      integer      not null default 0,
     height     integer      not null default 0,
     name       varchar(256) not null default "",
@@ -231,8 +232,8 @@ func (d *sqlDAO) NewStreamToken(id int64) error {
 	return errOf(d.prepared.SetStreamToken.Exec(makeToken(tokenLength), id))
 }
 
-func (d *sqlDAO) SetStreamName(id int64, name string) error {
-	return errOf(d.prepared.SetStreamName.Exec(name, id))
+func (d *sqlDAO) SetStreamName(id int64, name string, nsfw bool) error {
+	return errOf(d.prepared.SetStreamName.Exec(name, nsfw, id))
 }
 
 func (d *sqlDAO) AddStreamPanel(id int64, text string) error {
@@ -327,7 +328,8 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	var server sql.NullString
 	meta := StreamMetadata{}
 	err := d.prepared.GetStreamInfo.QueryRow(id).Scan(
-		&meta.OwnerID, &meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server, &meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &intId,
+		&meta.OwnerID, &meta.UserName, &meta.UserAbout, &meta.Email, &meta.Name, &server,
+		&meta.HasVideo, &meta.HasAudio, &meta.Width, &meta.Height, &meta.NSFW, &intId,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrStreamNotExist

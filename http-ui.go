@@ -217,7 +217,7 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 			err = ctx.NewStreamToken(user.ID)
 
 		case "/user/set-stream-name":
-			err = ctx.SetStreamName(user.ID, r.FormValue("value"))
+			err = ctx.SetStreamName(user.ID, r.FormValue("value"), r.FormValue("nsfw") == "yes")
 
 		case "/user/set-stream-panel":
 			// TODO image

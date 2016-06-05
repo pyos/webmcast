@@ -3,6 +3,31 @@
     color: #fff;
 }
 
+.nsfw-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(0,0,0,0.8);
+}
+
+.nsfw-message .nsfw-timeout {
+    width: 0;
+    height: 4px;
+    background: #fff;
+    animation: nsfw-timeout 3s 1 linear;
+}
+
+@keyframes nsfw-timeout {
+    0%   {width: 33%;}
+    100% {width: 0;}
+}
+
 .player-block {
     display: flex;
     position: relative;
@@ -13,13 +38,13 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     max-width: 90rem;
 }
 
-.player-block .button {
+.player-block .button.icon {
     color: inherit;
     font-size: 1.66em;
     text-decoration: none;
 }
 
-.player-block .button:active {
+.player-block .button.icon:active {
     color: #666;
 }
 
@@ -157,7 +182,13 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 
 .stream-header form input,
 .stream-header form button {
-    height: 2.4em;  /* = 1.5 * 1.6em = h1's height */
+    height: 2.35em;  /* ~= 1.5 * 1.6em rounded down to px = h1's height */
+    margin: 0;
+    vertical-align: middle;
+}
+
+.stream-header form button {
+    margin-right: 1em;
 }
 
 .stream-meta {
@@ -344,6 +375,10 @@ body:not(.aside-chat) .chat form .error {
     color: #f55;
 }
 
+[data-stream-id]:not(.unconfirmed) .nsfw-message,
+[data-stream-id]:not(.nsfw-prompt) .nsfw-message .confirm-age,
+[data-stream-id].nsfw-prompt .nsfw-message .nsfw-timeout,
+[data-stream-id].unconfirmed .player:before,
 .player[data-status="playing"] svg,
 .player[data-status="playing"] .play,
 .player[data-status="loading"] .play,

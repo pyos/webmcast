@@ -56,6 +56,7 @@ type StreamMetadata struct {
 	Email     string
 	Server    string
 	OwnerID   int64
+	NSFW      bool
 	Panels    []StreamMetadataPanel
 	StreamTrackInfo
 }
@@ -111,7 +112,7 @@ type Database interface {
 	// v--- can assume existence of user with given id
 	SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error)
 	NewStreamToken(id int64) error
-	SetStreamName(id int64, name string) error
+	SetStreamName(id int64, name string, nsfw bool) error
 	AddStreamPanel(id int64, text string) error
 	SetStreamPanel(id int64, n int64, text string) error
 	DelStreamPanel(id int64, n int64) error
