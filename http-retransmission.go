@@ -94,6 +94,10 @@ func wantsWebsocket(r *http.Request) bool {
 }
 
 func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, id string) error {
+	if r.URL.RawQuery != "" {
+		return RenderError(w, http.StatusBadRequest, "Send WebMs here, watch using the other links.")
+	}
+
 	stream, ok := ctx.Readable(id)
 	if !ok {
 		switch server, err := ctx.GetStreamServer(id); err {
