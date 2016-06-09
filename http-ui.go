@@ -69,7 +69,7 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
 		case nil, ErrStreamOffline:
 		}
-		return Render(w, http.StatusOK, Room{id, user != nil && meta.OwnerID == user.ID, err == nil, meta, user})
+		return Render(w, http.StatusOK, Room{ID: id, Editable: user != nil && meta.OwnerID == user.ID, Online: err == nil, Meta: meta, User: user})
 	}
 
 	if strings.HasPrefix(r.URL.Path, "/rec/") {
@@ -79,14 +79,14 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 			if err != nil {
 				return RenderError(w, http.StatusNotFound, "")
 			}
-			rec, err := ctx.GetRecording(id[:sep], int64(recid))
+			meta, err := ctx.GetRecording(id[:sep], int64(recid))
 			if err == ErrStreamNotExist {
 				return RenderError(w, http.StatusNotFound, "Recording not found.")
 			}
 			if err != nil {
 				return err
 			}
-			return Render(w, http.StatusOK, Recording{id[:sep], user, rec})
+			return Render(w, http.StatusOK, Recording{ID: id[:sep], Meta: meta, User: user})
 		}
 
 		recs, err := ctx.GetRecordings(id)

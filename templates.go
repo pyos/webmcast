@@ -112,15 +112,19 @@ func (_ Landing) TemplateFile() string {
 }
 
 type Room struct {
-	ID     string
-	Owned  bool
-	Online bool
-	Meta   *StreamMetadata
-	User   *UserData
+	ID       string
+	Editable bool
+	Online   bool
+	Meta     *StreamMetadata
+	User     *UserData
 }
 
 func (_ Room) TemplateFile() string {
 	return "room.html"
+}
+
+func (_ Room) Live() bool {
+	return true
 }
 
 type Recordings struct {
@@ -135,13 +139,19 @@ func (_ Recordings) TemplateFile() string {
 }
 
 type Recording struct {
-	ID   string
-	User *UserData
-	Meta *StreamRecording
+	ID       string
+	Editable bool // false
+	Online   bool // false
+	Meta     *StreamRecording
+	User     *UserData
 }
 
 func (_ Recording) TemplateFile() string {
-	return "recording.html"
+	return "room.html"
+}
+
+func (r Recording) Live() bool {
+	return false
 }
 
 type UserNew int

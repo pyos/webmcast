@@ -99,14 +99,6 @@ RPC.prototype.send = function (method, ...params) {
 };
 
 
-let getParentStream = e => {
-    for (; e !== null; e = e.parentElement)
-        if (e.rpc !== undefined)
-            return e;
-    return null;
-};
-
-
 $.form.onDocumentReload = doc => {
     let move = (src, dst, selector) => {
         let a = src.querySelector(selector);
@@ -129,210 +121,27 @@ $.form.onDocumentReload = doc => {
 };
 
 
-$.extend({
-    '[data-unconfirmed]'(e) {
-        let confirm = _ => {
-            localStorage.setItem('mature', '1');
-            for (let c of e.querySelectorAll('.nsfw-message'))
-                c.remove();
-            delete e.dataset.unconfirmed;
-        };
-        e.button('.confirm-age', confirm);
-        if (!!localStorage.getItem('mature'))
-            confirm();
-    },
-
-    '[data-stream-id]'(e) {
-        let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
-
-        e.rpc = new RPC();
-        if (e.hasAttribute('data-unconfirmed'))
-            new MutationObserver(_ => e.rpc.open(url)).observe(e, {attributes: true, attributeFilter: ['data-unconfirmed']});
-        else
-            e.rpc.open(url);
-    },
-
-    '[data-stream-src]'(e) {
-        let start = () =>
-            e.querySelector('.player').dataset.src = e.dataset.streamSrc;
-        if (e.hasAttribute('data-unconfirmed'))
-            new MutationObserver(start).observe(e, {attributes: true, attributeFilter: ['data-unconfirmed']});
-        else
-            start();
-    },
-
-    '.player-block'(e) {
-        e.button('.theatre',  _ => e.classList.add('theatre'));
-        e.button('.collapse', _ => e.classList.remove('theatre'));
+let withRPC = rpc => ({
+    '.viewers'(e) {
+        rpc.handlers['Stream.ViewerCount'] = n =>
+            e.textContent = n;
     },
 
     '.player'(e) {
-        // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
-        let video  = e.querySelector('video');
-        let status = e.querySelector('.status');
-        let volume = e.querySelector('.volume');
-
-        let setStatus = (short, long) => {
-            e.dataset.status = short;
-            status.textContent = long || short;
-        };
-
-        let onTimeUpdate = t =>
-            // let leftPad = require('left-pad');
-            setStatus('playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
-
-        let onError = code => setStatus(
-              code === 4 ? (stream && stream.rpc.state === RPC_STATE_OPEN ? 'stopped' : 'ended') :'error',
-
-              code === 1 ? 'aborted'
-            : code === 2 ? 'network error'
-            : code === 3 ? 'decoding error'
-            : code === 4 ? (stream && stream.rpc.state === RPC_STATE_OPEN ? 'stopped' : 'stream ended')
-            : 'unknown error');
-
-        video.addEventListener('loadstart',      _ => setStatus('loading'));
-        video.addEventListener('loadedmetadata', _ => setStatus('loading', 'buffering'));
-        video.addEventListener('timeupdate',     _ => onTimeUpdate(video.currentTime));
-        video.addEventListener('ended',          _ => onError(4 /* "unsupported media" */));
-        video.addEventListener('error',          _ => onError(video.error.code));
-
-        let stream = getParentStream(e);
-        let setSrc = src => {
-            setStatus('loading');
-            e.dataset.connected = 1;
-            delete e.dataset.paused;
-            video.src = src;
-            video.play();
-        };
-
-        new MutationObserver(_ => setSrc(e.dataset.src)).observe(e, {attributes: true, attributeFilter: ['data-src']});
-
-        let play = () => {
-            if (stream && stream.rpc.state === RPC_STATE_OPEN)
+        rpc.register({
+            open: () =>
+                e.dataset.live = '1',
+            load: () =>
                 // TODO measure connection speed, request a stream
-                setSrc(stream.rpc.url.replace('ws', 'http'));
-            else {
-                delete e.dataset.paused;
-                video.play();
-            }
-        };
-
-        let stop = () => {
-            if (stream) {
-                setStatus('loading');
-                video.src = '';
-                if (stream && stream.rpc.state !== RPC_STATE_OPEN)
-                    delete e.dataset.connected;
-            } else {
-                e.dataset.paused = '1';
-                video.pause();
-            }
-        };
-
-        if (stream)
-            stream.rpc.register({ open: () => setStatus('loading', 'connecting'), load: play, unload: stop });
-        else if (e.dataset.src)
-            setSrc(e.dataset.src);
-
-        let showControls = $.delayedPair(3000,
-            () => e.classList.remove('hide-controls'),
-            () => e.classList.add('hide-controls'));
-
-        e.addEventListener('mousemove', showControls);
-        e.addEventListener('focusin',   showControls);
-        e.addEventListener('keydown',   showControls);
-        e.button('.play', play);
-        e.button('.stop', stop);
-        e.button('.mute',       _ => video.muted = true);
-        e.button('.unmute',     _ => video.muted = false);
-        e.button('.fullscreen', _ => screenfull.request(e));
-        e.button('.collapse',   _ => screenfull.exit());
-
-        let onVolumeChange = _ => {
-            volume.querySelector('.slider').style.width = `${video.volume * 100}%`;
-            if (video.muted)
-                e.classList.add('muted');
-            else
-                e.classList.remove('muted');
-            localStorage.setItem('volume', String(video.volume));
-            if (video.muted)
-                localStorage.setItem('muted', '1');
-            else
-                localStorage.removeItem('muted');
-        };
-
-        let onVolumeSelect = ev => {
-            ev.preventDefault();
-            let r = volume.getBoundingClientRect();
-            let x = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left) / (r.right - r.left);
-            video.volume = Math.min(1, Math.max(0, x));
-            video.muted  = false;
-        };
-
-        let savedVolume = parseFloat(localStorage.getItem('volume'));
-        if (!isNaN(savedVolume) && 0 <= savedVolume && savedVolume <= 1)
-            video.volume = savedVolume;
-        video.muted = !!localStorage.getItem('muted');
-
-        video.addEventListener('volumechange', onVolumeChange);
-        // when styling <input type="range"> is too hard
-        volume.addEventListener('mousedown',  onVolumeSelect);
-        volume.addEventListener('touchstart', onVolumeSelect);
-        volume.addEventListener('touchmove',  onVolumeSelect);
-        volume.addEventListener('mousedown',  _ => volume.addEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('mouseup',    _ => volume.removeEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('mouseleave', _ => volume.removeEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('keydown',    ev =>
-            video.volume = ev.keyCode === 37 ? Math.max(0, video.volume - 0.05)  // left arrow
-                         : ev.keyCode === 39 ? Math.min(1, video.volume + 0.05)  // right arrow
-                         : video.volume);
-        onVolumeChange(null);
-    },
-
-    '.stream-header'(e) {
-        e.button('.edit', ev => {
-            let name = e.querySelector('.name');
-            let t = $.template('edit-name-template');
-            let f = t.querySelector('form');
-            let i = f.querySelector('input');
-            f.addEventListener('reset',  _  => f.remove());
-            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
-            i.value = name.textContent;
-            i.focus();
-        });
-
-        let stream = getParentStream(e);
-        if (stream)
-            stream.rpc.handlers['Stream.ViewerCount'] = n =>
-                e.querySelector('.viewers').textContent = n;
-    },
-
-    '.stream-about'(e) {
-        e.button('.edit', ev => {
-            let t = $.template('edit-panel-template');
-            let f = t.querySelector('form');
-            let i = f.querySelector('textarea');
-            f.addEventListener('reset', _ => f.remove());
-
-            let id = ev.currentTarget.dataset.panel;
-            if (id) {
-                f.querySelector('[name="id"]').value = id;
-                f.querySelector('.remove').addEventListener('click', () => {
-                    f.setAttribute('action', '/user/del-stream-panel');
-                    f.dispatchEvent(new Event('submit', {cancelable: true}));
-                });
-            } else {
-                f.querySelector('.remove').remove();
-            }
-
-            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
-            i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
-            i.focus();
+                e.dataset.src = rpc.url.replace('ws', 'http'),
+            unload: () => {
+                delete e.dataset.live;
+                e.dataset.src = '';
+            },
         });
     },
 
     '.chat'(root) {
-        let rpc  = getParentStream(root).rpc;
         let log  = root.querySelector('.log');
         let form = root.querySelector('.input-form');
         let text = root.querySelector('.input-form .input');
@@ -410,6 +219,187 @@ $.extend({
             unload() {
                 root.classList.remove('online');
             },
+        });
+    },
+});
+
+
+$.confirmMaturity = e => new Promise(resolve => {
+    if (!e.hasAttribute('data-unconfirmed'))
+        return resolve();
+    let confirm = _ => {
+        localStorage.setItem('mature', '1');
+        for (let c of e.querySelectorAll('.nsfw-message'))
+            c.remove();
+        delete e.dataset.unconfirmed;
+        resolve();
+    };
+    if (!!localStorage.getItem('mature'))
+        confirm();
+    else
+        e.button('.confirm-age', confirm);
+});
+
+
+$.extend({
+    '[data-stream-id]'(e) {
+        let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
+        let rpc = new RPC();
+        $.confirmMaturity(e).then(() => rpc.open(url));
+        $.apply(e, withRPC(rpc));
+    },
+
+    '[data-stream-src]'(e) {
+        $.confirmMaturity(e).then(() => e.querySelector('.player').dataset.src = e.dataset.streamSrc);
+    },
+
+    '.player-block'(e) {
+        e.button('.theatre',  _ => e.classList.add('theatre'));
+        e.button('.collapse', _ => e.classList.remove('theatre'));
+    },
+
+    '.player'(e) {
+        // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
+        let video  = e.querySelector('video');
+        let status = e.querySelector('.status');
+        let volume = e.querySelector('.volume');
+
+        let setStatus = (short, long) => {
+            e.dataset.status = short;
+            status.textContent = long || short;
+        };
+
+        let onTimeUpdate = t =>
+            // let leftPad = require('left-pad');
+            setStatus(video.paused ? 'paused' : 'playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
+
+        let onError = code => setStatus(
+              code === 4 ? (e.dataset.live ? 'stopped' : 'ended') : 'error',
+              code === 4 ? (e.dataset.live ? 'stopped' : 'stream ended')
+            : code === 3 ? 'decoding error'
+            : code === 2 ? 'network error'
+            : /* code === 1 ? */ 'aborted');
+
+        video.addEventListener('loadstart',      _ => setStatus('loading'));
+        video.addEventListener('loadedmetadata', _ => setStatus('loading', 'buffering'));
+        video.addEventListener('timeupdate',     _ => onTimeUpdate(video.currentTime));
+        video.addEventListener('ended',          _ => onError(4 /* "unsupported media" */));
+        video.addEventListener('error',          _ => onError(video.error.code));
+
+        new MutationObserver(_ => {
+            setStatus('loading');
+            if ((video.src = e.dataset.src))
+                video.play();
+        }).observe(e, {attributes: true, attributeFilter: ['data-src']});
+
+        if (e.dataset.src)
+            e.dataset.src = e.dataset.src;
+
+        e.button('.play', _ => {
+            if (e.dataset.live)
+                e.dataset.src = e.dataset.src;
+            else
+                video.play();
+        });
+
+        e.button('.stop', _ => {
+            if (e.dataset.live) {
+                setStatus('loading', 'stopping');
+                video.src = '';
+            } else {
+                setStatus('paused', status.textContent);
+                video.pause();
+            }
+        });
+
+        e.button('.mute',       _ => video.muted = true);
+        e.button('.unmute',     _ => video.muted = false);
+        e.button('.fullscreen', _ => screenfull.request(e));
+        e.button('.collapse',   _ => screenfull.exit());
+
+        let showControls = $.delayedPair(3000,
+            () => e.classList.remove('hide-controls'),
+            () => e.classList.add('hide-controls'));
+
+        e.addEventListener('mousemove', showControls);
+        e.addEventListener('focusin',   showControls);
+        e.addEventListener('keydown',   showControls);
+
+        let onVolumeChange = _ => {
+            volume.querySelector('.slider').style.width = `${video.volume * 100}%`;
+            if (video.muted)
+                e.classList.add('muted');
+            else
+                e.classList.remove('muted');
+            localStorage.setItem('volume', String(video.volume));
+            if (video.muted)
+                localStorage.setItem('muted', '1');
+            else
+                localStorage.removeItem('muted');
+        };
+
+        let onVolumeSelect = ev => {
+            ev.preventDefault();
+            let r = volume.getBoundingClientRect();
+            let x = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left) / (r.right - r.left);
+            video.volume = Math.min(1, Math.max(0, x));
+            video.muted  = false;
+        };
+
+        let savedVolume = parseFloat(localStorage.getItem('volume'));
+        if (!isNaN(savedVolume) && 0 <= savedVolume && savedVolume <= 1)
+            video.volume = savedVolume;
+        video.muted = !!localStorage.getItem('muted');
+
+        video.addEventListener('volumechange', onVolumeChange);
+        // when styling <input type="range"> is too hard
+        volume.addEventListener('mousedown',  onVolumeSelect);
+        volume.addEventListener('touchstart', onVolumeSelect);
+        volume.addEventListener('touchmove',  onVolumeSelect);
+        volume.addEventListener('mousedown',  _ => volume.addEventListener('mousemove', onVolumeSelect));
+        volume.addEventListener('mouseup',    _ => volume.removeEventListener('mousemove', onVolumeSelect));
+        volume.addEventListener('mouseleave', _ => volume.removeEventListener('mousemove', onVolumeSelect));
+        volume.addEventListener('keydown',    ev =>
+            video.volume = ev.keyCode === 37 ? Math.max(0, video.volume - 0.05)  // left arrow
+                         : ev.keyCode === 39 ? Math.min(1, video.volume + 0.05)  // right arrow
+                         : video.volume);
+        onVolumeChange(null);
+    },
+
+    '.stream-header'(e) {
+        e.button('.edit', ev => {
+            let name = e.querySelector('.name');
+            let t = $.template('edit-name-template');
+            let f = t.querySelector('form');
+            let i = f.querySelector('input');
+            f.addEventListener('reset',  _  => f.remove());
+            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
+            i.value = name.textContent;
+            i.focus();
+        });
+    },
+
+    '.stream-about'(e) {
+        e.button('.edit', ev => {
+            let t = $.template('edit-panel-template');
+            let f = t.querySelector('form');
+            let i = f.querySelector('textarea');
+            f.addEventListener('reset', _ => f.remove());
+
+            let id = ev.currentTarget.dataset.panel;
+            if (id) {
+                f.querySelector('[name="id"]').value = id;
+                f.querySelector('.remove').addEventListener('click', () => {
+                    f.setAttribute('action', '/user/del-stream-panel');
+                    f.dispatchEvent(new Event('submit', {cancelable: true}));
+                });
+            } else {
+                f.querySelector('.remove').remove();
+            }
+
+            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
+            i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
+            i.focus();
         });
     },
 });

@@ -7,7 +7,9 @@
         <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast // {{.ID}}</title>
     </head>
-    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}" data-stream-id="{{.ID}}" {{if (and .Meta.NSFW .Online)}}data-unconfirmed{{end}}>
+    <!-- {{$NSFW := and .Meta.NSFW (or .Online (not .Live))}} -->
+    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}"
+            {{- if .Live}} data-stream-id="{{.ID}}"{{else}} data-stream-src="/static/recorded/{{.Meta.Path}}"{{end}} {{if $NSFW}}data-unconfirmed{{end}}>
         <main data-scrollbar>
             <div class="bg">
                 {{ template "nav.html" . }}
@@ -29,7 +31,7 @@
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                             <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
                         </div>
-                    {{- if (and .Meta.NSFW .Online) }}
+                    {{- if $NSFW }}
                         <div class="nsfw-message">
                             <p>This stream is for a mature audience only. // <a href="#" class="confirm-age">Proceed</a></p>
                         </div>
@@ -44,7 +46,18 @@
                             </li>
                         </template>
                         <h1>#{{.ID}}</h1>
-                        <ul class="log" data-scrollbar></ul>
+                        <ul class="log" data-scrollbar>
+                        {{- if not .Live }}
+                            <li class="message">
+                                <span class="name" style="color:#f66">system</span>
+                                <span class="text">This recording was made {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}}.</span>
+                            </li>
+                            <li class="message">
+                                <span class="name" style="color:#f66">system</span>
+                                <span class="text">To see what {{or .Meta.UserName .ID}} is up to now, <a href="/{{.ID}}">go here</a>.</span>
+                            </li>
+                        {{- end }}
+                        </ul>
                         <div class="offline-message">The chat is offline.</div>
                         <form class="login-form">
                             <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?" data-submit></textarea>
@@ -61,6 +74,7 @@
                 </section>
             </div>
             <section class="stream-header user-header">
+            {{- if .Editable }}
                 <template id="edit-name-template">
                     <form method="POST" action="/user/set-stream-name">
                         <input type="text" name="value" />
@@ -69,17 +83,21 @@
                         <label>Mature content</label>
                     </form>
                 </template>
+            {{- end }}
                 <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
                 <div>
-                    {{ if .Owned }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
+                    {{ if .Editable }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
                     <span>by {{or .Meta.UserName "anonymous"}}</span>
                     {{ if .Meta.NSFW }}<span><span class="badge">18+</span></span>{{ end }}
                 </div>
+            {{- if .Live }}
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
                 <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
+            {{- end }}
             </section>
             <section class="stream-meta" data-tabs>
+            {{- if .Editable }}
                 <template id="edit-panel-template">
                     <form method="POST" action="/user/set-stream-panel">
                         <input type="hidden" name="id" value="" />
@@ -90,18 +108,19 @@
                         <button type="submit">Save</button>
                     </form>
                 </template>
-            {{- if or .Meta.Panels .Owned }}
+            {{- end }}
+            {{- if or .Meta.Panels .Editable }}
                 <x-columns class="stream-about" data-tab="Stream description">
                     <div>
                     {{- range $id, $_ := .Meta.Panels }}
                         <div class="panel" data-order="{{$id}}">
-                        {{- if $.Owned }}
+                        {{- if $.Editable }}
                             <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
                         {{- end }}
                             <p data-markup>{{.Text}}</p>
                         </div>
                     {{- end }}
-                    {{- if .Owned }}
+                    {{- if .Editable }}
                         <div class="panel new-panel" data-order="{{len .Meta.Panels}}">
                             <a href="#" class="button icon edit" title="New panel...">&#xf040;</a>
                             <p data-markup>*Edit this to create a new panel*</p>

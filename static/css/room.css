@@ -106,7 +106,8 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     bottom: 0;
 }
 
-.player.has-video[data-status="playing"] .controls {
+.player.has-video[data-status="playing"] .controls,
+.player.has-video[data-status="paused"] .controls {
     background: rgba(0,0,0,0.5);
 }
 
@@ -368,14 +369,16 @@ body:not(.aside-chat) .chat form .error {
 [data-unconfirmed] [data-status]:before,
 [data-unconfirmed][data-status]:before,
 .player[data-status="playing"] svg,
-.player[data-status="playing"]:not([data-paused]) .play,
+.player[data-status="paused"] svg,
+.player[data-status="playing"] .play,
 .player[data-status="loading"] .play,
-.player[data-paused] .stop,
-.player[data-connected] .reload,
-.player:not([data-connected]) .play,
-.player:not([data-connected]) .stop,
+.player[data-status="paused"] .stop,
+.player[data-live] .reload,
+.player:not([data-src=""]) .reload,
+.player[data-src=""]:not([data-live]) .play,
+.player[data-src=""]:not([data-live]) .stop,
 .player:not([data-status="playing"]):not([data-status="loading"]) .stop,
-.player:not([data-status="playing"]) video,
+.player:not([data-status="playing"]):not([data-status="paused"]) video,
 .player:not(.has-audio) .mute,
 .player:not(.has-audio) .volume,
 .player:not(.has-video) svg,

@@ -6,7 +6,7 @@ NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
 let $ = {
     rules: {},
 
-    apply(rs, e) {
+    apply(e, rs) {
         for (let f in rs) if (rs.hasOwnProperty(f)) {
             if (e.matches && e.matches(f))
                 rs[f](e);
@@ -15,9 +15,9 @@ let $ = {
         }
     },
 
-    init: (e) => ($.apply($.rules, e), e),
+    init: (e) => ($.apply(e, $.rules), e),
 
-    extend: (rs) => ($.apply(rs, document), Object.assign($.rules, rs)),
+    extend: (rs) => ($.apply(document, rs), Object.assign($.rules, rs)),
 
     template: (id) =>
         $.init(document.importNode(document.getElementById(id).content, true)),
