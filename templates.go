@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -19,6 +20,8 @@ type templateSet struct {
 type viewmodel interface {
 	TemplateFile() string
 }
+
+var htmlInterElementWhitespace = regexp.MustCompile(">\\s+<")
 
 func (ts *templateSet) Render(w http.ResponseWriter, code int, vm viewmodel) error {
 	name := vm.TemplateFile()
@@ -37,7 +40,7 @@ func (ts *templateSet) Render(w http.ResponseWriter, code int, vm viewmodel) err
 		}
 		w.Header().Set("Content-Type", "text/html; encoding=utf-8")
 		w.WriteHeader(code)
-		buf.WriteTo(w)
+		w.Write(htmlInterElementWhitespace.ReplaceAll(buf.Bytes(), []byte("> <")))
 		return nil
 	}
 	return fmt.Errorf("template not found: %s", name)
