@@ -4,31 +4,18 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
+        <link rel="stylesheet" href="/static/css/room.css" />
         <title>webmcast time machine // {{.ID}}</title>
         <style>
-            .space-usage {
-                padding: 0 2rem;
+            footer {
+                padding-top: 1rem;
             }
 
-            x-progress {
-                display: block;
-                overflow: hidden;
-                position: relative;
-                background: rgba(127,127,127,0.3);
-                padding: 0.33em;
-                font-weight: bold;
-                border-radius: 0.5em;
-            }
-
-            x-progress > x-bar {
-                display: block;
-                position: absolute;
-                top: 0;
-                left: 0;
-                bottom: 0;
-                z-index: -1;
-                min-width: 50px;
-                background: red;
+            .panel .info {
+                display: flex;
+                font-size: 1.2em;
+                align-items: center;
+                padding-bottom: 1rem;
             }
         </style>
     </head>
@@ -38,24 +25,38 @@
             <section class="user-header">
                 <img width="60" height="60" src="{{.Avatar 60}}" alt="{{.ID}}" />
                 <div>
-                    <h1>Past recordings</h1>
-                    <span>by {{or .UserName "anonymous"}}</span>
+                    <h1>{{or .UserName "anonymous"}}</h1>
+                    <span>Stream archives</span>
                 </div>
             </section>
-        {{- if .Owned }}
-            <section class="space-usage">
-                <x-progress>
-                    <x-bar style="width:{{.SpaceUsed.PercentOf .SpaceLimit}}%"></x-bar>
-                    {{.SpaceUsed}} / {{.SpaceLimit}}
-                </x-progress>
-            </section>
-        {{- end }}
-            <section>
-                <ul>
-                {{- range .Recordings }}
-                    <li><a href="/rec/{{$.ID}}/{{.ID}}">{{.Name}}</a> ({{.Space}}) {{.Timestamp}}</li>
-                {{- end }}
-                </ul>
+            <section class="stream-meta">
+            {{- if .Editable }}
+                <b>Disk space used:</b> {{.SpaceUsed}} / {{.SpaceLimit}}
+                <x-range data-value="{{.SpaceUsed.RatioOf .SpaceLimit}}" data-ro></x-range>
+            {{- end }}
+            {{- if .UserAbout }}
+                <div class="panel"><p data-markup>{{.UserAbout}}</p></div>
+            {{- end }}
+                <x-columns>
+                    <div>
+                    {{- range $.Recordings }}
+                        <div class="panel">
+                            <h2><a href="/rec/{{$.ID}}/{{.ID}}">{{.Name}}</a></h2>
+                            <div class="info">
+                                <span>{{.Timestamp.Format "02.01.2006 15:04:05"}}</span>
+                                <x-spacer></x-spacer>
+                                <span>{{.Space}}</span>
+                                <a href="/static/recorded/{{.Path}}" class="icon button" title="Download">&#xf019;</a>
+                            </div>
+                        </div>
+                    {{- else }}
+                        <div class="panel new-panel">
+                            <h2>The archive is empty.</h2>
+                            <div class="info">There is no way to record a stream yet.</div>
+                        </div>
+                    {{- end }}
+                    </div><div></div>
+                </x-columns>
             </section>
             {{ template "footer.html" }}
             <script src="/static/js/global.js"></script>

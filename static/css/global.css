@@ -333,7 +333,7 @@ x-range:not([data-ro]) {
     cursor: ew-resize;
 }
 
-x-range:after {
+x-range:before {
     content: '';
     display: block;
     border: 2px solid rgba(127,127,127,0.3);
@@ -342,12 +342,10 @@ x-range:after {
 
 x-range > x-slider {
     display: block;
-    position: relative;
     box-sizing: border-box;
     border: 2px solid #f7d358;
     border-radius: 2px;
-    margin-bottom: -4px;
-    z-index: 1;
+    margin-top: -4px;
 }
 
 x-range:not([data-ro]) > x-slider:after {
@@ -405,6 +403,25 @@ x-columns {
 
 .row > * {
     flex: 1 0;
+}
+
+x-columns > * {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (min-width: 50em) {
+    x-columns > * {
+        width: 50%;
+    }
+
+    x-columns > :nth-child(2n) {
+        padding-left: 0.5em;
+    }
+
+    x-columns > :nth-child(2n+1) {
+        padding-right: 0.5em;
+    }
 }
 
 .user-header {

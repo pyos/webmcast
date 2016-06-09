@@ -35,7 +35,7 @@ type sqlDAO struct {
 		GetStreamServer *sql.Stmt "select server from streams where user in (select id from users where login = ?)"
 		SetStreamServer *sql.Stmt "update streams set server = ? where server is null and user in (select id from users where login = ? and actoken is null and sectoken = ?)"
 		DelStreamServer *sql.Stmt "update streams set server = null where user in (select id from users where login = ?)"
-		GetRecordings1  *sql.Stmt "select id, name, email, space_total from users where login = ?"
+		GetRecordings1  *sql.Stmt "select id, name, about, email, space_total from users where login = ?"
 		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ?"
 		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created from users join recordings on users.id = user where recordings.id = ?"
 		DelRecording    *sql.Stmt "delete from recordings where id = ?"
@@ -378,7 +378,7 @@ func (d *sqlDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
 
 func (d *sqlDAO) GetRecordings(id string) (*StreamHistory, error) {
 	h := StreamHistory{}
-	err := d.prepared.GetRecordings1.QueryRow(id).Scan(&h.OwnerID, &h.UserName, &h.Email, &h.SpaceLimit)
+	err := d.prepared.GetRecordings1.QueryRow(id).Scan(&h.OwnerID, &h.UserName, &h.UserAbout, &h.Email, &h.SpaceLimit)
 	if err == sql.ErrNoRows {
 		err = ErrStreamNotExist
 	}

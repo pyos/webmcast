@@ -85,6 +85,7 @@ const (
 
 type StreamHistory struct {
 	UserName   string
+	UserAbout  string
 	Email      string
 	SpaceUsed  FileSize
 	SpaceLimit FileSize
@@ -141,11 +142,11 @@ func (h *StreamHistory) Avatar(size int) string {
 	return gravatarURL(h.Email, size)
 }
 
-func (s FileSize) PercentOf(t FileSize) float32 {
+func (s FileSize) RatioOf(t FileSize) float32 {
 	if t == 0 {
-		return 100
+		return 1
 	}
-	return float32(s*100) / float32(t)
+	return float32(s) / float32(t)
 }
 
 func (s FileSize) String() string {

@@ -168,25 +168,6 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     padding: 0 2em;
 }
 
-.stream-about > * {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-@media (min-width: 50em) {
-    .stream-about > * {
-        width: 50%;
-    }
-
-    .stream-about > :nth-child(2n+1) {
-        padding-right: 0.5em;
-    }
-
-    .stream-about > :nth-child(2n) {
-        padding-left: 0.5em;
-    }
-}
-
 .stream-meta .panel {
     padding: 0 1rem;
     position: relative;

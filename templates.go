@@ -134,9 +134,9 @@ func (_ Room) Live() bool {
 }
 
 type Recordings struct {
-	ID    string
-	Owned bool
-	User  *UserData
+	ID       string
+	Editable bool
+	User     *UserData
 	*StreamHistory
 }
 
