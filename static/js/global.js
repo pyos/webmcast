@@ -362,4 +362,8 @@ $.extend({
             if (ev.keyCode === 39) change(+e.dataset.value + 0.05);
         });
     },
+
+    'span.hostname'(e) {
+        e.textContent = location.protocol + '//' + location.host;
+    },
 });

@@ -83,7 +83,7 @@
                 <div>
                     {{ if .Editable }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <span>by {{or .Meta.UserName "anonymous"}}</span>
+                    <span>{{or .Meta.UserName "anonymous"}}</span>
                     {{ if .Meta.NSFW }}<span><x-badge>18+</x-badge></span>{{ end }}
                 </div>
             {{- if .Live }}

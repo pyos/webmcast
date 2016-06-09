@@ -26,14 +26,22 @@
                 <img width="60" height="60" src="{{.Avatar 60}}" alt="{{.ID}}" />
                 <div>
                     <h1>{{or .UserName "anonymous"}}</h1>
-                    <span>Stream archives</span>
+                    <span>Stream archives / <a href="/{{.ID}}">Back to the live stream</a></span>
                 </div>
             </section>
             <section class="stream-meta">
-            {{- if .Editable }}
-                <b>Disk space used:</b> {{.SpaceUsed}} / {{.SpaceLimit}}
-                <x-range data-value="{{.SpaceUsed.RatioOf .SpaceLimit}}" data-ro></x-range>
-            {{- end }}
+                <p>
+                {{- if .Editable }}
+                    <b>Disk space used:</b> {{.SpaceUsed}} / {{.SpaceLimit}}
+                    <x-range data-value="{{.SpaceUsed.RatioOf .SpaceLimit}}" data-ro></x-range>
+                    <em>Note: even if you're out of space, anyone can download your live streams
+                        by using the link from your <a href="/user/">profile</a>. It's always
+                        <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a>.</em>
+                {{- else }}
+                    <em>Note: you can download live streams or watch them in HTTP-capable players
+                        by using this link: <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a></em>
+                {{- end }}
+                </p>
             {{- if .UserAbout }}
                 <div class="panel"><p data-markup>{{.UserAbout}}</p></div>
             {{- end }}

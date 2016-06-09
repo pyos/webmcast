@@ -3,6 +3,10 @@
     color: #fff;
 }
 
+.bg a:not(.brand) {
+    color: #caa9d1;
+}
+
 .nsfw-message {
     position: absolute;
     top: 0;
@@ -25,7 +29,7 @@
 }
 
 body:not(.aside-chat) .player-block:not(.theatre) {
-    max-width: 90rem;
+    max-width: 85rem;
 }
 
 .player-block .button.icon {
@@ -121,11 +125,17 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 
 .player .status {
     overflow: hidden;
+    min-width: 3em;
     line-height: 1;
     font-size: 1.1em;
     font-weight: bold;
     text-overflow: ellipsis;
     text-transform: uppercase;
+}
+
+.player:not([data-live])[data-status="playing"] .status,
+.player:not([data-live])[data-status="paused"] .status {
+    text-align: right;
 }
 
 .player .seek,

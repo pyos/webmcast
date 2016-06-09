@@ -3,7 +3,8 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>webmcast: error {{.Code}}</title>
+        <link rel="stylesheet" href='https://fonts.googleapis.com/css?family=VT323'>
+        <title>webmcast error {{.Code}}</title>
         <style>
             html, body { height: 100%; }
             body {
@@ -13,29 +14,30 @@
                 box-sizing: border-box;
                 flex-direction: column;
                 justify-content: space-between;
-                font: normal 18px monospace;
-                background: #118;
+                font: normal 22px/1.5 'VT323', monospace;
+                background: #007;
                 color: #fff;
             }
 
-            h1, h2 {
-                font: bold 28px monospace;
+            h1, #message, #comment { margin: 0; }
+            h1, #message {
+                font-size: 1.5em;
+                font-weight: normal;
                 text-transform: uppercase;
             }
 
-            h2 { text-align: center; }
-            h2:before {
+            #message { text-align: center; }
+            #message:before {
                 content: 'NO SIGNAL / ';
-                opacity: 0.5;
+                opacity: 0.66;
             }
 
             a { color: #fff; }
-            a:hover { text-shadow: 0 0 5px #fff; }
         </style>
     </head>
     <body>
-        <h1><a href="/">webmcast</a> error #<span id="code">{{.Code}}</span></h1>
-        <h2 id="message">{{.DisplayMessage}}</h2>
-        <p>* {{.DisplayComment}}</p>
+        <h1>webmcast error <span id="code">{{.Code}}</span></h1>
+        <p id="message">{{.DisplayMessage}}</p>
+        <p id="comment">* {{.DisplayComment}} / <a href="/">Root page</a> / <a href="#" onclick="history.back(); return false">Back</a></p>
     </body>
 </html>

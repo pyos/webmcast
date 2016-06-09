@@ -1,4 +1,6 @@
 /*#a168ad #84d2d4 #f7d358*/
+@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400italic,700,700italic);
+
 @font-face {
     font-family: 'FontAwesome';
     src: url('../fonts/fontawesome-webfont.woff2') format('woff2'),
@@ -13,7 +15,7 @@ html, body {
 }
 
 html {
-    font: normal 14px/1.5 sans-serif;
+    font: normal 14px/1.5 'Source Sans Pro', sans-serif;
     color: #222;
 }
 
@@ -172,10 +174,11 @@ x-tabbar > .active {
 }
 
 [data-status="loading"]:before {
-    animation: spin 0.75s infinite linear;
+    animation: spin 1.33s infinite linear;
     border: 0.1em solid rgba(255,255,255,0.2);
     border-radius: 50%;
     border-top-color: currentColor;
+    border-bottom-color: currentColor;
     box-sizing: border-box;
     content: '';
 }
