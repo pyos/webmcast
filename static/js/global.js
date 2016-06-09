@@ -127,6 +127,13 @@ $.form = {
 };
 
 
+$.observeData = (e, attr, fallback, f) => {
+    new MutationObserver(_ => f(e.dataset[attr])).observe(e, {attributes: true, attributeFilter: ['data-' + attr]});
+    if (e.dataset[attr] !== undefined || fallback !== undefined)
+        e.dataset[attr] = e.dataset[attr] || fallback;
+};
+
+
 $.delayedPair = (delay, f, g, t /* undefined */) =>
     () => t = (clearTimeout(t), f(), setTimeout(g, delay));
 
@@ -209,18 +216,16 @@ $.extend({
             bar.appendChild(item);
         }
 
-        new MutationObserver(_ => {
+        $.observeData(e, 'tabs', bar.children[0].dataset.tab, active => {
             for (let id in tabs) {
                 tabs[id].b.classList.remove('active');
                 tabs[id].t.setAttribute('hidden', '');
             }
-            let active = e.dataset.tabs;
             tabs[active].b.classList.add('active');
             tabs[active].t.removeAttribute('hidden');
-        }).observe(e, {attributes: true, attributeFilter: ['data-tabs']});
+        });
 
         e.insertBefore(bar, e.children[0]);
-        e.dataset.tabs = e.dataset.tabs || bar.children[0].dataset.tab;
     },
 
     '[data-markup]'(e) {
@@ -330,5 +335,31 @@ $.extend({
                                      : 'Could not connect to server.';
                 });
             });
+    },
+
+    'x-range'(e) {
+        let slider = document.createElement('x-slider');
+        $.observeData(e, 'value', undefined, v => slider.style.width = `${+v * 100}%`);
+        e.appendChild(slider);
+
+        let change = x =>
+            e.dispatchEvent(new CustomEvent('change', {detail: Math.min(1, Math.max(0, x))}));
+
+        let select = ev => {
+            ev.preventDefault();
+            let r = e.getBoundingClientRect();
+            change(((ev.touches || [ev])[0].clientX - r.left) / (r.right - r.left));
+        };
+
+        e.addEventListener('mousedown',  select);
+        e.addEventListener('touchstart', select);
+        e.addEventListener('touchmove',  select);
+        e.addEventListener('mousedown',  _ => e.addEventListener('mousemove', select));
+        e.addEventListener('mouseup',    _ => e.removeEventListener('mousemove', select));
+        e.addEventListener('mouseleave', _ => e.removeEventListener('mousemove', select));
+        e.addEventListener('keydown', ev => {
+            if (ev.keyCode === 37) change(+e.dataset.value - 0.05);
+            if (ev.keyCode === 39) change(+e.dataset.value + 0.05);
+        });
     },
 });

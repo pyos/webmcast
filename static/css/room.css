@@ -130,34 +130,7 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 }
 
 .player .volume {
-    position: relative;
     width: 7em;
-    margin: 0 1em;
-    padding: 1em 0;
-    cursor: ew-resize;
-}
-
-.player .volume:before {
-    content: '';
-    display: block;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 2px;
-    margin-bottom: -4px;
-}
-
-.player .volume .slider {
-    box-sizing: border-box;
-    border: 2px solid #f7d358;
-    border-radius: 2px;
-}
-
-.player .volume .slider:before {
-    content: '';
-    float: right;
-    display: block;
-    margin: -7px;
-    border: 7px solid #fff;
-    border-radius: 7px;
 }
 
 .stream-header .edit.icon {
@@ -262,7 +235,7 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     body.aside-chat .chat {
         position: absolute;
         top: 100%;
-        height: 100vh;
+        height: calc(100vh - 7.33em);
         max-height: 45rem;
         margin-left: -20rem;
         color: #222;

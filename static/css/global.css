@@ -323,6 +323,38 @@ a.button.icon {
     vertical-align: middle;
 }
 
+x-range {
+    display: block;
+    position: relative;
+    margin: 0 1em;
+    padding: 1em 0;
+    cursor: ew-resize;
+}
+
+x-range:before {
+    content: '';
+    display: block;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 2px;
+    margin-bottom: -4px;
+}
+
+x-range > x-slider {
+    display: block;
+    box-sizing: border-box;
+    border: 2px solid #f7d358;
+    border-radius: 2px;
+}
+
+x-range > x-slider:before {
+    content: '';
+    float: right;
+    display: block;
+    margin: -7px;
+    border: 7px solid #fff;
+    border-radius: 7px;
+}
+
 x-modal-cover {
     display: block;
     position: absolute;

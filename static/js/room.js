@@ -123,8 +123,7 @@ $.form.onDocumentReload = doc => {
 
 let withRPC = rpc => ({
     '.viewers'(e) {
-        rpc.handlers['Stream.ViewerCount'] = n =>
-            e.textContent = n;
+        rpc.handlers['Stream.ViewerCount'] = n => e.textContent = n;
     },
 
     '.player'(e) {
@@ -228,13 +227,13 @@ $.confirmMaturity = e => new Promise(resolve => {
     if (!e.hasAttribute('data-unconfirmed'))
         return resolve();
     let confirm = _ => {
-        localStorage.setItem('mature', '1');
+        localStorage.mature = '1';
         for (let c of e.querySelectorAll('.nsfw-message'))
             c.remove();
         delete e.dataset.unconfirmed;
         resolve();
     };
-    if (!!localStorage.getItem('mature'))
+    if (!!localStorage.mature)
         confirm();
     else
         e.button('.confirm-age', confirm);
@@ -269,31 +268,35 @@ $.extend({
             status.textContent = long || short;
         };
 
-        let onTimeUpdate = t =>
-            // let leftPad = require('left-pad');
-            setStatus(video.paused ? 'paused' : 'playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
-
-        let onError = code => setStatus(
+        let setError = code => setStatus(
               code === 4 ? (e.dataset.live ? 'stopped' : 'ended') : 'error',
               code === 4 ? (e.dataset.live ? 'stopped' : 'stream ended')
             : code === 3 ? 'decoding error'
             : code === 2 ? 'network error'
             : /* code === 1 ? */ 'aborted');
 
+        let setTime = t =>
+            // let leftPad = require('left-pad');
+            setStatus(video.paused ? 'paused' : 'playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
+
+        let setVolume = (vol, muted) => {
+            localStorage.volume = volume.dataset.value = vol;
+            localStorage.muted  = muted ? '1' : '';
+            e.classList[muted ? 'add' : 'remove']('muted');
+        };
+
+        let vol = +localStorage.volume;
+        setVolume(video.volume = isNaN(vol) ? 1 : Math.min(1, Math.max(0, vol)),
+                  video.muted  = !!localStorage.muted);
+
+        volume.addEventListener('change', ev => video.muted = !(video.volume = ev.detail));
         video.addEventListener('loadstart',      _ => setStatus('loading'));
         video.addEventListener('loadedmetadata', _ => setStatus('loading', 'buffering'));
-        video.addEventListener('timeupdate',     _ => onTimeUpdate(video.currentTime));
-        video.addEventListener('ended',          _ => onError(4 /* "unsupported media" */));
-        video.addEventListener('error',          _ => onError(video.error.code));
-
-        new MutationObserver(_ => {
-            setStatus('loading');
-            if ((video.src = e.dataset.src))
-                video.play();
-        }).observe(e, {attributes: true, attributeFilter: ['data-src']});
-
-        if (e.dataset.src)
-            e.dataset.src = e.dataset.src;
+        video.addEventListener('ended',          _ => setError(4 /* "unsupported media" */));
+        video.addEventListener('error',          _ => setError(video.error.code));
+        video.addEventListener('timeupdate',     _ => setTime(video.currentTime));
+        video.addEventListener('volumechange',   _ => setVolume(video.volume, video.muted));
+        $.observeData(e, 'src', undefined, src => (video.src = src) ? video.play() : setError(4));
 
         e.button('.play', _ => {
             if (e.dataset.live)
@@ -303,13 +306,11 @@ $.extend({
         });
 
         e.button('.stop', _ => {
-            if (e.dataset.live) {
-                setStatus('loading', 'stopping');
+            setStatus(e.dataset.live ? 'stopped' : 'paused', status.textContent);
+            if (e.dataset.live)
                 video.src = '';
-            } else {
-                setStatus('paused', status.textContent);
+            else
                 video.pause();
-            }
         });
 
         e.button('.mute',       _ => video.muted = true);
@@ -324,46 +325,6 @@ $.extend({
         e.addEventListener('mousemove', showControls);
         e.addEventListener('focusin',   showControls);
         e.addEventListener('keydown',   showControls);
-
-        let onVolumeChange = _ => {
-            volume.querySelector('.slider').style.width = `${video.volume * 100}%`;
-            if (video.muted)
-                e.classList.add('muted');
-            else
-                e.classList.remove('muted');
-            localStorage.setItem('volume', String(video.volume));
-            if (video.muted)
-                localStorage.setItem('muted', '1');
-            else
-                localStorage.removeItem('muted');
-        };
-
-        let onVolumeSelect = ev => {
-            ev.preventDefault();
-            let r = volume.getBoundingClientRect();
-            let x = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left) / (r.right - r.left);
-            video.volume = Math.min(1, Math.max(0, x));
-            video.muted  = false;
-        };
-
-        let savedVolume = parseFloat(localStorage.getItem('volume'));
-        if (!isNaN(savedVolume) && 0 <= savedVolume && savedVolume <= 1)
-            video.volume = savedVolume;
-        video.muted = !!localStorage.getItem('muted');
-
-        video.addEventListener('volumechange', onVolumeChange);
-        // when styling <input type="range"> is too hard
-        volume.addEventListener('mousedown',  onVolumeSelect);
-        volume.addEventListener('touchstart', onVolumeSelect);
-        volume.addEventListener('touchmove',  onVolumeSelect);
-        volume.addEventListener('mousedown',  _ => volume.addEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('mouseup',    _ => volume.removeEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('mouseleave', _ => volume.removeEventListener('mousemove', onVolumeSelect));
-        volume.addEventListener('keydown',    ev =>
-            video.volume = ev.keyCode === 37 ? Math.max(0, video.volume - 0.05)  // left arrow
-                         : ev.keyCode === 39 ? Math.min(1, video.volume + 0.05)  // right arrow
-                         : video.volume);
-        onVolumeChange(null);
     },
 
     '.stream-header'(e) {
