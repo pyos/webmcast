@@ -130,18 +130,35 @@ $.form.onDocumentReload = doc => {
 
 
 $.extend({
+    '[data-unconfirmed]'(e) {
+        let confirm = _ => {
+            localStorage.setItem('mature', '1');
+            for (let c of e.querySelectorAll('.nsfw-message'))
+                c.remove();
+            delete e.dataset.unconfirmed;
+        };
+        e.button('.confirm-age', confirm);
+        if (!!localStorage.getItem('mature'))
+            confirm();
+    },
+
     '[data-stream-id]'(e) {
         let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
-        e.button('.confirm-age', _ => {
-            localStorage.setItem('mature', '1');
-            e.classList.remove('unconfirmed');
-            e.rpc.open(url);
-        });
+
         e.rpc = new RPC();
-        if (!!localStorage.getItem('mature'))
-            e.classList.remove('unconfirmed');
-        if (!e.classList.contains('unconfirmed'))
+        if (e.hasAttribute('data-unconfirmed'))
+            new MutationObserver(_ => e.rpc.open(url)).observe(e, {attributes: true, attributeFilter: ['data-unconfirmed']});
+        else
             e.rpc.open(url);
+    },
+
+    '[data-stream-src]'(e) {
+        let start = () =>
+            e.querySelector('.player').dataset.src = e.dataset.streamSrc;
+        if (e.hasAttribute('data-unconfirmed'))
+            new MutationObserver(start).observe(e, {attributes: true, attributeFilter: ['data-unconfirmed']});
+        else
+            start();
     },
 
     '.player-block'(e) {
@@ -180,25 +197,42 @@ $.extend({
         video.addEventListener('error',          _ => onError(video.error.code));
 
         let stream = getParentStream(e);
+        let setSrc = src => {
+            setStatus('loading');
+            e.dataset.connected = 1;
+            delete e.dataset.paused;
+            video.src = src;
+            video.play();
+        };
+
+        new MutationObserver(_ => setSrc(e.dataset.src)).observe(e, {attributes: true, attributeFilter: ['data-src']});
+
         let play = () => {
-            if (stream && stream.rpc.state === RPC_STATE_OPEN) {
-                setStatus('loading');
-                e.dataset.connected = 1;
+            if (stream && stream.rpc.state === RPC_STATE_OPEN)
                 // TODO measure connection speed, request a stream
-                video.src = stream.rpc.url.replace('ws', 'http');
+                setSrc(stream.rpc.url.replace('ws', 'http'));
+            else {
+                delete e.dataset.paused;
                 video.play();
             }
         };
 
         let stop = () => {
-            setStatus('loading');
-            video.src = '';
-            if (stream && stream.rpc.state !== RPC_STATE_OPEN)
-                delete e.dataset.connected;
+            if (stream) {
+                setStatus('loading');
+                video.src = '';
+                if (stream && stream.rpc.state !== RPC_STATE_OPEN)
+                    delete e.dataset.connected;
+            } else {
+                e.dataset.paused = '1';
+                video.pause();
+            }
         };
 
         if (stream)
             stream.rpc.register({ open: () => setStatus('loading', 'connecting'), load: play, unload: stop });
+        else if (e.dataset.src)
+            setSrc(e.dataset.src);
 
         let showControls = $.delayedPair(3000,
             () => e.classList.remove('hide-controls'),

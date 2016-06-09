@@ -365,11 +365,12 @@ body:not(.aside-chat) .chat form .error {
     color: #f55;
 }
 
-[data-stream-id]:not(.unconfirmed) .nsfw-message,
-[data-stream-id].unconfirmed .player:before,
+[data-unconfirmed] [data-status]:before,
+[data-unconfirmed][data-status]:before,
 .player[data-status="playing"] svg,
-.player[data-status="playing"] .play,
+.player[data-status="playing"]:not([data-paused]) .play,
 .player[data-status="loading"] .play,
+.player[data-paused] .stop,
 .player[data-connected] .reload,
 .player:not([data-connected]) .play,
 .player:not([data-connected]) .stop,

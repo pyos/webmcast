@@ -123,6 +123,27 @@ func (_ Room) TemplateFile() string {
 	return "room.html"
 }
 
+type Recordings struct {
+	ID    string
+	Owned bool
+	User  *UserData
+	*StreamHistory
+}
+
+func (_ Recordings) TemplateFile() string {
+	return "recordings.html"
+}
+
+type Recording struct {
+	ID   string
+	User *UserData
+	Meta *StreamRecording
+}
+
+func (_ Recording) TemplateFile() string {
+	return "recording.html"
+}
+
 type UserNew int
 type UserLogin int
 type UserRestore int

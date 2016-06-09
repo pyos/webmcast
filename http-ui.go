@@ -1,6 +1,12 @@
 // GET /<name>
 //     Open a simple HTML5-based player with a stream-local chat.
 //
+// GET /rec/<name>
+//     View a list of previously recorded streams.
+//
+// GET /rec/<name>/<id>
+//     Watch a particular recording in the HTML5 player.
+//
 // GET /user/
 // POST /user/
 //     >> password-old string, username, displayname, email, password, about optional[string]
@@ -64,6 +70,32 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 		case nil, ErrStreamOffline:
 		}
 		return Render(w, http.StatusOK, Room{id, user != nil && meta.OwnerID == user.ID, err == nil, meta, user})
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/rec/") {
+		id := r.URL.Path[5:]
+		if sep := strings.IndexRune(id, '/'); sep != -1 {
+			recid, err := strconv.ParseUint(id[sep+1:], 10, 63)
+			if err != nil {
+				return RenderError(w, http.StatusNotFound, "")
+			}
+			rec, err := ctx.GetRecording(id[:sep], int64(recid))
+			if err == ErrStreamNotExist {
+				return RenderError(w, http.StatusNotFound, "Recording not found.")
+			}
+			if err != nil {
+				return err
+			}
+			return Render(w, http.StatusOK, Recording{id[:sep], user, rec})
+		}
+
+		recs, err := ctx.GetRecordings(id)
+		if err == nil {
+			err = Render(w, http.StatusOK, Recordings{id, user != nil && recs.OwnerID == user.ID, user, recs})
+		} else if err == ErrStreamNotExist {
+			err = RenderError(w, http.StatusNotFound, "Invalid stream name.")
+		}
+		return err
 	}
 
 	switch r.URL.Path {
