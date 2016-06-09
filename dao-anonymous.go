@@ -101,3 +101,23 @@ func (d anonymousDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error
 	d.RUnlock()
 	return ErrStreamNotExist
 }
+
+func (d anonymousDAO) GetRecordings(id string) (*StreamHistory, error) {
+	return nil, ErrUserNotExist
+}
+
+func (d anonymousDAO) GetRecording(id string, recid int64) (*StreamRecording, error) {
+	return nil, ErrNotSupported
+}
+
+func (d anonymousDAO) DelRecording(userid int64, recid int64) error {
+	return ErrNotSupported
+}
+
+func (d anonymousDAO) StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error) {
+	return 0, 0, nil
+}
+
+func (d anonymousDAO) StopRecording(id string, recid int64, size int64) error {
+	return nil
+}

@@ -35,6 +35,10 @@ type sqlDAO struct {
 		GetStreamServer *sql.Stmt "select server from streams where user in (select id from users where login = ?)"
 		SetStreamServer *sql.Stmt "update streams set server = ? where server is null and user in (select id from users where login = ? and actoken is null and sectoken = ?)"
 		DelStreamServer *sql.Stmt "update streams set server = null where user in (select id from users where login = ?)"
+		GetRecordings1  *sql.Stmt "select id, name, email, space_total from users where login = ?"
+		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ?"
+		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created from users join recordings on users.id = user where recordings.id = ?"
+		DelRecording    *sql.Stmt "delete from recordings where id = ?"
 	}
 }
 
@@ -48,6 +52,7 @@ create table if not exists users (
     email        varchar(256) not null,
     pwhash       varchar(256) not null,
     about        text         not null default "",
+    space_total  integer      not null default 0,
     unique(login), unique(email)
 );
 
@@ -68,6 +73,21 @@ create table if not exists panels (
     stream    integer      not null,
     text      text         not null,
     image     varchar(256) not null default ""
+);
+
+create table if not exists recordings (
+    id         integer      not null primary key,
+    user       integer      not null,
+    video      boolean      not null default 1,
+    audio      boolean      not null default 1,
+    nsfw       boolean      not null default 0,
+    width      integer      not null default 0,
+    height     integer      not null default 0,
+    name       varchar(256) not null default "",
+    server     varchar(128) not null,
+    path       varchar(256) not null,
+    created    datetime     not null,
+    size       integer      not null default 0
 );`
 
 func NewSQLDatabase(localhost string, driver string, server string) (Database, error) {
@@ -339,11 +359,8 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	}
 	rows, err := d.prepared.GetStreamPanels.Query(intId)
 	if err == nil {
-		var panel StreamMetadataPanel
-		for rows.Next() {
-			if err = rows.Scan(&panel.Text, &panel.Image); err != nil {
-				break
-			}
+		panel := StreamMetadataPanel{}
+		for rows.Next() && rows.Scan(&panel.Text, &panel.Image) == nil {
 			meta.Panels = append(meta.Panels, panel)
 		}
 		if err = rows.Err(); err == nil && !server.Valid {
@@ -357,4 +374,50 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 
 func (d *sqlDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
 	return errOf(d.prepared.SetStreamTracks.Exec(info.HasVideo, info.HasAudio, info.Width, info.Height, id))
+}
+
+func (d *sqlDAO) GetRecordings(id string) (*StreamHistory, error) {
+	h := StreamHistory{}
+	err := d.prepared.GetRecordings1.QueryRow(id).Scan(&h.OwnerID, &h.UserName, &h.Email, &h.SpaceLimit)
+	if err == sql.ErrNoRows {
+		err = ErrStreamNotExist
+	}
+	if err != nil {
+		return nil, err
+	}
+	rows, err := d.prepared.GetRecordings2.Query(h.OwnerID)
+	if err == nil {
+		entry := StreamHistoryEntry{}
+		for rows.Next() && rows.Scan(&entry.ID, &entry.Name, &entry.Server, &entry.Path, &entry.Timestamp, &entry.Space) == nil {
+			h.SpaceUsed += entry.Space
+			h.Recordings = append(h.Recordings, entry)
+		}
+		err = rows.Err()
+		rows.Close()
+	}
+	return &h, err
+}
+
+func (d *sqlDAO) GetRecording(id string, recid int64) (*StreamRecording, error) {
+	r := StreamRecording{}
+	err := d.prepared.GetRecording.QueryRow(recid).Scan(
+		&r.OwnerID, &r.UserName, &r.UserAbout, &r.Email, &r.Name, &r.Server,
+		&r.HasVideo, &r.HasAudio, &r.Width, &r.Height, &r.NSFW, &r.Path, &r.Space, &r.Timestamp,
+	)
+	if err == sql.ErrNoRows {
+		err = ErrStreamNotExist
+	}
+	return &r, err
+}
+
+func (d *sqlDAO) DelRecording(userid int64, recid int64) error {
+	return errOf(d.prepared.DelRecording.Exec(recid))
+}
+
+func (d *sqlDAO) StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error) {
+	return 0, 0, nil
+}
+
+func (d *sqlDAO) StopRecording(id string, recid int64, size int64) error {
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"strings"
+	"time"
 )
 
 var (
@@ -73,6 +74,40 @@ type StreamTrackInfo struct {
 	Height   uint // Hopefully, there's only one video track in the file.
 }
 
+type FileSize int64
+
+const (
+	_            = iota
+	KiB FileSize = 1 << (10 * iota)
+	MiB
+	GiB
+)
+
+type StreamHistory struct {
+	UserName   string
+	Email      string
+	SpaceUsed  FileSize
+	SpaceLimit FileSize
+	OwnerID    int64
+	Recordings []StreamHistoryEntry
+}
+
+type StreamHistoryEntry struct {
+	ID        int64
+	Name      string
+	Server    string
+	Path      string
+	Space     FileSize
+	Timestamp time.Time
+}
+
+type StreamRecording struct {
+	StreamMetadata
+	Path      string
+	Space     FileSize
+	Timestamp time.Time
+}
+
 func hashPassword(password []byte) ([]byte, error) {
 	if len(password) < 4 || len(password) > 128 {
 		return []byte{}, ErrInvalidPassword
@@ -102,6 +137,29 @@ func (s *StreamMetadata) Avatar(size int) string {
 	return gravatarURL(s.Email, size)
 }
 
+func (h *StreamHistory) Avatar(size int) string {
+	return gravatarURL(h.Email, size)
+}
+
+func (s FileSize) PercentOf(t FileSize) float32 {
+	if t == 0 {
+		return 100
+	}
+	return float32(s*100) / float32(t)
+}
+
+func (s FileSize) String() string {
+	switch {
+	case s >= GiB:
+		return fmt.Sprintf("%.2f MiB", float32(s)/float32(GiB))
+	case s >= MiB:
+		return fmt.Sprintf("%.2f MiB", float32(s)/float32(MiB))
+	case s >= KiB:
+		return fmt.Sprintf("%.2f KiB", float32(s)/float32(KiB))
+	}
+	return fmt.Sprintf("%d bytes", s)
+}
+
 type Database interface {
 	Close() error
 	// TODO something for password recovery.
@@ -122,4 +180,10 @@ type Database interface {
 	GetStreamServer(id string) (string, error)
 	GetStreamMetadata(id string) (*StreamMetadata, error)
 	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
+
+	GetRecordings(id string) (*StreamHistory, error)
+	GetRecording(id string, recid int64) (*StreamRecording, error)
+	DelRecording(userid int64, recid int64) error
+	StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error)
+	StopRecording(id string, recid int64, size int64) error
 }
