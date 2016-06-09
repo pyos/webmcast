@@ -134,6 +134,10 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     flex: 1;
 }
 
+.player x-range {
+    margin: 0 1em;
+}
+
 .player .volume {
     width: 7em;
 }

@@ -326,27 +326,31 @@ a.button.icon {
 x-range {
     display: block;
     position: relative;
-    margin: 0 1em;
     padding: 1em 0;
+}
+
+x-range:not([data-ro]) {
     cursor: ew-resize;
 }
 
-x-range:before {
+x-range:after {
     content: '';
     display: block;
-    border: 2px solid rgba(255,255,255,0.3);
+    border: 2px solid rgba(127,127,127,0.3);
     border-radius: 2px;
-    margin-bottom: -4px;
 }
 
 x-range > x-slider {
     display: block;
+    position: relative;
     box-sizing: border-box;
     border: 2px solid #f7d358;
     border-radius: 2px;
+    margin-bottom: -4px;
+    z-index: 1;
 }
 
-x-range > x-slider:before {
+x-range:not([data-ro]) > x-slider:after {
     content: '';
     float: right;
     display: block;
