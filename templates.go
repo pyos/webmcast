@@ -21,13 +21,19 @@ type viewmodel interface {
 	TemplateFile() string
 }
 
+var templateFuncs = template.FuncMap{
+	"unsafe": func(s interface{}) template.HTML {
+		return template.HTML(fmt.Sprint(s))
+	},
+}
+
 var htmlInterElementWhitespace = regexp.MustCompile(">\\s+<")
 
 func (ts *templateSet) Render(w http.ResponseWriter, code int, vm viewmodel) error {
 	name := vm.TemplateFile()
 	stat, err := os.Stat(filepath.Join(ts.root, name))
 	if ts.data == nil || (err == nil && stat.ModTime().After(ts.mtime)) {
-		ts.data, err = template.ParseGlob(filepath.Join(ts.root, "*"))
+		ts.data, err = template.New(ts.root).Funcs(templateFuncs).ParseGlob(filepath.Join(ts.root, "*"))
 		if err != nil {
 			return err
 		}
