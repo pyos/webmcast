@@ -129,13 +129,13 @@ $.form = {
 
 $.observeData = (e, attr, fallback, f) => {
     new MutationObserver(_ => f(e.dataset[attr])).observe(e, {attributes: true, attributeFilter: ['data-' + attr]});
-    if (e.dataset[attr] !== undefined || fallback !== undefined)
+    if (e.dataset[attr] || fallback)
         e.dataset[attr] = e.dataset[attr] || fallback;
 };
 
 
 $.delayedPair = (delay, f, g, t /* undefined */) =>
-    () => t = (clearTimeout(t), f(), setTimeout(g, delay));
+    (...args) => t = (clearTimeout(t), f(...args), setTimeout(() => g(...args), delay));
 
 
 $._nativeScrollbarWidth = (() => {
@@ -339,7 +339,7 @@ $.extend({
 
     'x-range'(e) {
         let slider = document.createElement('x-slider');
-        $.observeData(e, 'value', undefined, v => slider.style.width = `${+v * 100}%`);
+        $.observeData(e, 'value', 1, v => slider.style.width = `${+v * 100}%`);
         e.appendChild(slider);
 
         let change = x =>

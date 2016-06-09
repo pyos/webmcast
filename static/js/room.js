@@ -129,10 +129,12 @@ let withRPC = rpc => ({
     '.player'(e) {
         rpc.register({
             open: () =>
-                e.dataset.live = '1',
-            load: () =>
+                e.dataset.status = 'loading',
+            load: () => {
                 // TODO measure connection speed, request a stream
-                e.dataset.src = rpc.url.replace('ws', 'http'),
+                e.dataset.src = rpc.url.replace('ws', 'http');
+                e.dataset.live = '1';
+            },
             unload: () => {
                 delete e.dataset.live;
                 e.dataset.src = '';
@@ -262,6 +264,7 @@ $.extend({
         let video  = e.querySelector('video');
         let status = e.querySelector('.status');
         let volume = e.querySelector('.volume');
+        let seek   = e.querySelector('.seek');
 
         let setStatus = (short, long) => {
             e.dataset.status = short;
@@ -275,9 +278,11 @@ $.extend({
             : code === 2 ? 'network error'
             : /* code === 1 ? */ 'aborted');
 
-        let setTime = t =>
+        let setTime = t => {
             // let leftPad = require('left-pad');
             setStatus(video.paused ? 'paused' : 'playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
+            seek.dataset.value = t / (video.duration || t || 1);
+        };
 
         let setVolume = (vol, muted) => {
             localStorage.volume = volume.dataset.value = vol;
@@ -285,10 +290,15 @@ $.extend({
             e.classList[muted ? 'add' : 'remove']('muted');
         };
 
+        let seekTo = $.delayedPair(50,
+            x => { video.pause(); setTime(x); },
+            x => { video.currentTime = x; video.play().catch(e => null); });
+
         let vol = +localStorage.volume;
         setVolume(video.volume = isNaN(vol) ? 1 : Math.min(1, Math.max(0, vol)),
                   video.muted  = !!localStorage.muted);
 
+        seek.addEventListener('change', ev => seekTo(ev.detail * video.duration));
         volume.addEventListener('change', ev => video.muted = !(video.volume = ev.detail));
         video.addEventListener('loadstart',      _ => setStatus('loading'));
         video.addEventListener('loadedmetadata', _ => setStatus('loading', 'buffering'));
@@ -296,7 +306,7 @@ $.extend({
         video.addEventListener('error',          _ => setError(video.error.code));
         video.addEventListener('timeupdate',     _ => setTime(video.currentTime));
         video.addEventListener('volumechange',   _ => setVolume(video.volume, video.muted));
-        $.observeData(e, 'src', undefined, src => (video.src = src) ? video.play() : setError(4));
+        $.observeData(e, 'src', '', src => (video.src = src) ? video.play() : setError(4));
 
         e.button('.play', _ => {
             if (e.dataset.live)

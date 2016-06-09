@@ -15,7 +15,7 @@
                 {{ template "nav.html" . }}
                 <section class="player-block bg">
                     <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
-                                      {{- if .Meta.HasAudio}} has-audio{{end}}" data-status="stopped">
+                                      {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
                         {{- /* `video` with `height: auto` will always use the default aspect ratio.
                             so instead we enforce the size of this element with an empty image. */}}
                         <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
@@ -27,6 +27,7 @@
                             <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
                             <x-range tabindex="0" class="volume" title="Volume"></x-range>
                             <div class="status">not connected</div>
+                            <x-range tabindex="0" class="seek" title="Seek position"></x-range>
                             <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                             <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
@@ -40,7 +41,7 @@
                     <div class="chat-tab"></div>
                     <aside class="chat">
                         <template id="chat-message-template">
-                            <li class="message">
+                            <li>
                                 <span class="name"></span>
                                 <span class="text"></span>
                             </li>
@@ -48,14 +49,8 @@
                         <h1>#{{.ID}}</h1>
                         <ul class="log" data-scrollbar>
                         {{- if not .Live }}
-                            <li class="message">
-                                <span class="name" style="color:#f66">system</span>
-                                <span class="text">This recording was made {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}}.</span>
-                            </li>
-                            <li class="message">
-                                <span class="name" style="color:#f66">system</span>
-                                <span class="text">To see what {{or .Meta.UserName .ID}} is up to now, <a href="/{{.ID}}">go here</a>.</span>
-                            </li>
+                            <li>This recording was made {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}}.</li>
+                            <li><a href="/{{.ID}}">Back to the live stream &raquo;</a></li>
                         {{- end }}
                         </ul>
                         <div class="offline-message">The chat is offline.</div>

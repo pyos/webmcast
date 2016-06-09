@@ -120,13 +120,18 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 }
 
 .player .status {
-    flex: 1;
     overflow: hidden;
     line-height: 1;
     font-size: 1.1em;
     font-weight: bold;
     text-overflow: ellipsis;
     text-transform: uppercase;
+}
+
+.player .seek,
+.player[data-live] .status,
+.player:not([data-status="playing"]):not([data-status="paused"]) .status {
+    flex: 1;
 }
 
 .player .volume {
@@ -346,11 +351,13 @@ body:not(.aside-chat) .chat form .error {
 .player[data-status="playing"] .play,
 .player[data-status="loading"] .play,
 .player[data-status="paused"] .stop,
+.player[data-live] .seek,
 .player[data-live] .reload,
 .player:not([data-src=""]) .reload,
 .player[data-src=""]:not([data-live]) .play,
 .player[data-src=""]:not([data-live]) .stop,
 .player:not([data-status="playing"]):not([data-status="loading"]) .stop,
+.player:not([data-status="playing"]):not([data-status="paused"]) .seek,
 .player:not([data-status="playing"]):not([data-status="paused"]) video,
 .player:not(.has-audio) .mute,
 .player:not(.has-audio) .volume,
