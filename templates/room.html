@@ -84,7 +84,7 @@
                     {{ if .Editable }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
                     <span>by {{or .Meta.UserName "anonymous"}}</span>
-                    {{ if .Meta.NSFW }}<span><span class="badge">18+</span></span>{{ end }}
+                    {{ if .Meta.NSFW }}<span><x-badge>18+</x-badge></span>{{ end }}
                 </div>
             {{- if .Live }}
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
@@ -98,8 +98,8 @@
                         <input type="hidden" name="id" value="" />
                         <textarea name="value" rows="6" cols="10"></textarea>
                         <p class="error"></p>
-                        <button type="reset">Cancel</button>
-                        <button type="reset" class="remove">Remove</button>
+                        <button type="reset" class="secondary">Cancel</button>
+                        <button type="submit" class="remove secondary">Remove</button>
                         <button type="submit">Save</button>
                     </form>
                 </template>
@@ -117,7 +117,7 @@
                     {{- end }}
                     {{- if .Editable }}
                         <div class="panel new-panel" data-order="{{len .Meta.Panels}}">
-                            <a href="#" class="button icon edit" title="New panel...">&#xf040;</a>
+                            <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
                             <p data-markup>*Edit this to create a new panel*</p>
                         </div>
                     {{- end }}

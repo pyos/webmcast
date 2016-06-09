@@ -147,7 +147,7 @@ let withRPC = rpc => ({
         let form = root.querySelector('.input-form');
         let text = root.querySelector('.input-form .input');
 
-        let autoscroll = (m) => (...args) => {
+        let autoscroll = m => (...args) => {
             let scroll = log.scrollTop + log.clientHeight >= log.scrollHeight;
             m(...args);
             if (scroll)
@@ -171,7 +171,7 @@ let withRPC = rpc => ({
             handleErrors(this, rpc.send('Chat.SetName', this.querySelector('.input').value));
         });
 
-        form.addEventListener('submit', (ev) => {
+        form.addEventListener('submit', ev => {
             ev.preventDefault();
             handleErrors(form, rpc.send('Chat.SendMessage', text.value).then(() => {
                 log.scrollTop = log.scrollHeight;
@@ -180,7 +180,7 @@ let withRPC = rpc => ({
             }), true);
         });
 
-        let stringColor = (str) => {
+        let stringColor = str => {
             let h = parseInt(sha1(str).slice(32), 16);
             return `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
         };
@@ -191,12 +191,9 @@ let withRPC = rpc => ({
             // TODO maybe do this server-side? that'd allow us to hash the IP instead...
             e.style.color = stringColor(`${name.length}:${name}${login}`);
             e.textContent = name;
-            if (!login) {
-                e.setAttribute('title', 'Anonymous user');
+            e.setAttribute('title', login || 'Anonymous user');
+            if (!login)
                 e.classList.add('anon');
-            } else {
-                e.setAttribute('title', login);
-            }
             entry.querySelector('.text').textContent = text;
             log.appendChild(entry);
         });
@@ -225,7 +222,7 @@ let withRPC = rpc => ({
 });
 
 
-$.confirmMaturity = e => new Promise(resolve => {
+let confirmMaturity = e => new Promise(resolve => {
     if (!e.hasAttribute('data-unconfirmed'))
         return resolve();
     let confirm = _ => {
@@ -244,14 +241,14 @@ $.confirmMaturity = e => new Promise(resolve => {
 
 $.extend({
     '[data-stream-id]'(e) {
-        let url = `${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`;
         let rpc = new RPC();
-        $.confirmMaturity(e).then(() => rpc.open(url));
         $.apply(e, withRPC(rpc));
+        confirmMaturity(e).then(() =>
+            rpc.open(`${location.protocol.replace('http', 'ws')}//${location.host}/stream/${encodeURIComponent(e.dataset.streamId)}`));
     },
 
     '[data-stream-src]'(e) {
-        $.confirmMaturity(e).then(() => e.querySelector('.player').dataset.src = e.dataset.streamSrc);
+        confirmMaturity(e).then(() => e.querySelector('.player').dataset.src = e.dataset.streamSrc);
     },
 
     '.player-block'(e) {
@@ -339,35 +336,25 @@ $.extend({
 
     '.stream-header'(e) {
         e.button('.edit', ev => {
-            let name = e.querySelector('.name');
-            let t = $.template('edit-name-template');
-            let f = t.querySelector('form');
+            let f = $.template('edit-name-template').querySelector('form');
             let i = f.querySelector('input');
             f.addEventListener('reset',  _  => f.remove());
             ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
-            i.value = name.textContent;
+            i.value = e.querySelector('.name').textContent;
             i.focus();
         });
     },
 
     '.stream-about'(e) {
         e.button('.edit', ev => {
-            let t = $.template('edit-panel-template');
-            let f = t.querySelector('form');
+            let f = $.template('edit-panel-template').querySelector('form');
             let i = f.querySelector('textarea');
             f.addEventListener('reset', _ => f.remove());
-
-            let id = ev.currentTarget.dataset.panel;
-            if (id) {
-                f.querySelector('[name="id"]').value = id;
-                f.querySelector('.remove').addEventListener('click', () => {
-                    f.setAttribute('action', '/user/del-stream-panel');
-                    f.dispatchEvent(new Event('submit', {cancelable: true}));
-                });
-            } else {
+            if ((f.querySelector('[name="id"]').value = ev.currentTarget.dataset.panel))
+                f.querySelector('.remove').addEventListener('click', () =>
+                    f.setAttribute('action', '/user/del-stream-panel'));
+            else
                 f.querySelector('.remove').remove();
-            }
-
             ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
             i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
             i.focus();

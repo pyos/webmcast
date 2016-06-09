@@ -294,11 +294,11 @@ button:disabled {
     border-color: rgba(0,0,0,0.06);
 }
 
-button[type="reset"] {
+button.secondary {
     background: #f0f0f0;
 }
 
-button[type="reset"]:active {
+button.secondary:active {
     background: #ddd;
 }
 
@@ -474,11 +474,11 @@ main > .form-wrapper {
     width: 100%;
 }
 
-.badge {
+x-badge {
     color: #fff;
     font-size: 0.66em;
     font-weight: bold;
-    padding: 0.25em 0.33em;
+    padding: 0.1em 0.33em;
     background: #d00;
     border-radius: 0.5em;
     vertical-align: top;
