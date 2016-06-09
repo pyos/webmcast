@@ -61,15 +61,12 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 			return err
 		case ErrStreamNotExist:
 			return RenderError(w, http.StatusNotFound, "Invalid stream name.")
-		case err, ErrStreamOffline:
+		case nil, ErrStreamOffline:
 		}
-		return Render(w, http.StatusOK, Room{ID: id, Meta: meta, User: user, Online: err == nil, Owned: user != nil && meta.OwnerID == user.ID})
+		return Render(w, http.StatusOK, Room{id, user != nil && meta.OwnerID == user.ID, err == nil, meta, user})
 	}
 
 	switch r.URL.Path {
-	default:
-		return RenderError(w, http.StatusNotFound, "")
-
 	case "/":
 		if r.Method != "GET" {
 			return RenderInvalidMethod(w, "GET")
