@@ -472,7 +472,7 @@ x-columns > * {
 
 .form-wrapper {
     padding: 2rem;
-    min-width: 10rem;
+    min-width: 15rem;
 }
 
 main > .form-wrapper {
@@ -503,4 +503,26 @@ x-badge {
     background: #d00;
     border-radius: 0.5em;
     vertical-align: top;
+}
+
+@media (max-width: 30em) {
+    nav, footer {
+        padding: 0 0.5rem;
+    }
+
+    nav > * {
+        margin: 0 0.5rem;
+    }
+
+    footer > * {
+        margin: 1rem 0.5rem;
+    }
+
+    .user-header {
+        padding: 0.5rem 0.5rem;
+    }
+
+    .form-wrapper {
+        padding: 1rem;
+    }
 }

@@ -20,6 +20,7 @@
                             so instead we enforce the size of this element with an empty image. */}}
                         <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                         <video crossorigin="anonymous"></video><div class="controls">
+                            <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
                             <a href="#" class="button icon play" title="Play">&#xf04b;</a>
                             <a href=""  class="button icon reload" title="Reload">&#xf021;</a>
                             <a href="#" class="button icon stop" title="Stop">&#xf04c;</a>
@@ -27,7 +28,6 @@
                             <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
                             <x-range tabindex="0" class="volume" title="Volume"></x-range>
                             <div class="status">not connected</div>
-                            <x-range tabindex="0" class="seek" title="Seek position"></x-range>
                             <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                             <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
