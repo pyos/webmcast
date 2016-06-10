@@ -338,6 +338,7 @@ $.extend({
     },
 
     'x-range'(e) {
+        let step = isNaN(+e.dataset.step) ? 0.05 : +e.dataset.step;
         let slider = document.createElement('x-slider');
         $.observeData(e, 'value', 1, v => slider.style.width = `${+v * 100}%`);
         e.appendChild(slider);
@@ -358,8 +359,8 @@ $.extend({
         e.addEventListener('mouseup',    _ => e.removeEventListener('mousemove', select));
         e.addEventListener('mouseleave', _ => e.removeEventListener('mousemove', select));
         e.addEventListener('keydown', ev => {
-            if (ev.keyCode === 37) change(+e.dataset.value - 0.05);
-            if (ev.keyCode === 39) change(+e.dataset.value + 0.05);
+            if (ev.keyCode === 37) change(+e.dataset.value - step);
+            if (ev.keyCode === 39) change(+e.dataset.value + step);
         });
     },
 

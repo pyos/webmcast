@@ -339,14 +339,15 @@ x-range:not([data-ro]) {
 x-range:before {
     content: '';
     display: block;
-    border: 2px solid rgba(127,127,127,0.3);
+    opacity: 0.1;
+    border: 2px solid;
     border-radius: 2px;
 }
 
 x-range > x-slider {
     display: block;
     box-sizing: border-box;
-    border: 2px solid #f7d358;
+    border: 2px solid;
     border-radius: 2px;
     margin-top: -4px;
 }
@@ -355,9 +356,17 @@ x-range:not([data-ro]) > x-slider:after {
     content: '';
     float: right;
     display: block;
-    margin: -7px;
-    border: 7px solid #fff;
-    border-radius: 7px;
+    margin: -5px;
+    border: 5px solid;
+    border-radius: 5px;
+    box-shadow: 0 0 5px -2px #000;
+    transition: transform 0.2s ease-in-out;
+    transform: scale(0);
+}
+
+x-range:hover > x-slider:after,
+x-range:focus > x-slider:after {
+    transform: scale(1);
 }
 
 x-modal-cover {

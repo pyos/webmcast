@@ -124,8 +124,8 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 }
 
 .player .status {
+    flex: 1;
     overflow: hidden;
-    min-width: 3em;
     line-height: 1;
     font-size: 1.1em;
     font-weight: bold;
@@ -133,15 +133,13 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     text-transform: uppercase;
 }
 
-.player:not([data-live])[data-status="playing"] .status,
-.player:not([data-live])[data-status="paused"] .status {
-    text-align: right;
-}
-
-.player .seek,
-.player[data-live] .status,
-.player:not([data-status="playing"]):not([data-status="paused"]) .status {
-    flex: 1;
+.player .seek {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    color: #f7d358;
+    padding-bottom: 0;
 }
 
 .player x-range {

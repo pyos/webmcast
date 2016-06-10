@@ -301,6 +301,7 @@ $.extend({
         video.addEventListener('loadedmetadata', _ => setStatus('loading', 'buffering'));
         video.addEventListener('ended',          _ => setError(4 /* "unsupported media" */));
         video.addEventListener('error',          _ => setError(video.error.code));
+        video.addEventListener('playing',        _ => setTime(video.currentTime));
         video.addEventListener('timeupdate',     _ => setTime(video.currentTime));
         video.addEventListener('volumechange',   _ => setVolume(video.volume, video.muted));
         $.observeData(e, 'src', '', src => (video.src = src) ? video.play() : setError(4));
