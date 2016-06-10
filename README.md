@@ -81,6 +81,7 @@ Tips:
 
   * `-g` (or `keyframe-max-dist`) controls the spacing between keyframes.
     Keep it low (~2 seconds) to allow the stream to start faster for new viewers.
+    *ffmpeg tip: use `-force_key_frames 00:02` instead if you don't know the framerate.*
 
   * The stream may be split arbitrarily into many requests.
     For example, gstreamer sends each frame as a separate PUT by default.
