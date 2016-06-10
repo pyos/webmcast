@@ -3,7 +3,7 @@
     color: #fff;
 }
 
-.bg a:not(.brand) {
+.bg a:not(.brand):not(.button) {
     color: #caa9d1;
 }
 
