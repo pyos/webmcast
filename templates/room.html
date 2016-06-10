@@ -108,17 +108,25 @@
                 <x-columns class="stream-about" data-tab="Stream description">
                     <div>
                     {{- range $id, $_ := .Meta.Panels }}
-                        <div class="panel" data-order="{{$id}}">
-                        {{- if $.Editable }}
-                            <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
-                        {{- end }}
+                        <div class="panel" data-order="-{{$id}}">
                             <p data-markup>{{.Text}}</p>
+                            <div class="info">
+                                <span>{{.Created.Format "02.01.2006 15:04:05"}}</span>
+                            {{- if $.Editable }}
+                                <x-spacer></x-spacer>
+                                <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
+                            {{- end }}
+                            </div>
                         </div>
                     {{- end }}
                     {{- if .Editable }}
-                        <div class="panel new-panel" data-order="{{len .Meta.Panels}}">
-                            <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
-                            <p data-markup>*Edit this to create a new panel*</p>
+                        <div class="panel new-panel" data-order="-{{len .Meta.Panels}}">
+                            <p data-markup></p>
+                            <div class="info">
+                                <span>New panel</span>
+                                <x-spacer></x-spacer>
+                                <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
+                            </div>
                         </div>
                     {{- end }}
                     </div>

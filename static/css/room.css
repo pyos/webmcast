@@ -181,41 +181,42 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     border: 1px solid #f7f7f3;
 }
 
+.stream-meta .panel .info {
+    display: flex;
+    background: #eee;
+    font-style: italic;
+    align-items: center;
+    margin: 0 -1rem;
+    padding: 1rem;
+}
+
 .stream-meta .new-panel {
-    background: none;
+    background: #fff;
     border: 3px dashed #f7f7f3;
+}
+
+.stream-meta .new-panel .info {
+    background: none;
 }
 
 .stream-meta .panel:not(:last-child) {
     margin-bottom: 1rem;
 }
 
-.stream-meta .edit {
-    float: right;
-    font-size: 1.33em;
-    margin-right: -1rem;
-}
-
-.stream-meta form ~ * {
-    visibility: hidden;
-}
-
 .stream-meta form {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1;
-    padding: 0.5rem;
-    min-height: 100%;
+    padding: 1rem 0;
     text-align: right;
     box-sizing: border-box;
-    background: #f7f7f3;
+    background: inherit;
 }
 
 .stream-meta form textarea {
     width: 100%;
     margin-bottom: 0.5em;
+}
+
+.stream-meta form ~ * {
+    display: none !important;
 }
 
 .chat {

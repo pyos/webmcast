@@ -63,8 +63,9 @@ type StreamMetadata struct {
 }
 
 type StreamMetadataPanel struct {
-	Text  string
-	Image string
+	Text    string
+	Image   string
+	Created time.Time
 }
 
 type StreamTrackInfo struct {

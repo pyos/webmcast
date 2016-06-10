@@ -346,7 +346,7 @@ $.extend({
         });
     },
 
-    '.stream-about'(e) {
+    '.stream-about .panel'(e) {
         e.button('.edit', ev => {
             let f = $.template('edit-panel-template').querySelector('form');
             let i = f.querySelector('textarea');
@@ -356,8 +356,8 @@ $.extend({
                     f.setAttribute('action', '/user/del-stream-panel'));
             else
                 f.querySelector('.remove').remove();
-            ev.currentTarget.parentElement.insertBefore(f, ev.currentTarget);
-            i.value = ev.currentTarget.parentElement.querySelector('[data-markup=""]').textContent;
+            e.insertBefore(f, e.children[0]);
+            i.value = e.querySelector('[data-markup=""]').textContent;
             i.focus();
         });
     },

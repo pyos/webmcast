@@ -27,7 +27,7 @@ type sqlDAO struct {
 		SetStreamToken  *sql.Stmt "update users set sectoken = ? where id = ?"
 		SetStreamName   *sql.Stmt "update streams set name = ?, nsfw = ? where user = ?"
 		SetStreamTracks *sql.Stmt "update streams set video = ?, audio = ?, width = ?, height = ? where user in (select id from users where login = ?)"
-		GetStreamPanels *sql.Stmt "select text, image from panels where stream = ?"
+		GetStreamPanels *sql.Stmt "select text, image, created from panels where stream = ?"
 		AddStreamPanel  *sql.Stmt "insert into panels(stream, text) select id, ? from streams where user = ?"
 		SetStreamPanel  *sql.Stmt "update panels set text = ? where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)"
 		DelStreamPanel  *sql.Stmt "delete from panels where id in (select id from panels where stream in (select id from streams where user = ?) limit 1 offset ?)"
@@ -36,7 +36,7 @@ type sqlDAO struct {
 		SetStreamServer *sql.Stmt "update streams set server = ? where server is null and user in (select id from users where login = ? and actoken is null and sectoken = ?)"
 		DelStreamServer *sql.Stmt "update streams set server = null where user in (select id from users where login = ?)"
 		GetRecordings1  *sql.Stmt "select id, name, about, email, space_total from users where login = ?"
-		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ?"
+		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ? order by datetime(created) desc"
 		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created from users join recordings on users.id = user where recordings.id = ?"
 		DelRecording    *sql.Stmt "delete from recordings where id = ?"
 	}
@@ -72,7 +72,8 @@ create table if not exists panels (
     id        integer      not null primary key,
     stream    integer      not null,
     text      text         not null,
-    image     varchar(256) not null default ""
+    image     varchar(256) not null default "",
+    created   datetime     not null default (datetime('now'))
 );
 
 create table if not exists recordings (
@@ -360,7 +361,7 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	rows, err := d.prepared.GetStreamPanels.Query(intId)
 	if err == nil {
 		panel := StreamMetadataPanel{}
-		for rows.Next() && rows.Scan(&panel.Text, &panel.Image) == nil {
+		for rows.Next() && rows.Scan(&panel.Text, &panel.Image, &panel.Created) == nil {
 			meta.Panels = append(meta.Panels, panel)
 		}
 		if err = rows.Err(); err == nil && !server.Valid {
