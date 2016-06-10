@@ -37,7 +37,8 @@ type sqlDAO struct {
 		DelStreamServer *sql.Stmt "update streams set server = null where user in (select id from users where login = ?)"
 		GetRecordings1  *sql.Stmt "select id, name, about, email, space_total from users where login = ?"
 		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ? order by datetime(created) desc"
-		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created from users join recordings on users.id = user where recordings.id = ?"
+		GetRecordPanels *sql.Stmt "select text, image, created from panels where stream = ? and datetime(created) < datetime(?)"
+		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created, stream from users join recordings on users.id = user where recordings.id = ?"
 		DelRecording    *sql.Stmt "delete from recordings where id = ?"
 	}
 }
@@ -78,6 +79,7 @@ create table if not exists panels (
 
 create table if not exists recordings (
     id         integer      not null primary key,
+    stream     integer      not null,
     user       integer      not null,
     video      boolean      not null default 1,
     audio      boolean      not null default 1,
@@ -366,17 +368,23 @@ func (d *sqlDAO) GetStreamMetadata(id string) (*StreamMetadata, error) {
 	}
 	rows, err := d.prepared.GetStreamPanels.Query(intId)
 	if err == nil {
-		panel := StreamMetadataPanel{}
-		for rows.Next() && rows.Scan(&panel.Text, &panel.Image, &panel.Created) == nil {
-			meta.Panels = append(meta.Panels, panel)
-		}
-		if err = rows.Err(); err == nil && !server.Valid {
+		meta.Panels, err = d.loadPanelsFromRows(rows)
+		if err == nil && !server.Valid {
 			err = ErrStreamOffline
 		}
-		rows.Close()
 		meta.Server = server.String
 	}
 	return &meta, err
+}
+
+func (d *sqlDAO) loadPanelsFromRows(rows *sql.Rows) ([]StreamMetadataPanel, error) {
+	r := make([]StreamMetadataPanel, 0, 5)
+	panel := StreamMetadataPanel{}
+	for rows.Next() && rows.Scan(&panel.Text, &panel.Image, &panel.Created) == nil {
+		r = append(r, panel)
+	}
+	rows.Close()
+	return r, rows.Err()
 }
 
 func (d *sqlDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error {
@@ -406,13 +414,21 @@ func (d *sqlDAO) GetRecordings(id string) (*StreamHistory, error) {
 }
 
 func (d *sqlDAO) GetRecording(id string, recid int64) (*StreamRecording, error) {
+	var intId int
 	r := StreamRecording{}
 	err := d.prepared.GetRecording.QueryRow(recid).Scan(
-		&r.OwnerID, &r.UserName, &r.UserAbout, &r.Email, &r.Name, &r.Server,
-		&r.HasVideo, &r.HasAudio, &r.Width, &r.Height, &r.NSFW, &r.Path, &r.Space, &r.Timestamp,
+		&r.OwnerID, &r.UserName, &r.UserAbout, &r.Email, &r.Name, &r.Server, &r.HasVideo,
+		&r.HasAudio, &r.Width, &r.Height, &r.NSFW, &r.Path, &r.Space, &r.Timestamp, &intId,
 	)
 	if err == sql.ErrNoRows {
-		err = ErrStreamNotExist
+		return nil, ErrStreamNotExist
+	}
+	if err != nil {
+		return nil, err
+	}
+	rows, err := d.prepared.GetRecordPanels.Query(intId, r.Timestamp)
+	if err == nil {
+		r.Panels, err = d.loadPanelsFromRows(rows)
 	}
 	return &r, err
 }
