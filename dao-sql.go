@@ -194,6 +194,7 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 	token := ""
 	query := "update users set "
 	params := make([]interface{}, 0, 7)
+	offlineOnly := false
 
 	if name != "" {
 		query += "name = ?, "
@@ -206,6 +207,7 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 		}
 		query += "login = ?, "
 		params = append(params, login)
+		offlineOnly = true
 	}
 
 	if email != "" {
@@ -215,6 +217,7 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 		token = makeToken(tokenLength)
 		query += "actoken = ?, email = ?, "
 		params = append(params, token, email)
+		offlineOnly = true
 	}
 
 	if len(password) != 0 {
@@ -226,9 +229,12 @@ func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, 
 		params = append(params, hash)
 	}
 
-	query += "about = ? where id = ? and not exists(select 1 from streams where user = users.id and server is not null)"
+	query += "about = ? where id = ?"
 	params = append(params, about, id)
 
+	if offlineOnly {
+		query += " and not exists(select 1 from streams where user = users.id and server is not null)"
+	}
 	r, err := d.Exec(query, params...)
 	if err != nil {
 		if (login != "" || email != "") && d.userExists(login, email) {
