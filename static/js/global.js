@@ -161,7 +161,7 @@ $.extend({
             return;  // native scrollbar is already floating
 
         let track = document.createElement('x-scrollbar');
-        let thumb = document.createElement('x-scrollbar-thumb');
+        let thumb = document.createElement('x-slider');
         track.appendChild(thumb);
 
         let hide = () => { track.style.opacity = 0; };

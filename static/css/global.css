@@ -126,20 +126,55 @@ x-scrollbar {
     pointer-events: none;
     top: 5px;
     right: 5px;
-    width: 5px;
     bottom: 5px;
     z-index: 255;
+    color: #888;
     background: rgba(127,127,127,0.3);
     border-radius: 2px;
     transition: opacity 0.2s ease-in-out;
     opacity: 0;
 }
 
-x-scrollbar-thumb {
-    display: block;
-    background: #888;
-    border-radius: 2px;
+x-slider {
     height: 100%;
+    display: block;
+    box-sizing: border-box;
+    border: 2px solid;
+    border-radius: 2px;
+}
+
+x-range {
+    display: block;
+    position: relative;
+    padding: 1em 0;
+}
+
+x-range:before {
+    content: '';
+    display: block;
+    opacity: 0.2;
+    border: 2px solid;
+    border-radius: 2px;
+    margin-bottom: -4px;
+}
+
+x-range:not([data-ro]) {
+    cursor: ew-resize;
+}
+
+x-range:not([data-ro]) > x-slider:after {
+    content: '';
+    float: right;
+    display: block;
+    margin: -5px;
+    border: 5px solid;
+    border-radius: 5px;
+    box-shadow: 0 0 5px -2px #000;
+    transition: transform 0.2s ease-in-out;
+}
+
+x-range:not(:hover):not(:focus) > x-slider:after {
+    transform: scale(0);
 }
 
 x-tabbar {
@@ -169,7 +204,7 @@ x-tabbar > .active {
     left: 50%;
     width: 1em;
     height: 1em;
-    margin: -0.5em 0 0 -0.5em;
+    margin: -0.5em;
     z-index: 2;
 }
 
@@ -324,49 +359,6 @@ a.button.icon {
     padding: 0.5em;
     text-align: center;
     vertical-align: middle;
-}
-
-x-range {
-    display: block;
-    position: relative;
-    padding: 1em 0;
-}
-
-x-range:not([data-ro]) {
-    cursor: ew-resize;
-}
-
-x-range:before {
-    content: '';
-    display: block;
-    opacity: 0.1;
-    border: 2px solid;
-    border-radius: 2px;
-}
-
-x-range > x-slider {
-    display: block;
-    box-sizing: border-box;
-    border: 2px solid;
-    border-radius: 2px;
-    margin-top: -4px;
-}
-
-x-range:not([data-ro]) > x-slider:after {
-    content: '';
-    float: right;
-    display: block;
-    margin: -5px;
-    border: 5px solid;
-    border-radius: 5px;
-    box-shadow: 0 0 5px -2px #000;
-    transition: transform 0.2s ease-in-out;
-    transform: scale(0);
-}
-
-x-range:hover > x-slider:after,
-x-range:focus > x-slider:after {
-    transform: scale(1);
 }
 
 x-modal-cover {
