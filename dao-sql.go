@@ -37,7 +37,7 @@ type sqlDAO struct {
 		DelStreamServer *sql.Stmt "update streams set server = null where user in (select id from users where login = ?)"
 		GetRecordings1  *sql.Stmt "select id, name, about, email, space_total from users where login = ?"
 		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ? order by datetime(created) desc"
-		GetRecordPanels *sql.Stmt "select text, image, created from panels where stream = ? and datetime(created) < datetime(?)"
+		GetRecordPanels *sql.Stmt "select text, image, created from panels where stream = ? and datetime(created) <= datetime(?)"
 		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created, stream from users join recordings on users.id = user where recordings.id = ?"
 		DelRecording    *sql.Stmt "delete from recordings where id = ?"
 	}
