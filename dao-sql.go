@@ -89,7 +89,7 @@ create table if not exists recordings (
     name       varchar(256) not null default "",
     server     varchar(128) not null,
     path       varchar(256) not null,
-    created    datetime     not null,
+    created    datetime     not null default (datetime('now')),
     size       integer      not null default 0
 );`
 
