@@ -216,7 +216,7 @@ $.extend({
             bar.appendChild(item);
         }
 
-        $.observeData(e, 'tabs', bar.children[0].dataset.tab, active => {
+        $.observeData(e, 'tabs', bar.children.length ? bar.children[0].dataset.tab : '', active => {
             for (let id in tabs) {
                 tabs[id].b.classList.remove('active');
                 tabs[id].t.setAttribute('hidden', '');
@@ -225,7 +225,10 @@ $.extend({
             tabs[active].t.removeAttribute('hidden');
         });
 
-        e.insertBefore(bar, e.children[0]);
+        if (e.children)
+            e.insertBefore(bar, e.children[0]);
+        else
+            e.appendChild(bar);
     },
 
     '[data-markup]'(e) {
