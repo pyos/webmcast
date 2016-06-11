@@ -20,6 +20,9 @@
 // POST /user/restore
 //     >> username string OR email string
 //
+// POST /user/restore?uid=int64&token=string
+//     >> password string
+//
 // GET /user/logout
 //
 // POST /user/new-token
@@ -202,10 +205,36 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	case "/user/restore":
 		switch r.Method {
 		case "GET":
+			if r.URL.RawQuery != "" {
+				return Render(w, http.StatusOK, UserRestoreStep2(0))
+			}
 			return Render(w, http.StatusOK, UserRestore(0))
 
 		case "POST":
-			return RenderError(w, http.StatusNotImplemented, "There is no UI yet.")
+			if r.URL.RawQuery != "" {
+				uid, err := strconv.ParseInt(r.FormValue("uid"), 10, 64)
+				if err != nil {
+					return RenderError(w, http.StatusBadRequest, "Invalid user ID.")
+				}
+				err = ctx.ResetUserStep2(uid, r.FormValue("token"), []byte(r.FormValue("password")))
+				if err == nil {
+					err = ctx.SetAuthInfo(w, uid)
+				}
+				switch err {
+				default:
+					return err
+				case ErrInvalidPassword:
+					return RenderError(w, http.StatusBadRequest, err.Error())
+				case ErrUserNotExist, nil:
+					http.Redirect(w, r, "/user/", http.StatusSeeOther)
+				}
+				return nil
+			}
+			uid, token, err := ctx.ResetUser(r.FormValue("username"), r.FormValue("email"))
+			if err != nil && err != ErrUserNotExist {
+				return err
+			}
+			return Render(w, http.StatusOK, UserRestoreEmailSent{uid, token})
 		}
 		return RenderInvalidMethod(w, "GET, POST")
 

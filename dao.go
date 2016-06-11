@@ -164,13 +164,14 @@ func (s FileSize) String() string {
 
 type Database interface {
 	Close() error
-	// TODO something for password recovery.
 	NewUser(login string, email string, password []byte) (*UserData, error)
+	ResetUser(login string, orEmail string) (uid int64, rstoken string, e error)
+	ResetUserStep2(id int64, token string, password []byte) error
 	ActivateUser(id int64, token string) error
 	GetUserID(login string, password []byte) (int64, error)
 	GetUserFull(id int64) (*UserData, error)
 	// v--- can assume existence of user with given id
-	SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error)
+	SetUserData(id int64, name string, login string, email string, about string, password []byte) (actoken string, e error)
 	NewStreamToken(id int64) error
 	SetStreamName(id int64, name string, nsfw bool) error
 	AddStreamPanel(id int64, text string) error

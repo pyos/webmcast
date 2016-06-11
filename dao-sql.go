@@ -20,8 +20,11 @@ type sqlDAO struct {
 		UserExists      *sql.Stmt "select 1 from users where login = ? or email = ?"
 		NewUser         *sql.Stmt "insert into users(actoken, sectoken, name, login, email, pwhash) values(?, ?, ?, ?, ?, ?)"
 		NewStream       *sql.Stmt "insert into streams(user) values(?)"
+		ResetUser       *sql.Stmt "update users set rstoken = ? where id = ?"
+		ResetUserStep2  *sql.Stmt "update users set pwhash = ? where id = ? and rstoken = ?"
 		ActivateUser    *sql.Stmt "update users set actoken = NULL where id = ? and actoken = ?"
 		GetUserID       *sql.Stmt "select id, pwhash from users where login = ?"
+		GetUserByEither *sql.Stmt "select id from users where login = ? or email = ?"
 		GetUserInfo     *sql.Stmt "select name, login, email, pwhash, about, actoken, sectoken from users where id = ?"
 		GetStreamInfo   *sql.Stmt "select users.id, users.name, about, email, streams.name, server, video, audio, width, height, nsfw, streams.id from users join streams on users.id = streams.user where login = ?"
 		SetStreamToken  *sql.Stmt "update users set sectoken = ? where id = ?"
@@ -47,6 +50,7 @@ const sqlSchema = `
 create table if not exists users (
     id           integer      not null primary key,
     actoken      varchar(64),
+    rstoken      varchar(64),
     sectoken     varchar(64)  not null,
     name         varchar(256) not null,
     login        varchar(256) not null,
@@ -152,6 +156,34 @@ func (d *sqlDAO) NewUser(login string, email string, password []byte) (*UserData
 		_, err = d.prepared.NewStream.Exec(uid)
 	}
 	return &UserData{uid, login, email, login, hash, "", false, actoken, sectoken}, err
+}
+
+func (d *sqlDAO) ResetUser(login string, orEmail string) (uid int64, token string, err error) {
+	token = makeToken(tokenLength)
+	err = d.prepared.GetUserByEither.QueryRow(login, orEmail).Scan(&uid)
+	if err == sql.ErrNoRows {
+		err = ErrUserNotExist
+	}
+	if err == nil {
+		_, err = d.prepared.ResetUser.Exec(token, uid)
+	}
+	return
+}
+
+func (d *sqlDAO) ResetUserStep2(id int64, token string, password []byte) error {
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	r, err := d.prepared.ResetUserStep2.Exec(hash, id, token)
+	if err != nil {
+		return err
+	}
+	changed, err := r.RowsAffected()
+	if err == nil && changed != 1 {
+		return ErrUserNotExist
+	}
+	return err
 }
 
 func (d *sqlDAO) ActivateUser(id int64, token string) error {

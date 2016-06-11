@@ -19,6 +19,14 @@ func (d anonymousDAO) NewUser(login string, email string, password []byte) (*Use
 	return nil, ErrNotSupported
 }
 
+func (d anonymousDAO) ResetUser(login string, orEmail string) (int64, string, error) {
+	return 0, "", ErrNotSupported
+}
+
+func (d anonymousDAO) ResetUserStep2(id int64, token string, password []byte) error {
+	return ErrUserNotExist
+}
+
 func (d anonymousDAO) ActivateUser(id int64, token string) error {
 	return ErrUserNotExist
 }
