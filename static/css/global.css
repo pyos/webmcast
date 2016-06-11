@@ -431,7 +431,7 @@ x-columns > * {
 .user-header {
     padding: 1.5rem;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .user-header > * {
@@ -457,6 +457,10 @@ x-columns > * {
 }
 
 .user-header h1 ~ * {
+    font-size: 1.2em;
+}
+
+.user-header > img ~ x-badge {
     font-size: 1.2em;
 }
 

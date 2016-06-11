@@ -158,15 +158,34 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     display: none;
 }
 
+.stream-header form {
+    display: flex;
+    align-items: center;
+}
+
 .stream-header form input,
 .stream-header form button {
+    flex: 0 0 auto;
     height: 2.35em;  /* ~= 1.5 * 1.6em rounded down to px = h1's height */
     margin: 0;
-    vertical-align: middle;
+}
+
+.stream-header form input[type="text"] {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 .stream-header form button {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
     margin-right: 1em;
+}
+
+.stream-header form input[type="checkbox"] {
+    margin-right: 0.5em;
 }
 
 .stream-meta {

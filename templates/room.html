@@ -83,13 +83,13 @@
                 <div>
                     {{ if .Editable }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
                     <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <span>{{or .Meta.UserName "anonymous"}}</span>
-                    {{ if .Meta.NSFW }}<span><x-badge>18+</x-badge></span>{{ end }}
+                    <a href="/rec/{{.ID}}">{{or .Meta.UserName "anonymous"}}</a>
                 </div>
             {{- if .Live }}
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
                 <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
             {{- end }}
+                {{ if .Meta.NSFW }}<x-badge>18+</x-badge>{{ end }}
             </section>
             <section class="stream-meta" data-tabs>
             {{- if .Editable }}
