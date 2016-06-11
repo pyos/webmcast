@@ -429,8 +429,9 @@ x-columns > * {
 }
 
 .user-header {
-    padding: 1.5rem;
     display: flex;
+    padding: 1.5rem;
+    font-size: 1.2em;
     align-items: flex-start;
 }
 
@@ -450,18 +451,14 @@ x-columns > * {
 
 .user-header h1 {
     margin: 0;
-    font-size: 1.6em;
+    font-size: 1.33em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.user-header h1 ~ * {
-    font-size: 1.2em;
-}
-
-.user-header > img ~ x-badge {
-    font-size: 1.2em;
+.user-header > :nth-child(2) ~ * {
+    align-self: center;
 }
 
 .warning-block {

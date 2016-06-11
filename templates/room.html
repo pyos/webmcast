@@ -16,8 +16,6 @@
                 <section class="player-block bg">
                     <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
                                       {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
-                        {{- /* `video` with `height: auto` will always use the default aspect ratio.
-                            so instead we enforce the size of this element with an empty image. */}}
                         <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                         <video crossorigin="anonymous"></video><div class="controls">
                             <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
@@ -47,12 +45,7 @@
                             </li>
                         </template>
                         <h1>#{{.ID}}</h1>
-                        <ul class="log" data-scrollbar>
-                        {{- if not .Live }}
-                            <li>This recording was made {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}}.</li>
-                            <li><a href="/{{.ID}}">Back to the live stream &raquo;</a></li>
-                        {{- end }}
-                        </ul>
+                        <ul class="log" data-scrollbar></ul>
                         <div class="offline-message">The chat is offline.</div>
                         <form class="login-form">
                             <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?" data-submit></textarea>
@@ -81,13 +74,18 @@
             {{- end }}
                 <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
                 <div>
-                    {{ if .Editable }}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{ end }}
-                    <h1 class="name">{{or .Meta.Name (printf "#%s" .ID)}}</h1>
-                    <a href="/rec/{{.ID}}">{{or .Meta.UserName "anonymous"}}</a>
+                    {{if .Editable}}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{end}}
+                    <h1 class="name">{{or .Meta.Name .Meta.UserName}}</h1>
+                    {{if .Meta.Name}}{{or .Meta.UserName "anonymous"}}{{end}}
+                    {{if not .Live}}
+                        {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}} /
+                        <a href="/{{.ID}}">Live stream &raquo;</a>
+                    {{end}}
                 </div>
             {{- if .Live }}
+                <a class="icon" href="/rec/{{.ID}}" title="Archives">&#xf1da;</a>
+                <a class="icon" href="/stream/{{.ID}}" title="Download WebM">&#xf019;</a>
                 <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
-                <span><span class="icon" title="Subscribers">&#xf004;</span> --</span>
             {{- end }}
                 {{ if .Meta.NSFW }}<x-badge>18+</x-badge>{{ end }}
             </section>

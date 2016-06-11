@@ -152,8 +152,7 @@
 
 .stream-header .edit.icon {
     float: left;
-    padding: 0.25em;
-    font-size: 1.5em;
+    padding: 0.5em 0.5em 0 0;
 }
 
 .stream-header form + .edit,
@@ -163,13 +162,14 @@
 
 .stream-header form {
     display: flex;
+    font-size: 0.83em;
     align-items: center;
 }
 
 .stream-header form input,
 .stream-header form button {
     flex: 0 0 auto;
-    height: 2.35em;  /* ~= 1.5 * 1.6em rounded down to px = h1's height */
+    height: 33px;  /* = 1.5 * 1.6em rounded down to px = h1's height */
     margin: 0;
 }
 
@@ -241,7 +241,7 @@
     display: none !important;
 }
 
-.chat {
+.player-block aside {
     width: 20rem;
     display: flex;
     flex: 0 0 auto;
@@ -357,7 +357,7 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 }
 
 @media (min-width: 50em) {
-    body.aside-chat .chat {
+    body.aside-chat .player-block aside {
         position: absolute;
         top: 100%;
         height: calc(100vh - 7.33em);
@@ -374,6 +374,10 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 }
 
 @media (max-width: 50em) {
+    .player-block aside:not(.chat) {
+        display: none;
+    }
+
     .chat {
         position: fixed;
         top: 0;
