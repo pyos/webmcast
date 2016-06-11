@@ -106,35 +106,35 @@
                 <x-columns class="stream-about" data-tab="Stream description">
                     <div>
                     {{- range $id, $_ := .Meta.Panels }}
-                        <div class="panel" data-order="-{{$id}}">
+                        <x-panel data-order="-{{$id}}">
                             <p data-markup>{{.Text}}</p>
-                            <div class="info">
+                            <x-panel-footer>
                                 <span>{{.Created.Format "02.01.2006 15:04:05"}}</span>
                             {{- if $.Editable }}
                                 <x-spacer></x-spacer>
                                 <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
                             {{- end }}
-                            </div>
-                        </div>
+                            </x-panel-footer>
+                        </x-panel>
                     {{- end }}
                     {{- if .Editable }}
-                        <div class="panel new-panel" data-order="-{{len .Meta.Panels}}">
+                        <x-panel class="dotted" data-order="-{{len .Meta.Panels}}">
                             <p data-markup></p>
-                            <div class="info">
+                            <x-panel-footer>
                                 <span>New panel</span>
                                 <x-spacer></x-spacer>
                                 <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
-                            </div>
-                        </div>
+                            </x-panel-footer>
+                        </x-panel>
                     {{- end }}
                     </div>
                     <div></div>
                 </x-columns>
             {{- end }}
             {{- if .Meta.UserAbout }}
-                <div class="panel" data-tab="About {{.Meta.UserName}}">
+                <x-panel data-tab="About {{.Meta.UserName}}">
                     <p data-markup>{{.Meta.UserAbout}}</p>
-                </div>
+                </x-panel>
             {{- end }}
             </section>
             {{ template "footer.html" }}

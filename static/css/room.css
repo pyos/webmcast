@@ -195,36 +195,6 @@
     padding: 0 2rem;
 }
 
-.stream-meta .panel {
-    padding: 0 1rem;
-    position: relative;
-    word-wrap: break-word;
-    background: #f7f7f3;
-    border: 1px solid #f7f7f3;
-}
-
-.stream-meta .panel .info {
-    display: flex;
-    background: #eee;
-    font-style: italic;
-    align-items: center;
-    margin: 0 -1rem;
-    padding: 1rem;
-}
-
-.stream-meta .new-panel {
-    background: #fff;
-    border: 3px dashed #f7f7f3;
-}
-
-.stream-meta .new-panel .info {
-    background: none;
-}
-
-.stream-meta .panel:not(:last-child) {
-    margin-bottom: 1rem;
-}
-
 .stream-meta form {
     padding: 1rem 0;
     text-align: right;

@@ -461,6 +461,37 @@ x-columns > * {
     align-self: center;
 }
 
+x-panel {
+    display: block;
+    padding: 0 1rem;
+    position: relative;
+    word-wrap: break-word;
+    background: #f7f7f3;
+    border: 1px solid #f7f7f3;
+}
+
+x-panel-footer {
+    display: flex;
+    background: #eee;
+    font-style: italic;
+    align-items: center;
+    margin: 0 -1rem;
+    padding: 1rem;
+}
+
+x-panel.dotted {
+    background: #fff;
+    border: 3px dashed #f7f7f3;
+}
+
+x-panel.dotted > x-panel-footer {
+    background: none;
+}
+
+x-panel:not(:last-child) {
+    margin-bottom: 1rem;
+}
+
 .warning-block {
     padding: 2rem;
     border: 1px solid #ffc;
