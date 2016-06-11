@@ -28,10 +28,6 @@
     justify-content: center;
 }
 
-body:not(.aside-chat) .player-block:not(.theatre) {
-    max-width: 85rem;
-}
-
 .player-block .button.icon {
     color: inherit;
     font-size: 1.66em;
@@ -45,53 +41,63 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 .player.has-video {
     overflow: hidden;
     position: relative;
-    background: repeating-linear-gradient(180deg,#000,#000 2px,#0a0a0a 2px,#0a0a0a 3px) #000;
+    background: #000;
 }
 
-.player:not(.has-video) {
+.player {
     flex: 1;
-    height: 3.33em;
+    min-height: 3.33em;
+    max-height: calc(100vh - 4rem);
+    position: relative;
+}
+
+@media (min-width: 92em) and (min-height: 52.56em) {
+    nav, section, footer { max-width: 96rem; }
+}
+
+@media (min-width: 106em) and (min-height: 60.44em) {
+    nav, section, footer { max-width: 112rem; }
+}
+
+.player.has-video, .chat {
+    min-height: 20rem;
+}
+
+.player.has-video:after {
+    content: '';
+    display: block;
+    padding-top: 56.25%;  /* 16:9 */
 }
 
 .player[data-status="error"]:before {
     content: '\f071';  /* exclamation-triangle */
 }
 
-.player.has-video[data-status="playing"] {
-    background: #000;
-}
-
 .player svg,
 .player video {
-    width: auto;  /* scale to *at most* fit the window while preserving aspect ratio */
-    height: auto;
-    max-width: 100%;
-    max-height: calc(100vh - 4rem);
-}
-
-.chat,
-.player.has-video svg,
-.player.has-video video {
-    min-height: 20rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .player-block.theatre {
     position: fixed;
     top: 0;
     left: 0;
+    padding: 0;
+    width: 100%;
+    max-width: none;
     z-index: 256;
 }
 
 .player.is-fullscreen,
-.player.is-fullscreen svg,
-.player.is-fullscreen video,
-.player-block.theatre,
-.player-block.theatre .player,
-.player-block.theatre .player svg,
-.player-block.theatre .player video {
-    width: 100%;  /* scale to *exactly* fit the window while preserving aspect ratio */
+.player-block.theatre .player {
+    width: 100%;
     height: 100vh;
     max-width: none;
+    min-height: none;
     max-height: none;
 }
 
@@ -104,12 +110,12 @@ body:not(.aside-chat) .player-block:not(.theatre) {
     padding: 0 0.5rem;
     align-items: center;
     white-space: nowrap;
-    transition: opacity 0.3s ease-in-out;
+    transition: transform 0.3s ease-in-out;
 }
 
 .player.has-video[data-status="playing"] .controls,
 .player.has-video[data-status="paused"] .controls {
-    background: rgba(0,0,0,0.5);
+    background: rgba(34,34,34,0.8);
 }
 
 .player.has-video[data-status="playing"].hide-controls {
@@ -117,7 +123,7 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 }
 
 .player.has-video[data-status="playing"].hide-controls .controls:not(:hover) {
-    opacity: 0;
+    transform: translateY(100%);
 }
 
 .player .status {
@@ -132,19 +138,16 @@ body:not(.aside-chat) .player-block:not(.theatre) {
 
 .player .seek {
     position: absolute;
+    top: -1em;
     left: 0;
     right: 0;
-    bottom: 100%;
     color: #f7d358;
     padding-bottom: 0;
 }
 
-.player x-range {
-    margin: 0 1em;
-}
-
 .player .volume {
     width: 7em;
+    margin: 0 1em;
 }
 
 .stream-header .edit.icon {
@@ -400,5 +403,11 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 
     .player-block.theatre .player .controls {
         padding-right: 2em;  /* avoid overlap with .chat-tab */
+    }
+}
+
+@media (max-width: 70em) {
+    .player .theatre {
+        display: none !important;  /* already at 100% width anyway */
     }
 }
