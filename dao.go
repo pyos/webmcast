@@ -183,10 +183,10 @@ type Database interface {
 	GetStreamServer(id string) (string, error)
 	GetStreamMetadata(id string) (*StreamMetadata, error)
 	SetStreamTrackInfo(id string, info *StreamTrackInfo) error
-
 	GetRecordings(id string) (*StreamHistory, error)
 	GetRecording(id string, recid int64) (*StreamRecording, error)
-	DelRecording(userid int64, recid int64) error
+	// TODO allow removing old recordings
+	// TODO think of how to implement this ---v
 	StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error)
 	StopRecording(id string, recid int64, size int64) error
 }

@@ -42,7 +42,6 @@ type sqlDAO struct {
 		GetRecordings2  *sql.Stmt "select id, name, server, path, created, size from recordings where user = ? order by datetime(created) desc"
 		GetRecordPanels *sql.Stmt "select text, image, created from panels where stream = ? and datetime(created) <= datetime(?)"
 		GetRecording    *sql.Stmt "select users.id, users.name, about, email, recordings.name, server, video, audio, width, height, nsfw, path, size, created, stream from users join recordings on users.id = user where recordings.id = ?"
-		DelRecording    *sql.Stmt "delete from recordings where id = ?"
 	}
 }
 
@@ -463,10 +462,6 @@ func (d *sqlDAO) GetRecording(id string, recid int64) (*StreamRecording, error) 
 		r.Panels, err = d.loadPanelsFromRows(rows)
 	}
 	return &r, err
-}
-
-func (d *sqlDAO) DelRecording(userid int64, recid int64) error {
-	return errOf(d.prepared.DelRecording.Exec(recid))
 }
 
 func (d *sqlDAO) StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error) {

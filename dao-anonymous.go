@@ -118,10 +118,6 @@ func (d anonymousDAO) GetRecording(id string, recid int64) (*StreamRecording, er
 	return nil, ErrNotSupported
 }
 
-func (d anonymousDAO) DelRecording(userid int64, recid int64) error {
-	return ErrNotSupported
-}
-
 func (d anonymousDAO) StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error) {
 	return 0, 0, nil
 }
