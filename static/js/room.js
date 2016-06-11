@@ -276,6 +276,8 @@ $.extend({
             : /* code === 1 ? */ 'aborted');
 
         let setTime = t => {
+            if (video.error)
+                return setError(video.error.code);
             // let leftPad = require('left-pad');
             setStatus(video.paused ? 'paused' : 'playing', `${(t / 60)|0}:${t % 60 < 10 ? '0' : ''}${(t|0) % 60}`);
             seek.dataset.value = t / (video.duration || t || 1);
