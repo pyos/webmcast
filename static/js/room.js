@@ -348,7 +348,7 @@ $.extend({
         });
     },
 
-    '.stream-about .panel'(e) {
+    '.stream-about x-panel'(e) {
         e.button('.edit', ev => {
             let f = $.template('edit-panel-template').querySelector('form');
             let i = f.querySelector('textarea');
