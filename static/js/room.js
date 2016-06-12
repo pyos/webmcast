@@ -136,7 +136,7 @@ let withRPC = rpc => ({
                 e.dataset.live = '1';
             },
             unload: () => {
-                delete e.dataset.live;
+                if (e.dataset.live) delete e.dataset.live;
                 e.dataset.src = '';
             },
         });
@@ -289,9 +289,10 @@ $.extend({
             e.classList[muted ? 'add' : 'remove']('muted');
         };
 
+        let ignoreErrors = p => { if (p) p.catch(e => null); }
         let seekTo = $.delayedPair(50,
             x => { video.pause(); setTime(x); },
-            x => { video.currentTime = x; video.play().catch(e => null); });
+            x => { video.currentTime = x; ignoreErrors(video.play()) });
 
         let vol = +localStorage.volume;
         setVolume(video.volume = isNaN(vol) ? 1 : Math.min(1, Math.max(0, vol)),
@@ -306,13 +307,13 @@ $.extend({
         video.addEventListener('playing',        _ => setTime(video.currentTime));
         video.addEventListener('timeupdate',     _ => setTime(video.currentTime));
         video.addEventListener('volumechange',   _ => setVolume(video.volume, video.muted));
-        $.observeData(e, 'src', '', src => (video.src = src) ? video.play() : setError(4));
+        $.observeData(e, 'src', '', src => (video.src = src) ? ignoreErrors(video.play()) : setError(4));
 
         e.button('.play', _ => {
             if (e.dataset.live)
                 e.dataset.src = e.dataset.src;
             else
-                video.play();
+                ignoreErrors(video.play());
         });
 
         e.button('.stop', _ => {

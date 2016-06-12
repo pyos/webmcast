@@ -1,6 +1,7 @@
 'use strict';
 
-NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
+for (let T of [NodeList, HTMLCollection])
+    T.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
 
 
 let $ = {
@@ -119,9 +120,10 @@ $.form = {
             (xhr.response && xhr.status < 300 ? resolve : reject)(xhr);
         };
         xhr.responseType = 'document';
-        xhr.open(e.getAttribute('method') || e.dataset.method || 'GET', e.getAttribute('action') || e.dataset.action);
+        xhr.open(e.hasAttribute('method') ? e.getAttribute('method') : e.dataset.method || 'GET',
+                 e.hasAttribute('action') ? e.getAttribute('action') : e.dataset.action);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.send(new FormData(e));
+        xhr.send(e.tagName === 'FORM' ? new FormData(e) : undefined);
         $.form.disable(e);
     }),
 };

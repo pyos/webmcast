@@ -171,7 +171,7 @@ x-range:before {
 }
 
 x-range:not([data-ro]) {
-    cursor: ew-resize;
+    cursor: pointer;
 }
 
 x-range:not([data-ro]) > x-slider:after {
