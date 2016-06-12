@@ -15,11 +15,11 @@ let $ = {
         }
     },
 
-    init: (e) => ($.apply(e, $.rules), e),
+    init: e => ($.apply(e, $.rules), e),
 
-    extend: (rs) => ($.apply(document, rs), Object.assign($.rules, rs)),
+    extend: rs => ($.apply(document, rs), Object.assign($.rules, rs)),
 
-    template: (id) =>
+    template: id =>
         $.init(document.importNode(document.getElementById(id).content, true)),
 };
 
@@ -119,7 +119,7 @@ $.form = {
             (xhr.response && xhr.status < 300 ? resolve : reject)(xhr);
         };
         xhr.responseType = 'document';
-        xhr.open(e.getAttribute('method'), e.getAttribute('action'));
+        xhr.open(e.getAttribute('method') || e.dataset.method || 'GET', e.getAttribute('action') || e.dataset.action);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.send(new FormData(e));
         $.form.disable(e);
@@ -198,34 +198,47 @@ $.extend({
         });
     },
 
+    '[data-remote-element]'(e) {
+        $.form.submit(e).then(xhr => {
+            try {
+                for (let c of Array.from(xhr.response.querySelector(e.dataset.remoteElement).children))
+                    e.appendChild($.init(c));
+            } catch (err) {
+                console.log('could not fetch remote element:', err);
+                e.setAttribute('data-status', 'error');
+            }
+        }).catch(xhr => e.setAttribute('data-status', 'error'));
+    },
+
     '[data-tabs]'(e) {
         let bar = document.createElement('x-tabbar');
         bar.addEventListener('click', ev =>
             e.dataset.tabs = ev.target.dataset.tab || e.dataset.tabs);
 
-        let tabs = {};
-        for (let tab of e.children) if (tab.dataset.tab) {
-            let item = document.createElement('div');
-            let head = tab.querySelector('[data-tab-title]');
-            if (head) {
-                item.innerHTML = head.innerHTML;
-                head.remove();
-            } else
-                item.textContent = tab.dataset.tab;
-            tabs[item.dataset.tab = tab.dataset.tab] = {t: tab, b: item};
-            bar.appendChild(item);
-        }
-
-        $.observeData(e, 'tabs', bar.children.length ? bar.children[0].dataset.tab : '', active => {
-            for (let id in tabs) {
-                tabs[id].b.classList.remove('active');
-                tabs[id].t.setAttribute('hidden', '');
+        new MutationObserver(_ => {
+            bar.innerHTML = '';
+            for (let tab of e.children) if (tab.dataset.tab) {
+                let item = document.createElement('div');
+                let head = tab.querySelector('[data-tab-title]');
+                if (head)
+                    item.innerHTML = head.innerHTML;
+                else
+                    item.textContent = tab.dataset.tab;
+                item.dataset.tab = tab.dataset.tab;
+                bar.appendChild(item);
             }
-            tabs[active].b.classList.add('active');
-            tabs[active].t.removeAttribute('hidden');
+            if (bar.children.length)
+                e.dataset.tabs = e.dataset.tabs || bar.children[0].dataset.tab;
+        }).observe(e, {childList: true});
+
+        $.observeData(e, 'tabs', '', active => {
+            for (let tab of bar.children) if (tab.dataset.tab)
+                tab.classList[tab.dataset.tab === active ? 'add' : 'remove']('active');
+            for (let tab of e.children) if (tab.dataset.tab)
+                tab[tab.dataset.tab === active ? 'removeAttribute' : 'setAttribute']('hidden', '');
         });
 
-        if (e.children)
+        if (e.children.length)
             e.insertBefore(bar, e.children[0]);
         else
             e.appendChild(bar);
@@ -235,7 +248,7 @@ $.extend({
         let r = document.createElement('div');
         r.dataset.markup = 'html';
         r.innerHTML = $.markup.block(e.innerHTML);
-        new MutationObserver(() => r.innerHTML = $.markup.block(e.innerHTML)).observe(e, {childList: true, characterData: true});
+        new MutationObserver(_ => r.innerHTML = $.markup.block(e.innerHTML)).observe(e, {childList: true, characterData: true});
         e.parentElement.insertBefore(r, e);
     },
 

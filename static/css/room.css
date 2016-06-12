@@ -69,10 +69,6 @@
     padding-top: 56.25%;  /* 16:9 */
 }
 
-.player[data-status="error"]:before {
-    content: '\f071';  /* exclamation-triangle */
-}
-
 .player svg,
 .player video {
     position: absolute;

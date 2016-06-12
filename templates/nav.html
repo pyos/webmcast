@@ -10,5 +10,5 @@
 {{- end }}
 </nav>
 <template id="login-form-template">
-    <x-modal data-tabs data-scrollbar>{{ template "user-control-form.html" }}</x-modal>
+    <x-modal data-tabs data-scrollbar data-remote-element="#formset" data-action="/user/login"></x-modal>
 </template>

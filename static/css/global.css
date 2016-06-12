@@ -208,6 +208,10 @@ x-tabbar > .active {
     position: relative;
 }
 
+[data-status][data-remote-element] {
+    min-height: 8em;
+}
+
 [data-status]:before {
     font: normal 4em FontAwesome;
     display: block;
@@ -228,6 +232,10 @@ x-tabbar > .active {
     border-bottom-color: currentColor;
     box-sizing: border-box;
     content: '';
+}
+
+[data-status="error"]:before {
+    content: '\f071';  /* exclamation-triangle */
 }
 
 @keyframes spin {
@@ -492,6 +500,7 @@ x-columns > * {
 x-panel {
     display: block;
     padding: 0 1rem;
+    margin-bottom: 1rem;
     position: relative;
     word-wrap: break-word;
     background: #f7f7f3;
@@ -514,10 +523,6 @@ x-panel.dotted {
 
 x-panel.dotted > x-panel-footer {
     background: none;
-}
-
-x-panel:not(:last-child) {
-    margin-bottom: 1rem;
 }
 
 x-badge {

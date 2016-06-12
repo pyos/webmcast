@@ -13,10 +13,10 @@
     <body>
         <main data-scrollbar>
             {{ template "nav.html" }}
-            <section data-tabs="{{.Tab}}">
+            <section data-tabs="{{.Tab}}" id="formset">
             {{- if eq .Tab "/user/restore?1" }}
                 <form class="block" method="GET" action="/user/restore" data-tab="{{.Tab}}">
-                    <h2 data-tab-title>Password reset</h2>
+                    <label hidden data-tab-title>Password reset</label>
                     <p>An email has been sent to you. Follow the link in it to change the password.</p>
                     <input type="hidden" name="uid" value="{{.ID}}" />
                     <input type="hidden" name="token" value="{{.Token}}" />
@@ -25,14 +25,50 @@
                 </form>
             {{- else if eq .Tab "/user/restore?2" }}
                 <form class="block" method="POST" action="" data-tab="{{.Tab}}">
-                    <h2 data-tab-title>Password reset</h2>
+                    <label hidden data-tab-title>Password reset</label>
                     <label>New password</label>
                     <input name="password" type="password" placeholder="********" required />
                     <p class="error"></p>
                     <p><button type="submit">That's it!</button></p>
                 </form>
             {{- else }}
-                {{ template "user-control-form.html" }}
+                <form class="block" method="POST" action="/user/login" data-tab="/user/login">
+                    <label hidden data-tab-title>Log in</label>
+                    <label>Username</label>
+                    <input name="username" type="text" required />
+                    <label>Password</label>
+                    <input name="password" type="password" required />
+                    <p class="error"></p>
+                    <p><a href="/user/restore">Trouble logging in?</a></p>
+                    <p><button type="submit">Log in</button></p>
+                </form>
+
+                <form class="block" method="POST" action="/user/new" data-tab="/user/new">
+                    <label hidden data-tab-title>Sign up</label>
+                    <label>Username</label>
+                    <input name="username" type="text" required />
+                    <label>Password</label>
+                    <input name="password" type="password" required />
+                    <label>Email</label>
+                    <input name="email" type="email" required />
+                    {{/* todo: recaptcha, tos, privacy policy */}}
+                    <p class="error"></p>
+                    <p>By clicking "Sign up", you are indicating that you have read and agree to the
+                       <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+                    <p><button type="submit">Sign up</button></p>
+                </form>
+
+                <form class="block" method="POST" action="/user/restore" data-tab="/user/restore" data-no-xhr>
+                    <label hidden data-tab-title>Password reset</label>
+                    <label>Username</label>
+                    <input name="username" type="text" />
+                    <p>&mdash; or &mdash;</p>
+                    <label>Email</label>
+                    <input name="email" type="email" />
+                    <p class="error"></p>
+                    <p>You'll receive further instructions by mail.</p>
+                    <p><button type="submit">Reset</button></p>
+                </form>
             {{- end }}
             </section>
             {{ template "footer.html" }}
