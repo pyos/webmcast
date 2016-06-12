@@ -160,12 +160,12 @@ func (r Recording) Live() bool {
 	return false
 }
 
-type UserNew int
-type UserLogin int
-type UserRestore int
-type UserRestoreStep2 int
+type UserControl struct {
+	Tab string
+}
 
 type UserRestoreEmailSent struct {
+	UserControl
 	ID    int64
 	Token string
 }
@@ -174,24 +174,8 @@ type UserConfig struct {
 	User *UserData
 }
 
-func (_ UserNew) TemplateFile() string {
-	return "user-new.html"
-}
-
-func (_ UserLogin) TemplateFile() string {
-	return "user-login.html"
-}
-
-func (_ UserRestore) TemplateFile() string {
-	return "user-restore.html"
-}
-
-func (_ UserRestoreStep2) TemplateFile() string {
-	return "user-restore-step-2.html"
-}
-
-func (_ UserRestoreEmailSent) TemplateFile() string {
-	return "user-restore-email-sent.html"
+func (_ UserControl) TemplateFile() string {
+	return "user-control.html"
 }
 
 func (_ UserConfig) TemplateFile() string {

@@ -19,48 +19,50 @@
                       / <a href="/stream/{{.User.Login}}">Download</a></span>
                 </div>
             </section>
-        {{- if not .User.Activated }}
-            <section class="warning-block">
-                <h2>Your account is not activated.</h2>
-                <p>You will not be able to broadcast until you confirm
-                   your email address, {{.User.Email}}. (Check the inbox.)</p>
-                <form method="GET" action="/user/activate">
-                    {{/* TODO remove this and instead offer to send another email. */}}
-                    <input type="hidden" name="uid" value="{{.User.ID}}" />
-                    <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
-                    <button type="submit">Or click here. Mail is not implemented yet.</button>
-                </form>
-            </section>
-        {{- end }}
-            <section class="row">
-                <form method="POST" class="form-wrapper" action="/user/new-token">
-                    <label>Your avatar is provided by Gravatar.</label>
-                    <span class="notice">
-                        Visit <a href="https://gravatar.com/">gravatar.com</a> to change it.
-                    </span>
-                    <label>Your authentication token is</label>
-                    <input type="text" value="{{.User.StreamToken}}" readonly />
-                    <span class="notice">
-                        It's at the end of the "Publish" URL. Think it might have been compromised?
-                    </span>
-                    <button type="submit">Get a new token</button>
-                </form>
-                <form method="POST" class="form-wrapper" action="">
-                    <label>Old password</label>
-                    <input name="password-old" type="password" placeholder="Required to change anything." />
-                    <label>Username</label>
-                    <input name="username" type="text" placeholder="{{.User.Login}}" />
-                    <label>Display name</label>
-                    <input name="displayname" type="text" placeholder="{{.User.Name}}" />
-                    <label>Email</label>
-                    <input name="email" type="email" placeholder="{{.User.Email}}" />
-                    <label>New password</label>
-                    <input name="password" type="password" placeholder="Leave empty to keep the old one." />
-                    <label>About yourself</label>
-                    <textarea name="about" rows="6">{{.User.About}}</textarea>
-                    <span class="error"></span>
-                    <button type="submit">Update</button>
-                </form>
+            <section style="padding: 0 1rem">
+                <x-columns>
+                    <div>
+                {{- if not .User.Activated }}
+                        <form class="block warning" method="GET" action="/user/activate" data-order="-1">
+                            <label>Your account is not activated.</label>
+                            <p>You will not be able to broadcast until you confirm
+                               your email address, {{.User.Email}}. (Check the inbox.)</p>
+                            {{/* TODO remove this and instead offer to send another email. */}}
+                            <input type="hidden" name="uid" value="{{.User.ID}}" />
+                            <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
+                            <p><button type="submit">Or click here. Mail is not implemented yet.</button></p>
+                        </form>
+                {{- end }}
+                        <form class="block" method="POST" action="" data-order="0">
+                            <label>Old password</label>
+                            <input name="password-old" type="password" placeholder="Required to change anything." />
+                            <label>Username</label>
+                            <input name="username" type="text" placeholder="{{.User.Login}}" />
+                            <label>Display name</label>
+                            <input name="displayname" type="text" placeholder="{{.User.Name}}" />
+                            <label>Email</label>
+                            <input name="email" type="email" placeholder="{{.User.Email}}" />
+                            <label>New password</label>
+                            <input name="password" type="password" placeholder="Leave empty to keep the old one." />
+                            <label>About yourself</label>
+                            <textarea name="about" rows="6">{{.User.About}}</textarea>
+                            <p class="error"></p>
+                            <p><button type="submit">Update</button></p>
+                        </form>
+                    </div>
+                    <div>
+                        <form class="block" data-order="1">
+                            <label>Your avatar is provided by Gravatar.</label>
+                            <p>Visit <a href="https://gravatar.com/">gravatar.com</a> to change it.</p>
+                        </form>
+                        <form class="block" method="POST" action="/user/new-token" data-order="2">
+                            <label>Your authentication token is</label>
+                            <input type="text" value="{{.User.StreamToken}}" readonly />
+                            <p>It's at the end of the "Publish" URL. Think it might have been compromised?</p>
+                            <p><button type="submit">Get a new token</button></p>
+                        </form>
+                    </div>
+                </x-columns>
             </section>
             {{ template "footer.html" }}
             <script src="/static/js/global.js"></script>

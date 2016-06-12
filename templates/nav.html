@@ -10,9 +10,5 @@
 {{- end }}
 </nav>
 <template id="login-form-template">
-    <x-modal data-tabs data-scrollbar>
-        {{ template "form-user-login.html" }}
-        {{ template "form-user-new.html" }}
-        {{ template "form-user-restore.html" }}
-    </x-modal>
+    <x-modal data-tabs data-scrollbar>{{ template "user-control-form.html" }}</x-modal>
 </template>

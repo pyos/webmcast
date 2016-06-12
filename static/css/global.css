@@ -12,16 +12,16 @@ html {
     color: #222;
 }
 
-body {
+html, body {
     margin: 0;
+    overflow: hidden;
+    position: relative;
 }
 
 @media screen {
     html, body, main[data-scrollbar] {
         /* this is easier than dealing with `overflow:scroll` on `body`. */
         height: 100%;
-        overflow: hidden;
-        position: relative;
     }
 }
 
@@ -136,6 +136,17 @@ x-scrollbar {
     opacity: 0;
 }
 
+@media not screen {
+    [data-scrollbar] {
+        overflow: hidden !important;
+        margin-right: 0 !important;
+    }
+
+    x-scrollbar {
+        display: none;
+    }
+}
+
 x-slider {
     height: 100%;
     display: block;
@@ -244,16 +255,29 @@ form label {
     font-weight: bold;
 }
 
-form .notice {
-    color: #666;
-}
-
 form .error {
     color: #900;
 }
 
 form:not(.error) .error {
     display: none;
+}
+
+form.block {
+    padding: 0 1rem;
+}
+
+form.block.warning {
+    border: 1px solid #fff8df;
+    background: repeating-linear-gradient(130deg,#fffbee,#fffbee 80px,transparent 80px,transparent 160px) #fff8df;
+}
+
+form.block > * {
+    display: block;
+}
+
+form.block > label {
+    margin-top: 1em;
 }
 
 textarea,
@@ -297,6 +321,13 @@ form.error input[type="email"]:not(:disabled),
 form.error input[type="password"]:not(:disabled) {
     background: #fee;
     border-color: #dcb0a3;
+}
+
+form.block > textarea,
+form.block > input[type="text"],
+form.block > input[type="password"],
+form.block > input[type="email"] {
+    width: 100%;
 }
 
 input::-moz-focus-inner,
@@ -397,17 +428,13 @@ x-modal {
     max-height: 100vh;
 }
 
-x-columns, .row {
+x-columns {
     display: flex;
     flex-wrap: wrap;
 }
 
 x-columns {
     align-items: flex-start;
-}
-
-.row > * {
-    flex: 1 0;
 }
 
 x-columns > * {
@@ -493,41 +520,6 @@ x-panel:not(:last-child) {
     margin-bottom: 1rem;
 }
 
-.warning-block {
-    padding: 2rem;
-    border: 1px solid #ffc;
-    background: repeating-linear-gradient(-60deg, #ffc, #ffc 100px, #ffd 100px, #ffd 200px) #ffc;
-}
-
-.warning-block > h2 {
-    margin-top: 0;
-}
-
-.form-wrapper {
-    padding: 2rem;
-    min-width: 15rem;
-}
-
-main > .form-wrapper {
-    margin: 0 auto;
-    max-width: 20rem;
-}
-
-.form-wrapper > * {
-    display: block;
-}
-
-.form-wrapper :not(label) + * {
-    margin-top: 1em;
-}
-
-.form-wrapper textarea,
-.form-wrapper input[type="text"],
-.form-wrapper input[type="password"],
-.form-wrapper input[type="email"] {
-    width: 100%;
-}
-
 x-badge {
     color: #fff;
     font-size: 0.66em;
@@ -553,9 +545,5 @@ x-badge {
 
     .user-header {
         padding: 0.5rem 0.5rem;
-    }
-
-    .form-wrapper {
-        padding: 1rem;
     }
 }

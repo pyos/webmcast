@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/static/css/global.css" />
+        <title>webmcast // authentication</title>
+        <style>
+            nav a[href^="/user/"] { display: none !important; }
+            section { max-width: 26em; }
+        </style>
+    </head>
+    <body>
+        <main data-scrollbar>
+            {{ template "nav.html" }}
+            <section data-tabs="{{.Tab}}">
+            {{- if eq .Tab "/user/restore?1" }}
+                <form class="block" method="GET" action="/user/restore" data-tab="{{.Tab}}">
+                    <h2 data-tab-title>Password reset</h2>
+                    <p>An email has been sent to you. Follow the link in it to change the password.</p>
+                    <input type="hidden" name="uid" value="{{.ID}}" />
+                    <input type="hidden" name="token" value="{{.Token}}" />
+                    <p class="error"></p>
+                    <p><button type="submit">No, not really. Email's not implemented. Click here to proceed.</button></p>
+                </form>
+            {{- else if eq .Tab "/user/restore?2" }}
+                <form class="block" method="POST" action="" data-tab="{{.Tab}}">
+                    <h2 data-tab-title>Password reset</h2>
+                    <label>New password</label>
+                    <input name="password" type="password" placeholder="********" required />
+                    <p class="error"></p>
+                    <p><button type="submit">That's it!</button></p>
+                </form>
+            {{- else }}
+                {{ template "user-control-form.html" }}
+            {{- end }}
+            </section>
+            {{ template "footer.html" }}
+            <script src="/static/js/global.js"></script>
+        </main>
+    </body>
+</html>

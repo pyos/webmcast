@@ -4,11 +4,8 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
-        <title>webmcast time machine // {{.ID}}</title>
+        <title>webmcast // {{.ID}} // archives</title>
         <style>
-            #main-section {
-                padding: 0 2rem 1rem 2rem;
-            }
         </style>
     </head>
     <body>
@@ -21,7 +18,7 @@
                     <span>Stream archives / <a href="/{{.ID}}">Back to the live stream</a></span>
                 </div>
             </section>
-            <section id="main-section">
+            <section style="padding: 0 2rem 1rem 2rem">
                 <p>
                 {{- if .Editable }}
                     <b>Disk space used:</b> {{.SpaceUsed}} / {{.SpaceLimit}}

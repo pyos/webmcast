@@ -1,0 +1,35 @@
+<form class="block" method="POST" action="/user/login" data-tab="/user/login">
+    <h2 data-tab-title>Log in</h2>
+    <label>Username</label>
+    <input name="username" type="text" required />
+    <label>Password</label>
+    <input name="password" type="password" required />
+    <p class="error"></p>
+    <p><a href="/user/restore">Trouble logging in?</a></p>
+    <p><button type="submit">Log in</button></p>
+</form>
+<form class="block" method="POST" action="/user/new" data-tab="/user/new">
+    <h2 data-tab-title>Sign up</h2>
+    <label>Username</label>
+    <input name="username" type="text" required />
+    <label>Password</label>
+    <input name="password" type="password" required />
+    <label>Email</label>
+    <input name="email" type="email" required />
+    {{/* todo: recaptcha, tos, privacy policy */}}
+    <p class="error"></p>
+    <p>By clicking "Sign up", you are indicating that you have read and agree to the
+       <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    <p><button type="submit">Sign up</button></p>
+</form>
+<form class="block" method="POST" action="/user/restore" data-tab="/user/restore" data-no-xhr>
+    <h2 data-tab-title>Password reset</h2>
+    <label>Username</label>
+    <input name="username" type="text" />
+    <p>&mdash; or &mdash;</p>
+    <label>Email</label>
+    <input name="email" type="email" />
+    <p class="error"></p>
+    <p>You'll receive further instructions by mail.</p>
+    <p><button type="submit">Reset</button></p>
+</form>

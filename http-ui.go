@@ -153,7 +153,7 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 				http.Redirect(w, r, "/user/", http.StatusSeeOther)
 				return nil
 			}
-			return Render(w, http.StatusOK, UserNew(0))
+			return Render(w, http.StatusOK, UserControl{r.URL.Path})
 
 		case "POST":
 			if user != nil {
@@ -185,7 +185,7 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 				http.Redirect(w, r, "/user/", http.StatusSeeOther)
 				return nil
 			}
-			return Render(w, http.StatusOK, UserLogin(0))
+			return Render(w, http.StatusOK, UserControl{r.URL.Path})
 
 		case "POST":
 			if user != nil {
@@ -206,9 +206,9 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 		switch r.Method {
 		case "GET":
 			if r.URL.RawQuery != "" {
-				return Render(w, http.StatusOK, UserRestoreStep2(0))
+				return Render(w, http.StatusOK, UserControl{"/user/restore?2"})
 			}
-			return Render(w, http.StatusOK, UserRestore(0))
+			return Render(w, http.StatusOK, UserControl{r.URL.Path})
 
 		case "POST":
 			if r.URL.RawQuery != "" {
@@ -234,7 +234,7 @@ func (ctx UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 			if err != nil && err != ErrUserNotExist {
 				return err
 			}
-			return Render(w, http.StatusOK, UserRestoreEmailSent{uid, token})
+			return Render(w, http.StatusOK, UserRestoreEmailSent{UserControl{"/user/restore?1"}, uid, token})
 		}
 		return RenderInvalidMethod(w, "GET, POST")
 
