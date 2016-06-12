@@ -7,21 +7,22 @@
          url('../fonts/fontawesome-webfont.woff') format('woff');
 }
 
-html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-    position: relative;
-}
-
 html {
     font: normal 14px/1.5 'Source Sans Pro', sans-serif;
     color: #222;
 }
 
-main[data-scrollbar] {
-    /* this is easier than dealing with `overflow:scroll` on `body`. */
-    height: 100%;
+body {
+    margin: 0;
+}
+
+@media screen {
+    html, body, main[data-scrollbar] {
+        /* this is easier than dealing with `overflow:scroll` on `body`. */
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
 }
 
 h1, h2, h3, h4, h5, h6 {
