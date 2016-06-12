@@ -436,6 +436,10 @@ x-modal {
     max-height: 100vh;
 }
 
+x-modal > form.block {
+    padding: 1rem 2rem;
+}
+
 x-columns {
     display: flex;
     flex-wrap: wrap;
@@ -465,36 +469,36 @@ x-columns > * {
 }
 
 .user-header {
-    display: flex;
-    padding: 1.5rem;
-    font-size: 1.2em;
-    align-items: flex-start;
-}
-
-.user-header > * {
-    margin: 0.5rem;
-    max-width: 100%;
-    overflow: hidden;
+    padding: 2rem;
 }
 
 .user-header > img {
-    flex-shrink: 0;
+    float: left;
+    margin-right: 1em;
 }
 
-.user-header > img + * {
-    flex: 1;
-}
-
-.user-header h1 {
+.user-header > h1 {
     margin: 0;
-    font-size: 1.33em;
+    height: 1.5em;  /* = line-height, but line-height is rounded to px while height is not */
+    font-size: 1.6em;
+    max-width: 100%;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.user-header > :nth-child(2) ~ * {
-    align-self: center;
+.user-header > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.user-header > div > .subheading {
+    font-size: 1.2em;
+}
+
+.user-header > div > :not(:last-child) {
+    margin-right: 1rem;
 }
 
 x-panel {
@@ -527,11 +531,12 @@ x-panel.dotted > x-panel-footer {
 
 x-badge {
     color: #fff;
-    font-size: 0.66em;
+    font-size: 0.8em;
     font-weight: bold;
     padding: 0.1em 0.33em;
     background: #d00;
     border-radius: 0.5em;
+    align-self: center;
     vertical-align: top;
 }
 
@@ -549,6 +554,6 @@ x-badge {
     }
 
     .user-header {
-        padding: 0.5rem 0.5rem;
+        padding: 1rem;
     }
 }

@@ -4,19 +4,19 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
-        <title>webmcast // user config</title>
+        <title>webmcast // user profile</title>
     </head>
     <body>
         <main data-scrollbar>
             {{ template "nav.html" . }}
             <section class="user-header">
                 <img width="60" height="60" src="{{.User.Avatar 60}}" alt="Gravatar" />
+                <h1>Hey there, {{.User.Name}}.</h1>
                 <div>
-                    <h1>Hey there, {{.User.Name}}.</h1>
-                    <span>Stream URL:
-                        <a href="/stream/{{.User.Login}}?{{.User.StreamToken}}">Publish</a>
-                      / <a href="/{{.User.Login}}">View</a>
-                      / <a href="/stream/{{.User.Login}}">Download</a></span>
+                    <span class="subheading">Stream actions:</span>
+                    <a class="subheading" href="/stream/{{.User.Login}}?{{.User.StreamToken}}"><i class="icon">&#xf1e0;</i> Broadcast</a>
+                    <a class="subheading" href="/{{.User.Login}}"><i class="icon">&#xf06e;</i> Watch</a>
+                    <a class="subheading" href="/stream/{{.User.Login}}"><i class="icon">&#xf019;</i> Download</a>
                 </div>
             </section>
             <section style="padding: 0 1rem">
@@ -58,7 +58,7 @@
                         <form class="block" method="POST" action="/user/new-token" data-order="2">
                             <label>Your authentication token is</label>
                             <input type="text" value="{{.User.StreamToken}}" readonly />
-                            <p>It's at the end of the "Publish" URL. Think it might have been compromised?</p>
+                            <p>It's at the end of the "Broadcast" URL. Think it might have been compromised?</p>
                             <p><button type="submit">Get a new token</button></p>
                         </form>
                     </div>

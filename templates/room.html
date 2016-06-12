@@ -62,6 +62,7 @@
                 </section>
             </div>
             <section class="stream-header user-header">
+                <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
             {{- if .Editable }}
                 <template id="edit-name-template">
                     <form method="POST" action="/user/set-stream-name">
@@ -71,23 +72,18 @@
                         <label>Mature content</label>
                     </form>
                 </template>
+                <a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>
             {{- end }}
-                <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
+                <h1 class="name">{{or .Meta.Name "<unnamed>"}}</h1>
                 <div>
-                    {{if .Editable}}<a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>{{end}}
-                    <h1 class="name">{{or .Meta.Name .Meta.UserName}}</h1>
-                    {{if .Meta.Name}}{{or .Meta.UserName "anonymous"}}{{end}}
-                    {{if not .Live}}
-                        {{.Meta.Timestamp.Format "on 02.01.2006 at 15:04:05"}} /
-                        <a href="/{{.ID}}">Live stream &raquo;</a>
-                    {{end}}
+                    <span class="subheading">{{or .Meta.UserName "anonymous"}}</span>
+                    {{if not .Live}}<time>{{.Meta.Timestamp.Format "02.01.2006 15:04:05"}}</time>{{end}}
+                    <a href="/rec/{{.ID}}"><i class="icon">&#xf187;</i> Stream archives</a>
+                    <a href="{{if .Live}}/stream/{{.ID}}{{else}}/static/recorded/{{.Meta.Path}}{{end}}"><i class="icon">&#xf019;</i> Raw WebM</a>
+                    {{if .Meta.NSFW}}<x-badge>18+</x-badge>{{end}}
+                    <x-spacer></x-spacer>
+                    {{if .Live}}<span class="subheading" title="Viewers"><i class="icon">&#xf06e;</i> <span class="viewers">0</span></span>{{end}}
                 </div>
-            {{- if .Live }}
-                <a class="icon" href="/rec/{{.ID}}" title="Archives">&#xf1da;</a>
-                <a class="icon" href="/stream/{{.ID}}" title="Download WebM">&#xf019;</a>
-                <span><span class="icon" title="Viewers">&#xf06e;</span> <span class="viewers">0</span></span>
-            {{- end }}
-                {{ if .Meta.NSFW }}<x-badge>18+</x-badge>{{ end }}
             </section>
             <section class="stream-meta" data-tabs>
             {{- if .Editable }}
@@ -109,7 +105,7 @@
                         <x-panel data-order="-{{$id}}">
                             <p data-markup>{{.Text}}</p>
                             <x-panel-footer>
-                                <span>{{.Created.Format "02.01.2006 15:04:05"}}</span>
+                                <time>{{.Created.Format "02.01.2006 15:04:05"}}</time>
                             {{- if $.Editable }}
                                 <x-spacer></x-spacer>
                                 <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>

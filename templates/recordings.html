@@ -13,9 +13,10 @@
             {{ template "nav.html" . }}
             <section class="user-header">
                 <img width="60" height="60" src="{{.Avatar 60}}" alt="{{.ID}}" />
+                <h1>{{or .UserName "anonymous"}}</h1>
                 <div>
-                    <h1>{{or .UserName "anonymous"}}</h1>
-                    <span>Stream archives / <a href="/{{.ID}}">Back to the live stream</a></span>
+                    <span class="subheading">Stream archives</span>
+                    <a href="/{{.ID}}"><i class="icon">&#xf137;</i> Back to the live stream</a>
                 </div>
             </section>
             <section style="padding: 0 2rem 1rem 2rem">
@@ -23,13 +24,10 @@
                 {{- if .Editable }}
                     <b>Disk space used:</b> {{.SpaceUsed}} / {{.SpaceLimit}}
                     <x-range data-value="{{.SpaceUsed.RatioOf .SpaceLimit}}" data-ro></x-range>
-                    <em>Note: even if you're out of space, anyone can download your live streams
-                        by using the link from your <a href="/user/">profile</a>. It's always
-                        <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a>.</em>
-                {{- else }}
-                    <em>Note: you can download live streams or watch them in HTTP-capable players
-                        by using this link: <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a></em>
                 {{- end }}
+                    <em>Note: {{if .Editable}}even if you're out of space, anyone can download your{{else}}you can download{{end}}
+                        live streams or watch them in HTTP-capable players by using this link:
+                        <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a>.</em>
                 </p>
             {{- if .UserAbout }}
                 <x-panel><p data-markup>{{.UserAbout}}</p></x-panel>
@@ -38,7 +36,7 @@
                     <div>
                     {{- range $id, $_ := $.Recordings }}
                         <x-panel data-order="{{$id}}">
-                            <h2><a href="/rec/{{$.ID}}/{{.ID}}">{{.Name}}</a></h2>
+                            <h2><a href="/rec/{{$.ID}}/{{.ID}}">{{or .Name "<unnamed>"}}</a></h2>
                             <x-panel-footer>
                                 <span>{{.Timestamp.Format "02.01.2006 15:04:05"}}</span>
                                 <x-spacer></x-spacer>
