@@ -21,7 +21,7 @@ type sqlDAO struct {
 		NewUser         *sql.Stmt "insert into users(actoken, sectoken, name, login, email, pwhash) values(?, ?, ?, ?, ?, ?)"
 		NewStream       *sql.Stmt "insert into streams(user) values(?)"
 		ResetUser       *sql.Stmt "update users set rstoken = ? where id = ?"
-		ResetUserStep2  *sql.Stmt "update users set pwhash = ? where id = ? and rstoken = ?"
+		ResetUserStep2  *sql.Stmt "update users set pwhash = ?, rstoken = null where id = ? and rstoken = ?"
 		ActivateUser    *sql.Stmt "update users set actoken = NULL where id = ? and actoken = ?"
 		GetUserID       *sql.Stmt "select id, pwhash from users where login = ?"
 		GetUserByEither *sql.Stmt "select id from users where login = ? or email = ?"
@@ -225,7 +225,7 @@ func (d *sqlDAO) GetUserFull(id int64) (*UserData, error) {
 
 func (d *sqlDAO) SetUserData(id int64, name string, login string, email string, about string, password []byte) (string, error) {
 	token := ""
-	query := "update users set "
+	query := "update users set rstoken = null, "
 	params := make([]interface{}, 0, 7)
 	offlineOnly := false
 
