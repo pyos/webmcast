@@ -319,7 +319,7 @@ $.extend({
         for (let c of e.querySelectorAll('textarea[data-submit]'))
             c.addEventListener('keydown', submitOnReturn);
 
-        if ((e.getAttribute('method') || '').toLowerCase() === 'post')
+        if ((e.getAttribute('method') || '').toLowerCase() === 'post' && !('noXhr' in e.dataset))
             e.addEventListener('submit', ev => {
                 ev.preventDefault();
                 $.form.submit(e).then(xhr => {
