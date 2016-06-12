@@ -257,7 +257,7 @@ $.extend({
     'x-columns'(e) {
         let reflow = () => {
             mut.disconnect();
-            // keep total size contant while inner elements are being repositioned
+            // keep total size constant while inner elements are being repositioned
             // to prevent the scroll from jumping up a little bit.
             e.style.height = `${e.offsetHeight}px`;
             let cols = Array.from(e.children);
