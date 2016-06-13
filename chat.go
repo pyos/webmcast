@@ -122,6 +122,7 @@ func (chat *Chat) RunRPC(ws *websocket.Conn, user *UserData) {
 	chatter := chat.Connect(ws, user)
 	defer chat.Disconnect(chatter)
 	RPCPushEvent(ws, "RPC.Loaded", true)
+	chat.History.Iterate(chatter.pushMessage)
 	server := rpc.NewServer()
 	server.RegisterName("Chat", chatter)
 	server.ServeCodec(jsonrpc2.NewServerCodec(ws, server))
@@ -169,10 +170,6 @@ func (ctx *chatter) SendMessage(args *RPCSingleStringArg, _ *interface{}) error 
 	}
 	ctx.chat.events <- msg
 	return nil
-}
-
-func (ctx *chatter) RequestHistory(_ *interface{}, _ *interface{}) error {
-	return ctx.chat.History.Iterate(ctx.pushMessage)
 }
 
 func (ctx *chatter) pushName() error {

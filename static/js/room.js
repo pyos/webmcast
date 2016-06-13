@@ -209,14 +209,8 @@ let withRPC = rpc => ({
         });
 
         rpc.register({
-            load() {
-                rpc.send('Chat.RequestHistory');
-                root.classList.add('online');
-            },
-
-            unload() {
-                root.classList.remove('online');
-            },
+            load:   () => root.classList.add('online'),
+            unload: () => root.classList.remove('online'),
         });
     },
 });
