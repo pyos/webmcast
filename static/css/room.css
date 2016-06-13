@@ -25,6 +25,7 @@
 .player-block {
     display: flex;
     position: relative;
+    padding-right: 20rem;
     justify-content: center;
 }
 
@@ -57,10 +58,6 @@
 
 @media (min-width: 106em) and (min-height: 60.44em) {
     nav, section, footer { max-width: 112rem; }
-}
-
-.player.has-video, .chat {
-    min-height: 20rem;
 }
 
 .player.has-video:after {
@@ -193,8 +190,10 @@
     display: none !important;
 }
 
-.player-block aside {
+.chat {
+    position: absolute;
     width: 20rem;
+    height: 100%;
     display: flex;
     flex: 0 0 auto;
     flex-direction: column;
@@ -287,8 +286,7 @@ body:not(.aside-chat) .chat form .error {
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,
 .player-block.theatre .player .theatre,
-body.aside-chat .player .theatre,
-body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .collapse,
+.player-block:not(.theatre) .player:not(.is-fullscreen) .collapse,
 .no-fullscreen .player .fullscreen,
 .chat.online .offline-message,
 .chat.logged-in .login-form,
@@ -310,8 +308,15 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 }
 
 @media (min-width: 50em) {
-    body.aside-chat .player-block aside {
-        position: absolute;
+    body.aside-chat .player-block {
+        padding-right: 0;
+    }
+
+    body:not(.aside-chat) .player.has-video {
+        min-height: 20rem;
+    }
+
+    body.aside-chat .chat {
         top: 100%;
         height: calc(100vh - 7.33em);
         max-height: 45rem;
@@ -327,8 +332,8 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 }
 
 @media (max-width: 50em) {
-    .player-block aside:not(.chat) {
-        display: none;
+    .player-block {
+        padding-right: 0;
     }
 
     .chat {
