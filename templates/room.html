@@ -38,22 +38,16 @@
                     </div>
                     <div class="chat-tab"></div>
                     <aside class="chat">
-                        <template id="chat-message-template">
-                            <li>
-                                <span class="name"></span>
-                                <span class="text"></span>
-                            </li>
-                        </template>
                         <h1>#{{.ID}}</h1>
                         <ul class="log" data-scrollbar></ul>
                         <div class="offline-message">The chat is offline.</div>
-                        <form class="login-form">
-                            <textarea tabindex="1" class="input" cols="1" rows="1" placeholder="What's your name?" data-submit></textarea>
+                        <form class="login-form" data-rpc="Chat.SetName">
+                            <textarea tabindex="1" cols="1" rows="1" placeholder="What's your name?" data-arg data-submit></textarea>
                             <p class="error"></p>
                             <a href="#" class="button icon join" title="Join" data-submit>&#xf090;</a>
                         </form>
-                        <form class="input-form">
-                            <textarea tabindex="1" class="input" cols="1" rows="1" data-submit></textarea>
+                        <form class="input-form" data-rpc="Chat.SendMessage">
+                            <textarea tabindex="1" cols="1" rows="1" data-arg data-submit></textarea>
                             <p class="error"></p>
                             <a href="#" class="button icon ins-emoji" title="Emoji...">&#xf118;</a>
                             <a href="#" class="button icon send" title="Send" data-submit>&#xf1d8;</a>

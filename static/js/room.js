@@ -20,51 +20,30 @@ Element.prototype.button = function (selector, f) {
 };
 
 
-const RPC_STATE_NULL     = 0;
-const RPC_STATE_INIT     = 1;
-const RPC_STATE_OPEN     = 2;
-const RPC_STATE_CLOSED   = 3;
-
-
 let RPC = function () {
     this.nextID   = 0;
-    this.state    = RPC_STATE_NULL;
-    this.objects  = [];
-    this.awaiting = {};
-    this.handlers = {
-        'RPC.Redirect': url => {
-            if (url.substr(0, 2) == "//")
-                url = (this.url.substr(0, 4) == "wss:" ? "wss:" : "ws:") + url;
-            this.open(url);
-        },
-
-        'RPC.Loaded': _ => {
-            this.state = RPC_STATE_OPEN;
-            for (let object of this.objects)
-                object.load();
-        }
-    };
+    this.awaiting = new Object(null);
+    this.handlers = new Object(null);
+    this.on('RPC.Redirect', url =>
+        this.open(url.substr(0, 2) == "//" ? this.url.substr(0, this.url.indexOf(":") + 1) + url : url));
+    this.on('RPC.Loaded', _ =>
+        this.emit(this.state = RPC.STATE_OPEN));
 };
+
+
+RPC.STATE_INIT   = Symbol();
+RPC.STATE_OPEN   = Symbol();
+RPC.STATE_CLOSED = Symbol();
 
 
 RPC.prototype.open = function (url) {
     if (this.socket)
         this.socket.close();
-
-    this.state  = RPC_STATE_INIT;
     this.socket = new WebSocket(this.url = url);
-    this.socket.onclose = _ => {
-        this.state = RPC_STATE_CLOSED;
-        for (let object of this.objects)
-            object.unload();
-    };
-
     this.socket.onmessage = ev => {
         let msg = JSON.parse(ev.data);
-
-        if (msg.method in this.handlers)
-            this.handlers[msg.method](...msg.params);
-
+        if (msg.method)
+            this.emit(msg.method, ...msg.params);
         if (msg.id in this.awaiting) {
             let cb = this.awaiting[msg.id];
             delete this.awaiting[msg.id];
@@ -74,21 +53,21 @@ RPC.prototype.open = function (url) {
                 cb.resolve(msg.result);
         }
     };
-
-    for (let object of this.objects)
-        if (object.open)
-            object.open();
+    this.socket.onclose = _ => this.emit(this.state = RPC.STATE_CLOSED);
+    this.emit(this.state = RPC.STATE_INIT);
 };
 
 
-RPC.prototype.register = function (obj) {
-    if (this.state >= RPC_STATE_INIT && obj.open)
-        obj.open();
-    if (this.state >= RPC_STATE_OPEN)
-        obj.load();
-    if (this.state >= RPC_STATE_CLOSED)
-        obj.unload();
-    this.objects.push(obj);
+RPC.prototype.on = function (ev, cb) {
+    if (ev === this.state) cb();
+    this.handlers[ev] = this.handlers[ev] || [];
+    this.handlers[ev].push(cb);
+};
+
+
+RPC.prototype.emit = function (ev, ...params) {
+    for (let f of (this.handlers[ev] || []))
+        f(...params);
 };
 
 
@@ -100,21 +79,17 @@ RPC.prototype.send = function (method, ...params) {
 
 
 $.form.onDocumentReload = doc => {
-    let move = (src, dst, selector) => {
-        let a = src.querySelector(selector);
-        let b = dst.querySelector(selector);
-        if (a && b) {
-            b.parentElement.replaceChild(a, b);
-            b.remove();
-            if (dst === document)
-                $.init(a);
-        }
+    let move = (src, selector, dst) => {
+        src = src.querySelectorAll(selector);
+        dst = dst.querySelectorAll(selector);
+        for (let i = 0; i < src.length && i < dst.length; i++)
+            dst[i].parentElement.replaceChild(src[i], dst[i]);
+        return src;
     };
 
-    move(document, doc, '.stream-header .viewers');
-    move(doc, document, '.stream-header');
-    move(doc, document, '.stream-meta');
-    move(doc, document, 'nav');
+    move(document, '.stream-header .viewers', doc);
+    for (let e of move(doc, 'nav, .stream-header, .stream-meta, footer', document))
+        $.init(e);
     for (let modal of document.querySelectorAll('x-modal-cover'))
         modal.remove();
     return true;
@@ -123,94 +98,71 @@ $.form.onDocumentReload = doc => {
 
 let withRPC = rpc => ({
     '.viewers'(e) {
-        rpc.handlers['Stream.ViewerCount'] = n => e.textContent = n;
+        rpc.on('Stream.ViewerCount', n => e.textContent = n);
     },
 
     '.player'(e) {
-        rpc.register({
-            open: () =>
-                e.dataset.status = 'loading',
-            load: () => {
-                // TODO measure connection speed, request a stream
-                e.dataset.src = rpc.url.replace('ws', 'http');
-                e.dataset.live = '1';
-            },
-            unload: () => {
-                if (e.dataset.live) delete e.dataset.live;
-                e.dataset.src = '';
-            },
+        rpc.on(RPC.STATE_INIT, _ => e.dataset.status = 'loading');
+        rpc.on(RPC.STATE_OPEN, _ => {
+            // TODO measure connection speed, request a stream
+            e.dataset.src = rpc.url.replace('ws', 'http');
+            e.dataset.live = '1';
+        });
+        rpc.on(RPC.STATE_CLOSED, _ => {
+            if (e.dataset.live) delete e.dataset.live;
+            e.dataset.src = '';
         });
     },
 
-    '.chat'(root) {
-        let log  = root.querySelector('.log');
-        let form = root.querySelector('.input-form');
-        let text = root.querySelector('.input-form .input');
-
-        let autoscroll = m => (...args) => {
-            let scroll = log.scrollTop + log.clientHeight >= log.scrollHeight;
-            m(...args);
-            if (scroll)
-                log.scrollTop = log.scrollHeight;
-        };
-
-        let handleErrors = (form, promise, withMessage) => {
-            $.form.disable(form);
-            return promise.then(autoscroll(() => {
-                $.form.enable(form);
-                form.classList.remove('error');
-            })).catch(autoscroll((e) => {
-                $.form.enable(form);
-                form.classList.add('error');
-                form.querySelector('.error').textContent = e.message;
-            }));
-        };
-
-        root.querySelector('.login-form').addEventListener('submit', function (ev) {
+    'form[data-rpc]'(e) {
+        let i = e.querySelector('[data-arg]');
+        e.addEventListener('submit', ev => {
             ev.preventDefault();
-            handleErrors(this, rpc.send('Chat.SetName', this.querySelector('.input').value));
+            $.form.disable(e);
+            rpc.send(e.dataset.rpc, i.value).then(_ => {
+                $.form.enable(e);
+                e.classList.remove('error');
+                i.value = '';
+                i.select();
+            }).catch(err => {
+                $.form.enable(e);
+                e.classList.add('error');
+                e.querySelector('.error').textContent = err.message;
+            });
         });
+    },
 
-        form.addEventListener('submit', ev => {
-            ev.preventDefault();
-            handleErrors(form, rpc.send('Chat.SendMessage', text.value).then(() => {
-                log.scrollTop = log.scrollHeight;
-                text.value = '';
-                text.select();
-            }), true);
+    '.chat'(e) {
+        let log = e.querySelector('.log');
+        let atBottom = true;
+        log.addEventListener('scroll', ev => atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight);
+        new MutationObserver(_ => atBottom ? (log.scrollTop = log.scrollHeight) : null)
+            .observe(e, {attributes: true, childList: true, characterData: true, subtree: true});
+
+        rpc.on(RPC.STATE_OPEN,   _ => e.classList.add('online'));
+        rpc.on(RPC.STATE_CLOSED, _ => e.classList.remove('online'));
+        rpc.on('Chat.Message', (name, text, login) => {
+            let h = parseInt(sha1(`${login}\n${name}`).slice(32), 16);
+            let m = document.createElement('li');
+            let nameSpan = document.createElement('span');
+            let textSpan = document.createElement('span');
+            nameSpan.classList.add('name');
+            nameSpan.style.color = `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
+            nameSpan.textContent = name;
+            nameSpan.setAttribute('title', login);
+            textSpan.textContent = text;
+            m.appendChild(nameSpan);
+            m.appendChild(textSpan);
+            log.appendChild(m);
         });
-
-        let stringColor = str => {
-            let h = parseInt(sha1(str).slice(32), 16);
-            return `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
-        };
-
-        rpc.handlers['Chat.Message'] = autoscroll((name, text, login) => {
-            let entry = $.template('chat-message-template');
-            let e = entry.querySelector('.name');
-            // TODO maybe do this server-side? that'd allow us to hash the IP instead...
-            e.style.color = stringColor(`${name.length}:${name}${login}`);
-            e.textContent = name;
-            e.setAttribute('title', login || 'Anonymous user');
-            if (!login)
-                e.classList.add('anon');
-            entry.querySelector('.text').textContent = text;
-            log.appendChild(entry);
-        });
-
-        rpc.handlers['Chat.AcquiredName'] = autoscroll((name, login) => {
+        rpc.on('Chat.AcquiredName', (name, login) => {
             if (name === "") {
-                root.classList.remove('logged-in');
-                root.querySelector('.login-form').classList.add('error');
+                e.classList.remove('logged-in');
+                e.querySelector('.login-form').classList.add('error');
             } else {
-                root.classList.add('logged-in');
-                text.select();
+                e.classList.add('logged-in');
+                e.querySelector('.input-form textarea').select();
             }
-        });
-
-        rpc.register({
-            load:   () => root.classList.add('online'),
-            unload: () => root.classList.remove('online'),
         });
     },
 });
@@ -228,8 +180,7 @@ let confirmMaturity = e => new Promise(resolve => {
     };
     if (!!localStorage.mature)
         confirm();
-    else
-        e.button('.confirm-age', confirm);
+    e.button('.confirm-age', confirm);
 });
 
 
@@ -283,7 +234,7 @@ $.extend({
             e.classList[muted ? 'add' : 'remove']('muted');
         };
 
-        let ignoreErrors = p => { if (p) p.catch(e => null); }
+        let ignoreErrors = p => { if (p) p.catch(e => null); };
         let seekTo = $.delayedPair(50,
             x => { video.pause(); setTime(x); },
             x => { video.currentTime = x; ignoreErrors(video.play()) });

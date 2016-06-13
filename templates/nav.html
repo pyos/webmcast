@@ -8,7 +8,7 @@
     <a href="/user/login">Log in</a>
     <a href="/user/new" class="button">Sign up</a>
 {{- end }}
+    <template id="login-form-template">
+        <x-modal data-tabs data-scrollbar data-remote-element="#formset" data-action="/user/login"></x-modal>
+    </template>
 </nav>
-<template id="login-form-template">
-    <x-modal data-tabs data-scrollbar data-remote-element="#formset" data-action="/user/login"></x-modal>
-</template>
