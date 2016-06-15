@@ -238,6 +238,7 @@ $.extend({
                 tab.classList[tab.dataset.tab === active ? 'add' : 'remove']('active');
             for (let tab of e.children) if (tab.dataset.tab)
                 tab[tab.dataset.tab === active ? 'removeAttribute' : 'setAttribute']('hidden', '');
+            $._reflowAllColumns();
         });
 
         if (e.children.length)
