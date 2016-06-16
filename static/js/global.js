@@ -159,7 +159,23 @@ $._reflowAllColumns = () => {
 
 $.extend({
     '[data-scrollbar]'(e) {
-        if ($._nativeScrollbarWidth === 0 || e.style.marginRight !== '')
+        if (e.style.marginRight !== '')
+            return;  // already applied these tweaks
+
+        let innermost = ev => {
+            for (let t = ev.target; t !== null; t = t.parentElement)
+                if (t.hasAttribute('data-scrollbar') && t.scrollHeight > t.clientHeight)
+                    return t;
+        };
+
+        e.addEventListener('wheel', ev => {
+            let t = innermost(ev);
+            if (t && ((ev.deltaY > 0 && t.scrollTop >= t.scrollHeight - t.clientHeight)
+                   || (ev.deltaY < 0 && t.scrollTop === 0)))
+                ev.preventDefault();
+        });
+
+        if ($._nativeScrollbarWidth === 0)
             return;  // native scrollbar is already floating
 
         let track = document.createElement('x-scrollbar');
@@ -180,24 +196,12 @@ $.extend({
             }
         }, hide);
 
-        let innermost = ev => {
-            for (let t = ev.target; t !== null; t = t.parentElement)
-                if (t.hasAttribute('data-scrollbar') && t.scrollHeight > t.clientHeight)
-                    return t;
-        };
-
         e.style.overflowY   = 'scroll';
         e.style.marginRight = `${-$._nativeScrollbarWidth}px`;
         e.appendChild(track);
         e.addEventListener('scroll',     ev => window.requestAnimationFrame(show));
         e.addEventListener('mouseleave', ev => window.requestAnimationFrame(hide));
         e.addEventListener('mousemove',  ev => window.requestAnimationFrame(innermost(ev) === e ? show : hide));
-        e.addEventListener('wheel',      ev => {
-            let t = innermost(ev);
-            if (t && ((ev.deltaY > 0 && t.scrollTop >= t.scrollHeight - t.clientHeight)
-                   || (ev.deltaY < 0 && t.scrollTop === 0)))
-                ev.preventDefault();
-        });
     },
 
     '[data-remote-element]'(e) {

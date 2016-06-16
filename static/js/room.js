@@ -156,13 +156,8 @@ let withRPC = rpc => ({
             log.appendChild(m);
         });
         rpc.on('Chat.AcquiredName', (name, login) => {
-            if (name === "") {
-                e.classList.remove('logged-in');
-                e.querySelector('.login-form').classList.add('error');
-            } else {
-                e.classList.add('logged-in');
-                e.querySelector('.input-form textarea').select();
-            }
+            e.classList.add('logged-in');
+            e.querySelector('.input-form textarea').select();
         });
     },
 });
