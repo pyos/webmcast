@@ -114,34 +114,37 @@ let withRPC = rpc => ({
         });
     },
 
-    'form[data-rpc]'(e) {
-        let i = e.querySelector('[data-arg]');
-        e.addEventListener('submit', ev => {
-            ev.preventDefault();
-            $.form.disable(e);
-            rpc.send(e.dataset.rpc, i.value).then(_ => {
-                $.form.enable(e);
-                e.classList.remove('error');
-                i.value = '';
-                i.select();
-            }).catch(err => {
-                $.form.enable(e);
-                e.classList.add('error');
-                e.querySelector('.error').textContent = err.message;
-            });
-        });
-    },
-
     '.chat'(e) {
         let log = e.querySelector('.log');
-        let atBottom = true;
-        log.addEventListener('scroll', ev => atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight);
-        new MutationObserver(_ => atBottom ? (log.scrollTop = log.scrollHeight) : null)
-            .observe(e, {attributes: true, childList: true, characterData: true, subtree: true});
+        let autoscroll = f => (...args) => {
+            let atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight;
+            f(...args);
+            if (atBottom) log.scrollTop = log.scrollHeight;
+        };
 
-        rpc.on(RPC.STATE_OPEN,   _ => e.classList.add('online'));
-        rpc.on(RPC.STATE_CLOSED, _ => e.classList.remove('online'));
-        rpc.on('Chat.Message', (name, text, login) => {
+        let submitRPCRequest = ev => {
+            let f = ev.target;
+            let i = f.querySelector('[data-arg]');
+            ev.preventDefault();
+            $.form.disable(f);
+            rpc.send(f.dataset.rpc, i.value).then(autoscroll(_ => {
+                $.form.enable(f);
+                f.classList.remove('error');
+                i.value = '';
+                i.select();
+            })).catch(autoscroll(err => {
+                $.form.enable(f);
+                f.classList.add('error');
+                f.querySelector('.error').textContent = err.message;
+            }));
+        };
+
+        for (let f of e.querySelectorAll('form[data-rpc]'))
+            f.addEventListener('submit', submitRPCRequest);
+
+        rpc.on(RPC.STATE_OPEN,   autoscroll(_ => e.classList.add('online')));
+        rpc.on(RPC.STATE_CLOSED, autoscroll(_ => e.classList.remove('online')));
+        rpc.on('Chat.Message', autoscroll((name, text, login) => {
             let h = parseInt(sha1(`${login}\n${name}`).slice(32), 16);
             let m = document.createElement('li');
             let nameSpan = document.createElement('span');
@@ -154,11 +157,11 @@ let withRPC = rpc => ({
             m.appendChild(nameSpan);
             m.appendChild(textSpan);
             log.appendChild(m);
-        });
-        rpc.on('Chat.AcquiredName', (name, login) => {
+        }));
+        rpc.on('Chat.AcquiredName', autoscroll((name, login) => {
             e.classList.add('logged-in');
             e.querySelector('.input-form textarea').select();
-        });
+        }));
     },
 });
 
