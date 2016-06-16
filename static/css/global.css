@@ -150,6 +150,7 @@ x-scrollbar {
 x-slider {
     height: 100%;
     display: block;
+    position: relative;
     box-sizing: border-box;
     border: 2px solid;
     border-radius: 2px;

@@ -101,12 +101,13 @@
     padding: 0 0.5rem;
     align-items: center;
     white-space: nowrap;
-    transition: transform 0.3s ease-in-out;
+    transition: opacity 0.3s ease-in-out;
 }
 
 .player.has-video[data-status="playing"] .controls,
 .player.has-video[data-status="paused"] .controls {
-    background: rgba(34,34,34,0.8);
+    padding-top: 1rem;
+    background: linear-gradient(0deg,rgba(0,0,0,0.8),transparent);
 }
 
 .player.has-video[data-status="playing"].hide-controls {
@@ -114,7 +115,7 @@
 }
 
 .player.has-video[data-status="playing"].hide-controls .controls:not(:hover) {
-    transform: translateY(100%);
+    opacity: 0;
 }
 
 .player .status {
@@ -129,11 +130,23 @@
 
 .player .seek {
     position: absolute;
-    top: -1em;
-    left: 0;
-    right: 0;
+    left: 1rem;
+    right: 1rem;
     color: #f7d358;
+}
+
+.player .seek:before {
+    color: #000;
+}
+
+.player.has-video .seek {
+    top: 0;
     padding-bottom: 0;
+}
+
+.player:not(.has-video) .seek {
+    bottom: -1rem;
+    padding-top: 0;
 }
 
 .player .volume {
@@ -296,7 +309,7 @@ body:not(.aside-chat) .chat form .error {
 
 @media (min-width: 30em) {
     .player:not(.has-video) .controls {
-        padding: 0 2rem;
+        margin: 0 1rem;
     }
 }
 
