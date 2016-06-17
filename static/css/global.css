@@ -205,6 +205,27 @@ x-tabbar > .active {
     border-bottom: 4px solid #a168ad;
 }
 
+x-tooltip {
+    display: block;
+    position: absolute;
+    bottom: calc(100% + 1em);
+    color: #000;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 0.5em;
+}
+
+x-tooltip:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: calc(50% - 1em);
+    border-top: 1em solid #fff;
+    border-left: 1em solid transparent;
+    border-right: 1em solid transparent;
+}
+
 [data-status] {
     position: relative;
 }
@@ -400,6 +421,13 @@ a.button.icon {
     padding: 0.5em;
     text-align: center;
     vertical-align: middle;
+}
+
+img.emoji {
+   width: 1em;
+   height: 1em;
+   margin: 0 .05em 0 .1em;
+   vertical-align: -0.1em;
 }
 
 x-modal-cover {

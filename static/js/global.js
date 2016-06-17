@@ -289,7 +289,7 @@ $.extend({
         let outer = document.createElement('x-modal-cover');
         let inner = document.createElement('x-modal-bg');
         let close = document.createElement('a');
-        e.parentNode.appendChild(outer);
+        e.parentNode.insertBefore(outer, e);
         close.setAttribute('href', '#');
         close.classList.add('button');
         close.classList.add('close');
@@ -302,6 +302,14 @@ $.extend({
     },
 
     'body'(e) {
+        e.addEventListener('click', ev => {
+            outer: for (let tooltip of e.querySelectorAll('x-tooltip')) {
+                for (let t = ev.target; t !== null; t = t.parentElement)
+                    if (t === tooltip)
+                        continue outer;
+                tooltip.remove();
+            }
+        }, true);
         e.addEventListener('focusin', ev => {
             let modals = e.querySelectorAll('x-modal-cover');
             if (modals.length === 0)

@@ -271,6 +271,34 @@ body:not(.aside-chat) .chat form .error {
     color: #f55;
 }
 
+.emoji-selector {
+    width: 18em;
+    height: 13.5em;
+    overflow: hidden;
+    text-align: left;
+}
+
+.emoji-selector [data-tabs] {
+    display: flex;
+    max-height: 100%;
+    flex-direction: column;
+}
+
+.emoji-selector x-tabbar {
+    flex-shrink: 0;
+}
+
+.emoji-selector x-tabbar ~ [data-tab] {
+    flex: 1;
+    padding: 0 0.5em;
+}
+
+.emoji-selector .emoji {
+    cursor: pointer;
+    padding: 0.25em;
+    font-size: 1.4em;
+}
+
 [data-unconfirmed] [data-status]:before,
 [data-unconfirmed][data-status]:before,
 .player[data-status="playing"] svg,

@@ -20,6 +20,14 @@ Element.prototype.button = function (selector, f) {
 };
 
 
+document.body.addEventListener('keydown', ev => {
+    if (ev.keyCode === 83 && ev.ctrlKey && ev.shiftKey)
+        document.body.classList.toggle('aside-chat');
+    if (ev.keyCode === 65 && ev.ctrlKey && ev.shiftKey)
+        document.querySelector('.player').classList.toggle('has-video');
+});
+
+
 let RPC = function () {
     this.nextID   = 0;
     this.awaiting = new Object(null);
@@ -142,6 +150,18 @@ let withRPC = rpc => ({
         for (let f of e.querySelectorAll('form[data-rpc]'))
             f.addEventListener('submit', submitRPCRequest);
 
+        e.button('.ins-emoji', ev => {
+            let f = e.querySelector('.input-form');
+            let i = f.querySelector('textarea');
+            let s = $.emoji();
+            f.appendChild(s);
+            s.addEventListener('select', ev => {
+                s.remove();
+                i.value += ev.detail;
+                i.focus();
+            });
+        });
+
         rpc.on(RPC.STATE_OPEN,   autoscroll(_ => e.classList.add('online')));
         rpc.on(RPC.STATE_CLOSED, autoscroll(_ => e.classList.remove('online')));
         rpc.on('Chat.Message', autoscroll((name, text, login) => {
@@ -154,6 +174,7 @@ let withRPC = rpc => ({
             nameSpan.textContent = name;
             nameSpan.setAttribute('title', login);
             textSpan.textContent = text;
+            textSpan.innerHTML = $.emoji.parse(textSpan.innerHTML);
             m.appendChild(nameSpan);
             m.appendChild(textSpan);
             log.appendChild(m);
