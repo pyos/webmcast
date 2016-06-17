@@ -55,9 +55,7 @@ go build -i
 
 #### How To Broadcast Stuff
 
-PUT/POST a WebM to `/stream/<name>`
-
-*Not implemented: the server should require a security token for that.*
+PUT/POST a WebM to `/stream/<name>`. (Note that you have to register first, to obtain said name and a token.)
 
 ```bash
 server=http://localhost:8000
@@ -66,13 +64,13 @@ name=test
 ffmpeg $source \
     -c:v vp8 -b:v 2000k -keyint_min 60 -g 60 -deadline realtime -speed 6 \
     -c:a opus -b:a 64k \
-    -f webm $server/stream/$name
+    -f webm $server/stream/$name?$token
 ```
 
 Or with gstreamer:
 
 ```bash
-gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=$server/stream/$name \
+gst-launch webmmux name=mux streamable=true ! souphttpclientsink location=$server/stream/$name?$token \
            $video_source ! videoconvert ! vp8enc keyframe-max-dist=60 deadline=1 ! queue ! mux.video_0 \
            $audio_source ! vorbisenc ! queue ! mux.audio_0
 ```
