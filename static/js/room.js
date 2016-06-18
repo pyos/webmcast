@@ -174,7 +174,7 @@ let withRPC = rpc => ({
             nameSpan.textContent = name;
             nameSpan.setAttribute('title', login);
             textSpan.textContent = text;
-            textSpan.innerHTML = $.emoji.parse(textSpan.innerHTML);
+            textSpan.innerHTML = textSpan.innerHTML.replace($.emoji.re, $.emoji.wrap);
             m.appendChild(nameSpan);
             m.appendChild(textSpan);
             log.appendChild(m);

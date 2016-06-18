@@ -210,7 +210,7 @@ $.extend({
                 for (let c of Array.from(xhr.response.querySelector(e.dataset.remoteElement).children))
                     e.appendChild($.init(c));
             } catch (err) {
-                console.log('could not fetch remote element:', err);
+                console.error('could not fetch remote element:', err);
                 e.setAttribute('data-status', 'error');
             }
         }).catch(xhr => e.setAttribute('data-status', 'error'));
@@ -356,7 +356,7 @@ $.extend({
                         if (xhr.responseURL === location.href && $.form.onDocumentReload(xhr.response))
                             return $.form.enable(e);
                     } catch (err) {
-                        console.log('Error in onDocumentReload:', err);
+                        console.error('Error in onDocumentReload:', err);
                     }
                     location.href = xhr.responseURL;
                 }).catch(xhr => {

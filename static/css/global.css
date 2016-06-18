@@ -25,7 +25,7 @@ html, body {
     }
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1, h2, h3 {
     font-weight: normal;
 }
 
@@ -203,27 +203,6 @@ x-tabbar > * {
 
 x-tabbar > .active {
     border-bottom: 4px solid #a168ad;
-}
-
-x-tooltip {
-    display: block;
-    position: absolute;
-    bottom: calc(100% + 1em);
-    color: #000;
-    background: #fff;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-    border-radius: 0.5em;
-}
-
-x-tooltip:after {
-    content: '';
-    display: block;
-    position: absolute;
-    top: 100%;
-    left: calc(50% - 1em);
-    border-top: 1em solid #fff;
-    border-left: 1em solid transparent;
-    border-right: 1em solid transparent;
 }
 
 [data-status] {
@@ -424,10 +403,10 @@ a.button.icon {
 }
 
 img.emoji {
-   width: 1em;
-   height: 1em;
-   margin: 0 .05em 0 .1em;
-   vertical-align: -0.1em;
+   width: 1.2em;
+   height: 1.2em;
+   padding: 0 0.1em;
+   vertical-align: -0.25em;
 }
 
 x-modal-cover {
@@ -467,6 +446,63 @@ x-modal {
 
 x-modal > form.block {
     padding: 1rem 2rem;
+}
+
+x-tooltip, x-tooltip[data-status] {
+    display: block;
+    position: absolute;
+    margin-bottom: 1em;
+    color: #000;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 0.5em;
+}
+
+x-tooltip:after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1em;
+    margin: -1em;
+    border: 1em solid transparent;
+    border-top-color: #fff;
+}
+
+x-emoji-picker {
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+    flex-flow: column;
+}
+
+x-emoji-picker > x-tabbar {
+    flex: 0 0 auto;
+}
+
+x-emoji-picker > x-tabbar > * {
+    padding: 0.4em;
+}
+
+x-emoji-picker h4 {
+    margin: 0.5em 0.5em 0 0.5em;
+}
+
+x-emoji-list {
+    display: flex;
+    padding: 0.25em;
+    font-size: 1.1em;
+    flex-flow: row wrap;
+    justify-content: space-between;
+}
+
+x-emoji-list:after {
+    flex: auto;
+    content: '';
+}
+
+x-emoji-list .emoji {
+    cursor: pointer;
+    padding: 0.25em;
 }
 
 x-columns {
