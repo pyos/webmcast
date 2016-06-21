@@ -143,6 +143,7 @@ func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, 
 	header.Set("Cache-Control", "no-cache")
 	header.Set("Content-Type", "video/webm")
 	w.WriteHeader(http.StatusOK)
+	f, flushable := w.(http.Flusher)
 
 	ch := make(chan []byte, 60)
 	defer close(ch)
@@ -153,6 +154,9 @@ func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, 
 	for chunk := range ch {
 		if _, err := w.Write(chunk); err != nil || stream.Closed {
 			break
+		}
+		if flushable {
+			f.Flush()
 		}
 	}
 	return nil
