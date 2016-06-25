@@ -162,7 +162,7 @@ x-range {
     padding: 1em 0;
 }
 
-x-range:before {
+x-range::before {
     content: '';
     display: block;
     opacity: 0.2;
@@ -175,7 +175,7 @@ x-range:not([data-ro]) {
     cursor: pointer;
 }
 
-x-range:not([data-ro]) > x-slider:after {
+x-range:not([data-ro]) > x-slider::after {
     content: '';
     float: right;
     display: block;
@@ -186,7 +186,7 @@ x-range:not([data-ro]) > x-slider:after {
     transition: transform 0.2s ease-in-out;
 }
 
-x-range:not(:hover):not(:focus) > x-slider:after {
+x-range:not(:hover):not(:focus) > x-slider::after {
     transform: scale(0);
 }
 
@@ -213,7 +213,7 @@ x-tabbar > .active {
     min-height: 8em;
 }
 
-[data-status]:before {
+[data-status]::before {
     font: normal 4em FontAwesome;
     display: block;
     position: absolute;
@@ -225,7 +225,7 @@ x-tabbar > .active {
     z-index: 2;
 }
 
-[data-status="loading"]:before {
+[data-status="loading"]::before {
     animation: spin 1.33s infinite linear;
     border: 0.1em solid rgba(255,255,255,0.2);
     border-radius: 50%;
@@ -235,7 +235,7 @@ x-tabbar > .active {
     content: '';
 }
 
-[data-status="error"]:before {
+[data-status="error"]::before {
     content: '\f071';  /* exclamation-triangle */
 }
 
@@ -435,7 +435,7 @@ x-modal-bg > .close {
     right: 0;
 }
 
-x-modal-bg > .close:before {
+x-modal-bg > .close::before {
     content: '\f00d';
 }
 
@@ -458,7 +458,7 @@ x-tooltip, x-tooltip[data-status] {
     border-radius: 0.5em;
 }
 
-x-tooltip:after {
+x-tooltip::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -495,7 +495,7 @@ x-emoji-list {
     justify-content: space-between;
 }
 
-x-emoji-list:after {
+x-emoji-list::after {
     flex: auto;
     content: '';
 }

@@ -60,7 +60,7 @@
     nav, section, footer { max-width: 112rem; }
 }
 
-.player.has-video:after {
+.player.has-video::after {
     content: '';
     display: block;
     padding-top: 56.25%;  /* 16:9 */
@@ -135,7 +135,7 @@
     color: #f7d358;
 }
 
-.player .seek:before {
+.player .seek::before {
     color: #000;
 }
 
@@ -231,7 +231,7 @@
     flex-direction: column;
 }
 
-.chat .log:before {
+.chat .log::before {
     content: '';
     margin-top: auto;
 }
@@ -247,7 +247,7 @@
     margin-right: 0.33em;
 }
 
-.chat .name[title=""]:before {
+.chat .name[title=""]::before {
     font: normal 1em/1 FontAwesome;
     content: '\f21b';  /* user-secret */
     margin-right: 0.33em;
@@ -278,8 +278,8 @@ body:not(.aside-chat) .chat form .error {
     color: #f55;
 }
 
-[data-unconfirmed] [data-status]:before,
-[data-unconfirmed][data-status]:before,
+[data-unconfirmed] [data-status]::before,
+[data-unconfirmed][data-status]::before,
 .player[data-status="playing"] svg,
 .player[data-status="paused"] svg,
 .player[data-status="playing"] .play,
