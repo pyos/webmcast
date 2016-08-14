@@ -36,7 +36,7 @@
 }
 
 .player-block .button.icon:active {
-    color: #666;
+    color: #b0e6ff;
 }
 
 .player.has-video {
@@ -50,6 +50,18 @@
     min-height: 3.33em;
     max-height: calc(100vh - 4rem);
     position: relative;
+}
+
+@media (min-width: 80.17em /* use 100% on narrow screens */) and (max-width: 92em) {
+    body:not(.aside-chat) nav,
+    body:not(.aside-chat) section,
+    body:not(.aside-chat) footer {
+        max-width: 91.3%;  /* seamlessly transitions into the value below */
+    }
+
+    body:not(.aside-chat) .player-block:not(.theatre) {
+        max-width: calc(91.3% - 4em);  /* add padding that is already present on other elements */
+    }
 }
 
 @media (min-width: 92em) and (min-height: 52.56em) {
@@ -82,6 +94,8 @@
     width: 100%;
     max-width: none;
     z-index: 256;
+    background: #222;
+    color: #fff;
 }
 
 .player.is-fullscreen,
@@ -107,7 +121,7 @@
 .player.has-video[data-status="playing"] .controls,
 .player.has-video[data-status="paused"] .controls {
     padding-top: 1rem;
-    background: linear-gradient(0deg,rgba(0,0,0,0.8),transparent);
+    background: linear-gradient(0deg,rgba(0,0,0,0.5),transparent);
 }
 
 .player.has-video[data-status="playing"].hide-controls {
@@ -128,30 +142,27 @@
     text-transform: uppercase;
 }
 
+.player:not([data-live])[data-status="playing"] .status,
+.player:not([data-live])[data-status="paused"] .status {
+    flex: 0;  /* let the seek bar consume that space */
+    width: 0;
+    overflow: visible;
+}
+
 .player .seek {
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
+    flex: 1;
     color: #f7d358;
+    position: relative;
+    top: 1em;
 }
 
 .player .seek::before {
-    color: #000;
-}
-
-.player.has-video .seek {
-    top: 0;
-    padding-bottom: 0;
-}
-
-.player:not(.has-video) .seek {
-    bottom: -1rem;
-    padding-top: 0;
+    color: #fff;
 }
 
 .player .volume {
     width: 7em;
-    margin: 0 1em;
+    margin: 0 2em 0 0.5em;
 }
 
 .stream-header .edit.icon {

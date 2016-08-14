@@ -13,12 +13,11 @@
         <main data-scrollbar>
             <div class="bg">
                 {{ template "nav.html" . }}
-                <section class="player-block bg">
+                <section class="player-block">
                     <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
                                       {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
                         <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
                         <video crossorigin="anonymous"></video><div class="controls">
-                            <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
                             <a href="#" class="button icon play" title="Play">&#xf04b;</a>
                             <a href=""  class="button icon reload" title="Reload">&#xf021;</a>
                             <a href="#" class="button icon stop" title="Stop">&#xf04c;</a>
@@ -26,6 +25,7 @@
                             <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
                             <x-range tabindex="0" class="volume" title="Volume"></x-range>
                             <div class="status">not connected</div>
+                            <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
                             <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
                             <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
                             <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
@@ -38,7 +38,7 @@
                     </div>
                     <div class="chat-tab"></div>
                     <aside class="chat">
-                        <h1>#{{.ID}}</h1>
+                        <h1>@{{.ID}}</h1>
                         <ul class="log" data-scrollbar></ul>
                         <div class="offline-message">The chat is offline.</div>
                         <form class="login-form" data-rpc="Chat.SetName">
@@ -70,7 +70,7 @@
             {{- end }}
                 <h1 class="name">{{or .Meta.Name "<unnamed>"}}</h1>
                 <div>
-                    <span class="subheading">{{or .Meta.UserName "anonymous"}}</span>
+                    <span class="subheading">{{if not .Live}}<a href="/{{.ID}}">{{end}}{{or .Meta.UserName "anonymous"}}{{if not .Live}}</a>{{end}}</span>
                     {{if not .Live}}<time>{{.Meta.Timestamp.Format "02.01.2006 15:04:05"}}</time>{{end}}
                     <a href="/rec/{{.ID}}"><i class="icon">&#xf187;</i> Stream archives</a>
                     <a href="{{if .Live}}/stream/{{.ID}}{{else}}/static/recorded/{{.Meta.Path}}{{end}}"><i class="icon">&#xf019;</i> Raw WebM</a>

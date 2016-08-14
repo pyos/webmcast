@@ -9,7 +9,7 @@
 
 html {
     font: normal 14px/1.5 'Source Sans Pro', 'Trebuchet MS', Helvetica, sans-serif;
-    color: #000;
+    color: #222;
 }
 
 html, body {
@@ -123,6 +123,7 @@ x-spacer {
 
 x-scrollbar {
     display: block;
+    overflow: hidden;
     position: absolute;
     pointer-events: none;
     top: 5px;
@@ -131,7 +132,7 @@ x-scrollbar {
     z-index: 255;
     color: #888;
     background: rgba(127,127,127,0.3);
-    border-radius: 2px;
+    border-radius: 3px;
     transition: opacity 0.2s ease-in-out;
     opacity: 0;
 }
@@ -147,15 +148,6 @@ x-scrollbar {
     }
 }
 
-x-slider {
-    height: 100%;
-    display: block;
-    position: relative;
-    box-sizing: border-box;
-    border: 2px solid;
-    border-radius: 2px;
-}
-
 x-range {
     display: block;
     position: relative;
@@ -166,9 +158,26 @@ x-range::before {
     content: '';
     display: block;
     opacity: 0.2;
-    border: 2px solid;
-    border-radius: 2px;
-    margin-bottom: -4px;
+    border: 3px solid;
+    border-radius: 3px;
+    margin-bottom: -6px;
+    transition: transform 0.2s;
+}
+
+x-slider {
+    height: 100%;
+    display: block;
+    position: relative;
+    box-sizing: border-box;
+}
+
+x-slider::before {
+    content: '';
+    display: block;
+    height: 100%;
+    border: 3px solid;
+    border-radius: 3px;
+    transition: transform 0.2s;
 }
 
 x-range:not([data-ro]) {
@@ -179,15 +188,20 @@ x-range:not([data-ro]) > x-slider::after {
     content: '';
     float: right;
     display: block;
-    margin: -5px;
-    border: 5px solid;
-    border-radius: 5px;
+    margin: -9px -6px -6px -6px;
+    border: 6px solid;
+    border-radius: 6px;
     box-shadow: 0 0 5px -2px #000;
     transition: transform 0.2s ease-in-out;
 }
 
-x-range:not(:hover):not(:focus) > x-slider::after {
+x-range:not([data-ro]):not(:hover):not(:focus) > x-slider::after {
     transform: scale(0);
+}
+
+x-range:not([data-ro]):not(:hover):not(:focus)::before,
+x-range:not([data-ro]):not(:hover):not(:focus) > x-slider::before {
+    transform: scaleY(0.66);
 }
 
 x-tabbar {
