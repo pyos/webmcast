@@ -43,6 +43,7 @@
     overflow: hidden;
     position: relative;
     background: #000;
+    color: #fff;
 }
 
 .player {
@@ -94,8 +95,7 @@
     width: 100%;
     max-width: none;
     z-index: 256;
-    background: #222;
-    color: #fff;
+    background: inherit;
 }
 
 .player.is-fullscreen,
@@ -378,11 +378,14 @@ body:not(.aside-chat) .chat form .error {
 
     .chat-tab {
         position: fixed;
-        right: 0;
-        bottom: 0;
+        right: -1.41em;
+        bottom: -1.41em;
+        width: 2.82em;
+        height: 2.82em;
         z-index: 127;
-        border-top: 2em solid transparent;
-        border-right: 2em solid #000;
+        background: #0a0a0a;
+        border-left: 1px solid #333;
+        transform: rotate(45deg);
     }
 
     .chat:hover, .chat-tab:hover + .chat {

@@ -371,11 +371,11 @@ $.extend({
     'x-range'(e) {
         let step = isNaN(+e.dataset.step) ? 0.05 : +e.dataset.step;
         let slider = document.createElement('x-slider');
-        $.observeData(e, 'value', 1, v => slider.style.width = `${+v * 100}%`);
+        $.observeData(e, 'value', 1, v => slider.style.width = `${+Math.min(1, Math.max(0, v)) * 100}%`);
         e.appendChild(slider);
 
         let change = x =>
-            e.dispatchEvent(new CustomEvent('change', {detail: Math.min(1, Math.max(0, x))}));
+            e.dispatchEvent(new CustomEvent('change', {detail: x}));
 
         let select = ev => {
             ev.preventDefault();

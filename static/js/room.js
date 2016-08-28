@@ -254,9 +254,19 @@ $.extend({
         };
 
         let ignoreErrors = p => { if (p) p.catch(e => null); };
+        let seekAndPlay = false;
         let seekTo = $.delayedPair(50,
-            x => { video.pause(); setTime(x); },
-            x => { video.currentTime = x; ignoreErrors(video.play()) });
+            x => {
+                seekAndPlay |= !video.paused;
+                video.pause();
+                setTime(x);
+            },
+            x => {
+                video.currentTime = x;
+                seekAndPlay && ignoreErrors(video.play());
+                seekAndPlay = false;
+            }
+        );
 
         let vol = +localStorage.volume;
         setVolume(video.volume = isNaN(vol) ? 1 : Math.min(1, Math.max(0, vol)),
