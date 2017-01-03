@@ -395,7 +395,7 @@ $.extend({
         });
     },
 
-    'span.hostname'(e) {
-        e.textContent = location.protocol + '//' + location.host;
+    'a[href][data-full-url]'(e) {
+        e.textContent = e.href;
     },
 });

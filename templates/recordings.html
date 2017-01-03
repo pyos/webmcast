@@ -27,7 +27,7 @@
                 {{- end }}
                     <em>Note: {{if .Editable}}even if you're out of space, anyone can download your{{else}}you can download{{end}}
                         live streams or watch them in HTTP-capable players by using this link:
-                        <a href="/stream/{{.ID}}"><span class="hostname">{hostname}</span>/stream/{{.ID}}</a>.</em>
+                        <a href="/stream/{{.ID}}" data-full-url>/stream/{{.ID}}</a>.</em>
                 </p>
             {{- if .UserAbout }}
                 <x-panel><p data-markup>{{.UserAbout}}</p></x-panel>
