@@ -23,8 +23,10 @@ Element.prototype.button = function (selector, f) {
 document.body.addEventListener('keydown', ev => {
     if (ev.keyCode === 83 && ev.ctrlKey && ev.shiftKey)
         document.body.classList.toggle('aside-chat');
-    if (ev.keyCode === 65 && ev.ctrlKey && ev.shiftKey)
+    if (ev.keyCode === 65 && ev.ctrlKey && ev.shiftKey) {
+        document.body.classList.toggle('audio-only');
         document.querySelector('.player').classList.toggle('has-video');
+    }
 });
 
 
@@ -216,8 +218,8 @@ $.extend({
     },
 
     '.player-block'(e) {
-        e.button('.theatre',  _ => e.classList.add('theatre'));
-        e.button('.collapse', _ => e.classList.remove('theatre'));
+        e.button('.theatre',  _ => document.body.classList.add('aside-chat'));
+        e.button('.collapse', _ => document.body.classList.remove('aside-chat'));
     },
 
     '.player'(e) {

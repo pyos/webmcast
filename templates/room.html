@@ -5,10 +5,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/static/css/global.css" />
         <link rel="stylesheet" href="/static/css/room.css" />
-        <title>webmcast // {{.ID}}</title>
+        <title>{{.ID}} &mdash; webmcast</title>
     </head>
     <!-- {{$NSFW := and .Meta.NSFW (or .Online (not .Live))}} -->
-    <body class="{{if not .Meta.HasVideo}}aside-chat{{end}}"
+    <body class="{{if not .Meta.HasVideo}}aside-chat audio-only{{end}}"
             {{- if .Live}} data-stream-id="{{.ID}}"{{else}} data-stream-src="/static/recorded/{{.Meta.Path}}"{{end}} {{if $NSFW}}data-unconfirmed{{end}}>
         <main data-scrollbar>
             <div class="bg">
