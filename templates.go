@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"time"
 )
@@ -24,6 +25,16 @@ type viewmodel interface {
 var templateFuncs = template.FuncMap{
 	"unsafe": func(s interface{}) template.HTML {
 		return template.HTML(fmt.Sprint(s))
+	},
+	"hasField": func(v interface{}, name string) bool {
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Ptr {
+			rv = rv.Elem()
+		}
+		if rv.Kind() != reflect.Struct {
+			return false
+		}
+		return rv.FieldByName(name).IsValid()
 	},
 }
 

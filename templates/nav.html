@@ -1,12 +1,12 @@
 <nav>
-    <a href="/" class="brand">webmcast</a>
+    <a href="/" class="brand">webmcast{{if hasField . "ID"}}: @{{.ID}}{{end}}</a>
     <x-spacer></x-spacer>
 {{- if .User }}
     <span>Hi, <a href="/user/">{{.User.Login}}</a>.</span>
     <a href="/user/logout">Log out</a>
 {{- else }}
     <a href="/user/login">Log in</a>
-    <a href="/user/new" class="button">Sign up</a>
+    <a href="/user/new">Sign up</a>
 {{- end }}
     <template id="login-form-template">
         <x-modal data-tabs data-scrollbar data-remote-element="#formset" data-action="/user/login"></x-modal>

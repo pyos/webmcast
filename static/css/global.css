@@ -447,6 +447,14 @@ x-modal-bg > .close {
     position: absolute;
     top: 0;
     right: 0;
+    color: #777;
+    opacity: 0.66;
+}
+
+@media (min-width: 27em) {
+    x-modal-bg > .close {
+        display: none;
+    }
 }
 
 x-modal-bg > .close::before {
