@@ -145,7 +145,7 @@ func (ctx *RetransmissionHandler) watch(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusOK)
 	f, flushable := w.(http.Flusher)
 
-	ch := make(chan []byte, 60)
+	ch := make(chan []byte, 240)
 	defer close(ch)
 
 	stream.Connect(ch, false)

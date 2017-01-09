@@ -139,6 +139,74 @@ func (t ebmlTag) Skip(data []byte) []byte {
 	return data[uint64(t.Consumed)+t.Length:]
 }
 
+type frame struct {
+	buf   []byte
+	track uint64
+	key   bool
+}
+
+type framebuffer struct {
+	data  []frame
+	start int
+}
+
+func (fb *framebuffer) PushCluster(buf []byte) {
+	fb.PushFrame(buf, 64, false)
+}
+
+func (fb *framebuffer) PushFrame(buf []byte, track uint64, key bool) {
+	if len(fb.data) == cap(fb.data) {
+		fb.data[fb.start] = frame{buf, track, key}
+		fb.start = (fb.start + 1) % len(fb.data)
+	} else {
+		fb.data = append(fb.data, frame{buf, track, key})
+	}
+}
+
+func (fb *framebuffer) Read(cluster []byte, cb func(cluster []byte, forceCluster bool, buf []byte, track uint64, key bool)) {
+	forceCluster := true
+	for i, s, n := 0, fb.start, len(fb.data); i < n; i++ {
+		f := fb.data[(i+s)%n]
+		if f.track == 64 {
+			cluster = f.buf
+			forceCluster = true
+		} else {
+			cb(cluster, forceCluster, f.buf, f.track, f.key)
+			forceCluster = false
+		}
+	}
+}
+
+type viewer struct {
+	// This function may return `false` to signal that it cannot write any more data.
+	// The stream will resynchronize at next keyframe.
+	write func(data []byte) bool
+	// Viewers may hop between streams, but should only receive headers once.
+	// This includes track info, as codecs must stay the same between segments.
+	skipHeaders bool
+	// We group blocks into indeterminate-length clusters. So long as
+	// the cluster's timecode has not changed, there's no need to start a new one.
+	skipCluster bool
+	// Bit vector of tracks for which the viewer has both reference frames
+	// (the previous frame and the last keyframe.)
+	seenKeyframes uint32
+}
+
+func (cb *viewer) WriteFrame(cluster []byte, forceCluster bool, buf []byte, track uint64, key bool) {
+	trackMask := uint32(1) << track
+	if key {
+		cb.seenKeyframes |= trackMask
+	}
+	if cb.seenKeyframes&trackMask != 0 {
+		if !cb.skipCluster || forceCluster {
+			cb.skipCluster = cb.write(cluster)
+		}
+		if !cb.skipCluster || !cb.write(buf) {
+			cb.seenKeyframes &= ^trackMask
+		}
+	}
+}
+
 type BroadcastSet struct {
 	mutex   sync.Mutex
 	streams map[string]*Broadcast
@@ -157,6 +225,7 @@ type Broadcast struct {
 	buffer  []byte
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
+	frames  framebuffer
 	// outbound blocks must have monotonically increasing timecodes even if the inbound
 	// stream restarts from the beginning, so we'll shift clusters' timecodes.
 	blockTimecode       uint64
@@ -172,21 +241,6 @@ type Broadcast struct {
 
 	vlock   sync.Mutex
 	viewers map[chan<- []byte]*viewer
-}
-
-type viewer struct {
-	// This function may return `false` to signal that it cannot write any more data.
-	// The stream will resynchronize at next keyframe.
-	write func(data []byte) bool
-	// Viewers may hop between streams, but should only receive headers once.
-	// This includes track info, as codecs must stay the same between segments.
-	skipHeaders bool
-	// We group blocks into indeterminate-length clusters. So long as
-	// the cluster's timecode has not changed, there's no need to start a new one.
-	skipCluster bool
-	// Bit vector of tracks for which the viewer has both reference frames
-	// (the previous frame and the last keyframe.)
-	seenKeyframes uint32
 }
 
 func (ctx *BroadcastSet) Readable(id string) (*Broadcast, bool) {
@@ -213,8 +267,10 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 		return cast, true
 	}
 	cast := Broadcast{
-		closing: -1,
-		viewers: make(map[chan<- []byte]*viewer),
+		closing:             -1,
+		frames:              framebuffer{make([]frame, 0, 240), 0},
+		viewers:             make(map[chan<- []byte]*viewer),
+		sentClusterTimecode: 0xFFFFFFFFFFFFFFFF,
 	}
 	ctx.streams[id] = &cast
 	go func() {
@@ -483,16 +539,19 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 			ctc := cast.recvClusterTimecode
 			cluster := []byte{
-				ebmlTagCluster >> 24 & 0xFF,
-				ebmlTagCluster >> 16 & 0xFF,
-				ebmlTagCluster >> 8 & 0xFF,
-				ebmlTagCluster & 0xFF, 0xFF,
+				// indeterminate length cluster
+				ebmlTagCluster >> 24 & 0xFF, ebmlTagCluster >> 16 & 0xFF, ebmlTagCluster >> 8 & 0xFF, ebmlTagCluster & 0xFF, 0xFF,
+				// first child: 8-byte timecode
 				ebmlTagTimecode, 0x88,
 				byte(ctc >> 56), byte(ctc >> 48), byte(ctc >> 40), byte(ctc >> 32),
 				byte(ctc >> 24), byte(ctc >> 16), byte(ctc >> 8), byte(ctc),
 			}
+			forceCluster := ctc != cast.sentClusterTimecode
+			if forceCluster {
+				cast.frames.PushCluster(cluster)
+			}
+			cast.frames.PushFrame(buf, track, key)
 
-			trackMask := uint32(1) << track
 			cast.vlock.Lock()
 			for _, cb := range cast.viewers {
 				if !cb.skipHeaders {
@@ -500,18 +559,9 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 						continue
 					}
 					cb.skipHeaders = true
+					cast.frames.Read(cluster, cb.WriteFrame)
 				}
-				if key {
-					cb.seenKeyframes |= trackMask
-				}
-				if cb.seenKeyframes&trackMask != 0 {
-					if !cb.skipCluster || ctc != cast.sentClusterTimecode {
-						cb.skipCluster = cb.write(cluster)
-					}
-					if !cb.skipCluster || !cb.write(buf) {
-						cb.seenKeyframes &= ^trackMask
-					}
-				}
+				cb.WriteFrame(cluster, forceCluster, buf, track, key)
 			}
 			cast.vlock.Unlock()
 			cast.sentClusterTimecode = ctc
