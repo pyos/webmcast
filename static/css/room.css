@@ -123,8 +123,16 @@
     transition: opacity 0.3s ease-in-out;
 }
 
-.player.has-video[data-status="playing"] .controls,
-.player.has-video[data-status="paused"] .controls {
+.player:not([data-status="ended"]).pinned .controls {
+    position: fixed;
+    bottom: 100%;
+    z-index: 6;
+    transform: translateY(100%);
+    background: inherit;
+}
+
+.player.has-video[data-status="playing"]:not(.pinned) .controls,
+.player.has-video[data-status="paused"]:not(.pinned) .controls {
     padding-top: 1rem;
     background: linear-gradient(0deg,rgba(0,0,0,0.5),transparent);
 }
@@ -133,7 +141,8 @@
     cursor: none;
 }
 
-.player.has-video[data-status="playing"].hide-controls .controls:not(:hover) {
+.player.has-video[data-status="playing"]:not(.pinned):not(:hover) .controls,
+.player.has-video[data-status="playing"]:not(.pinned).hide-controls .controls:not(:hover) {
     opacity: 0;
 }
 
@@ -317,6 +326,9 @@ body.aside-chat .player .theatre,
 .player:not(.has-video) .collapse,
 .player:not(.has-video) .fullscreen,
 .player:not(.muted) .unmute,
+.player.pinned .theatre,
+.player.pinned .collapse,
+.player.pinned .fullscreen,
 .player.muted .mute,
 .player.is-fullscreen .theatre,
 .player.is-fullscreen .fullscreen,

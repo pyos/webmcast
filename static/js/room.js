@@ -340,4 +340,18 @@ $.extend({
             i.focus();
         });
     },
+
+    'main'(e) {
+        let player = e.querySelector('.player');
+        let switched = false;
+        e.addEventListener('scroll', ev => {
+            let s = player.getBoundingClientRect().bottom <= 0;
+            if (!switched && s) {
+                player.classList.add('pinned');
+            } else if (switched && !s) {
+                player.classList.remove('pinned');
+            }
+            switched = s;
+        });
+    },
 });
