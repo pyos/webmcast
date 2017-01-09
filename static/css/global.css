@@ -239,7 +239,8 @@ x-tabbar > .active {
     z-index: 2;
 }
 
-[data-status="loading"]::before {
+[data-status="loading"]::before,
+[data-status][data-status-ui="loading"]::before {
     animation: spin 1.33s infinite linear;
     border: 0.1em solid rgba(255,255,255,0.2);
     border-radius: 50%;
@@ -249,7 +250,8 @@ x-tabbar > .active {
     content: '';
 }
 
-[data-status="error"]::before {
+[data-status="error"]::before,
+[data-status][data-status-ui="error"]::before {
     content: '\f071';  /* exclamation-triangle */
 }
 

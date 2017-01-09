@@ -223,7 +223,6 @@ $.extend({
     },
 
     '.player'(e) {
-        // TODO playing, waiting, stalled (not sure whether these events are actually emitted)
         let video  = e.querySelector('video');
         let status = e.querySelector('.status');
         let volume = e.querySelector('.volume');
@@ -231,6 +230,7 @@ $.extend({
 
         let setStatus = (short, long) => {
             e.dataset.status = short;
+            e.dataset.statusUi = '';
             status.textContent = long || short;
         };
 
@@ -281,6 +281,8 @@ $.extend({
         video.addEventListener('ended',          _ => setError(4 /* "unsupported media" */));
         video.addEventListener('error',          _ => setError(video.error.code));
         video.addEventListener('playing',        _ => setTime(video.currentTime));
+        video.addEventListener('stalled',        _ => e.dataset.statusUi = 'loading');
+        video.addEventListener('waiting',        _ => e.dataset.statusUi = 'loading');
         video.addEventListener('timeupdate',     _ => setTime(video.currentTime));
         video.addEventListener('volumechange',   _ => setVolume(video.volume, video.muted));
         $.observeData(e, 'src', '', src => (video.src = src) ? ignoreErrors(video.play()) : setError(4));
