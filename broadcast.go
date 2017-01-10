@@ -272,7 +272,7 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 	}
 	cast := Broadcast{
 		closing:             -1,
-		frames:              framebuffer{make([]frame, 0, 240), 0, nil},
+		frames:              framebuffer{make([]frame, 0, 120), 0, nil},
 		viewers:             make(map[chan<- []byte]*viewer),
 		sentClusterTimecode: 0xFFFFFFFFFFFFFFFF,
 	}
