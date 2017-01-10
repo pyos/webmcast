@@ -344,16 +344,27 @@ $.extend({
     },
 
     'main'(e) {
+        const SCROLL_RANGE = 30;
         let player = e.querySelector('.player');
         let switched = false;
-        e.addEventListener('scroll', ev => {
-            let s = player.getBoundingClientRect().bottom <= 0;
-            if (!switched && s) {
-                player.classList.add('pinned');
-            } else if (switched && !s) {
-                player.classList.remove('pinned');
+        let scrollToIfNear = $.delayedPair(500,
+            pos => {},
+            pos => {
+                if (Math.abs(e.scrollTop - pos) < SCROLL_RANGE)
+                    e.scrollTop = pos;  // TODO: smoothly?
             }
-            switched = s;
+        );
+        e.addEventListener('scroll', ev => {
+            let r = player.getBoundingClientRect();
+            if (!switched && r.bottom <= 0) {
+                player.classList.add('pinned');
+                switched = true;
+            } else if (switched && r.bottom > 0) {
+                player.classList.remove('pinned');
+                switched = false;
+            } else if ((r.bottom - r.top) > e.clientHeight - SCROLL_RANGE && Math.abs(r.top) < SCROLL_RANGE) {
+                scrollToIfNear(r.top + e.scrollTop);
+            }
         });
     },
 });

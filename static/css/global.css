@@ -592,12 +592,11 @@ x-columns > * {
 
 x-panel {
     display: block;
-    padding: 0 1rem;
+    padding: 1px 1rem;
     margin-bottom: 1rem;
     position: relative;
     word-wrap: break-word;
     background: #f7f7f3;
-    border: 1px solid #f7f7f3;
 }
 
 x-panel-footer {
@@ -605,13 +604,13 @@ x-panel-footer {
     background: #eee;
     font-style: italic;
     align-items: center;
-    margin: 0 -1rem;
+    margin: -1px -1rem;
     padding: 1rem;
 }
 
 x-panel.dotted {
-    background: #fff;
-    border: 3px dashed #f7f7f3;
+    background: none;
+    border: 3px dashed #eee;
 }
 
 x-panel.dotted > x-panel-footer {
