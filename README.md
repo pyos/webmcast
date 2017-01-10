@@ -92,10 +92,10 @@ Tips:
     the same stream), as long as they contain the same tracks and use the same codecs.
     For example, you can switch bitrate mid-stream by restarting ffmpeg.
 
-  * Sending frames faster than they are played back is OK. However, the server
-    does not have a buffer, so any frames sent before a client has connected
-    will not be received by said client, regardless of the actual passage of time.
-    *ffmpeg tip: `-re` caps output speed at one frame per frame, if that makes any sense.*
+  * Sending frames faster than they are played back is OK. However, frames may or may
+    not get dropped if buffers overflow, and clients that do not connect at the same time
+    are likely to be severely desynchronized (and confused). *ffmpeg tip: `-re` caps output
+    speed at one frame per frame. gstreamer does that by default.*
 
 #### How To View Stuff
 
