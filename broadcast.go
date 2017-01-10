@@ -320,14 +320,15 @@ func (cast *Broadcast) Close() error {
 }
 
 func (cast *Broadcast) Connect(ch chan<- []byte, skipHeaders bool) {
+	blocked := false
 	write := func(data []byte) bool {
 		// `Broadcast.Write` emits data in block-sized chunks.
 		// Thus the buffer size is measured in frames, not bytes.
-		if len(ch) == cap(ch) {
-			return false
+		blocked = len(ch) == cap(ch) || (blocked && len(ch)*2 >= cap(ch))
+		if !blocked {
+			ch <- data
 		}
-		ch <- data
-		return true
+		return !blocked
 	}
 
 	cast.vlock.Lock()
