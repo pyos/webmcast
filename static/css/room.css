@@ -1,12 +1,3 @@
-.bg {
-    background: #222;
-    color: #fff;
-}
-
-.bg a:not(.brand):not(.button) {
-    color: #caa9d1;
-}
-
 .nsfw-message {
     position: absolute;
     top: 0;
@@ -50,31 +41,6 @@
     flex: 1;
     min-height: 3.33em;
     position: relative;
-}
-
-/* NOTE: in @media, 1em = 16px (rem = 14/16 * em) */
-@media (min-width: 66.5em) and (max-width: 80.5em) {
-    body:not(.audio-only) nav,
-    body:not(.audio-only) section:not(.player-block),
-    body:not(.audio-only) footer {
-        max-width: 100%;
-    }
-}
-
-@media (min-width: 73.5em) and (max-width: 80.5em) {
-    body:not(.audio-only) .player-block {
-        max-width: calc(100% - 4rem);  /* add padding that is already present on other elements */
-    }
-}
-
-@media (min-width: 80.5em) and (min-height: 46em) {
-    nav, section, footer { max-width: 92rem; }
-    .player-block { max-width: 88rem; }
-}
-
-@media (min-width: 92.75em) and (min-height: 53em) {
-    nav, section, footer { max-width: 106rem; }
-    .player-block { max-width: 102rem; }
 }
 
 .player.has-video::after {
@@ -236,6 +202,12 @@
     overflow: hidden;
 }
 
+body:not(.aside-chat) .chat {
+    background: #222;
+    color: #fff;
+    box-shadow: 0 0 6px rgba(0,0,0,0.5) inset;
+}
+
 .chat h1 {
     margin: 0 1em;
     padding: 0.5em 0;
@@ -259,12 +231,6 @@
     margin-top: auto;
 }
 
-.chat .offline-message {
-    color: #666;
-    padding: 0.91em 1em;
-    font-style: italic;
-}
-
 .chat .name {
     font-weight: bold;
     margin-right: 0.33em;
@@ -274,6 +240,12 @@
     font: normal 1em/1 FontAwesome;
     content: '\f21b';  /* user-secret */
     margin-right: 0.33em;
+}
+
+.chat .offline-message {
+    color: #666;
+    padding: 0.91em 1em;
+    font-style: italic;
 }
 
 .chat form {
@@ -364,6 +336,7 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
 
     body.aside-chat .chat {
         top: calc(100% + 2rem);
+        right: 2rem;
         height: calc(100vh - 7.33em);
         max-height: 45rem;
         margin-left: -20rem;
@@ -373,7 +346,7 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
     body.aside-chat .stream-header,
     body.aside-chat .stream-meta,
     body.aside-chat footer {
-        padding-right: 22rem;
+        padding-right: 24rem;
     }
 }
 
@@ -415,4 +388,45 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
     .player-block.theatre .player .controls {
         padding-right: 2em;  /* avoid overlap with .chat-tab */
     }
+}
+
+/* NOTE: in @media, 1em = 16px (rem = 14/16 * em) */
+@media (min-height: 46em) {
+    @media (min-width: 66.5em) and (max-width: 80.5em) {
+        body:not(.audio-only) nav,
+        body:not(.audio-only) section:not(.player-block),
+        body:not(.audio-only) footer {
+            max-width: 100%;
+        }
+    }
+
+    @media (min-width: 70em) and (max-width: 73.5em) {
+        body:not(.audio-only).aside-chat .chat {
+            right: calc((84rem - 100vw) / 2);
+        }
+    }
+
+    @media (min-width: 73.5em) {
+        body:not(.audio-only).aside-chat .chat {
+            right: 0;
+        }
+
+        body:not(.audio-only) .player-block {
+            max-width: calc(100% - 4rem);
+        }
+    }
+
+    @media (min-width: 80.5em) {
+        body:not(.audio-only) nav,
+        body:not(.audio-only) section,
+        body:not(.audio-only) footer { max-width: 92rem; }
+        body:not(.audio-only) .player-block { max-width: 88rem; }
+    }
+}
+
+@media (min-width: 92.75em) and (min-height: 53em) {
+    body:not(.audio-only) nav,
+    body:not(.audio-only) section,
+    body:not(.audio-only) footer { max-width: 106rem; }
+    body:not(.audio-only) .player-block { max-width: 102rem; }
 }
