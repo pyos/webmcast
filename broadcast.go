@@ -355,13 +355,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 		if tag.ID == ebmlTagSegment || tag.ID == ebmlTagTracks || tag.ID == ebmlTagCluster {
 			// Parse the contents of these tags in the same loop.
 			buf = buf[:tag.Consumed]
-			// Chrome crashes if an indeterminate length is not encoded as 0xFF.
-			// If we want to recode it, we'll also need some space for a Void tag.
-			if tag.Length == ebmlIndeterminate && tag.Consumed >= 7 {
-				cast.buffer[4] = 0xFF
-				cast.buffer[5] = ebmlTagVoid
-				cast.buffer[6] = 0x80 | byte(tag.Consumed-7)
-			}
 		} else {
 			total := tag.Length + uint64(tag.Consumed)
 			if total > 1024*1024 {
@@ -399,7 +392,8 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 		case ebmlTagSegment:
 			cast.StreamTrackInfo = StreamTrackInfo{}
-			cast.tracks = append([]byte{}, buf...)
+			// Always reset length to indeteminate.
+			cast.tracks = append([]byte{}, buf[0], buf[1], buf[2], buf[3], 0xFF)
 			// Will recalculate this when the first block arrives.
 			cast.timecodeShift = 0
 
