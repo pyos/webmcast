@@ -356,6 +356,9 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			// Parse the contents of these tags in the same loop.
 			buf = buf[:tag.Consumed]
 		} else {
+			if tag.Length == ebmlIndeterminate {
+				return 0, errors.New("exact length required for all tags but Segments and Clusters")
+			}
 			total := tag.Length + uint64(tag.Consumed)
 			if total > 1024*1024 {
 				return 0, errors.New("data block too big")
