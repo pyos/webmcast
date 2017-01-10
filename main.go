@@ -58,7 +58,7 @@ func main() {
 	ctx := Context{
 		Database:        NewAnonDatabase(),
 		SecureKey:       []byte("12345678901234567890123456789012"),
-		StreamKeepAlive: 10 * time.Second,
+		StreamKeepAlive: 20 * time.Second,
 	}
 	if !*ephemeral {
 		var err error
