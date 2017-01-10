@@ -550,10 +550,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			packed := frame{buf, track, key}
 
 			forceCluster := ctc != cast.sentClusterTimecode
-			if forceCluster {
-				cast.frames.PushCluster(cluster)
-			}
-			cast.frames.PushFrame(packed)
 			cast.vlock.Lock()
 			for _, cb := range cast.viewers {
 				if !cb.skipHeaders {
@@ -566,6 +562,10 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				cb.WriteFrame(cluster, forceCluster, packed)
 			}
 			cast.vlock.Unlock()
+			if forceCluster {
+				cast.frames.PushCluster(cluster)
+			}
+			cast.frames.PushFrame(packed)
 			cast.sentClusterTimecode = ctc
 
 		default:
