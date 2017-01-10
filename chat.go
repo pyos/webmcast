@@ -11,7 +11,7 @@ import (
 
 type Chat struct {
 	events  chan interface{}
-	Users   map[*chatter]int // A hash set. Values are ignored.
+	Users   map[*chatter]struct{}
 	History ChatMessageQueue
 }
 
@@ -38,8 +38,7 @@ func (q *ChatMessageQueue) Push(x ChatMessage) {
 		q.data[q.start] = x
 		q.start = (q.start + 1) % len(q.data)
 	} else {
-		q.data = q.data[:len(q.data)+1]
-		q.data[len(q.data)-1] = x
+		q.data = append(q.data, x)
 	}
 }
 
@@ -57,7 +56,7 @@ func (q *ChatMessageQueue) Iterate(f func(x ChatMessage) error) error {
 func NewChat(qsize int) *Chat {
 	ctx := &Chat{
 		events:  make(chan interface{}),
-		Users:   make(map[*chatter]int),
+		Users:   make(map[*chatter]struct{}),
 		History: ChatMessageQueue{make([]ChatMessage, 0, qsize), 0},
 	}
 	go ctx.handle()
@@ -84,7 +83,7 @@ func (c *Chat) handle() {
 					return // if these events were left unhandled, senders would block forever
 				}
 			} else {
-				c.Users[event] = 0
+				c.Users[event] = struct{}{}
 			}
 			for u := range c.Users {
 				u.pushViewerCount()
