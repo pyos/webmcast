@@ -140,38 +140,42 @@ func (t ebmlTag) Skip(data []byte) []byte {
 }
 
 type frame struct {
-	buf   []byte
-	track uint64
+	buf   []byte // Either a Block(Group) or a Cluster.
+	track uint64 // 64 for a Cluster (track masks are 32-bit, so streams with a real 64-th track are rejected)
 	key   bool
 }
 
 type framebuffer struct {
-	data  []frame
-	start int
+	data        []frame
+	start       int
+	headCluster []byte // Last Cluster popped off the ring. Blocks at the head still belong to it.
 }
 
 func (fb *framebuffer) PushCluster(buf []byte) {
-	fb.PushFrame(buf, 64, false)
+	fb.PushFrame(frame{buf, 64, false})
 }
 
-func (fb *framebuffer) PushFrame(buf []byte, track uint64, key bool) {
+func (fb *framebuffer) PushFrame(packed frame) {
 	if len(fb.data) == cap(fb.data) {
-		fb.data[fb.start] = frame{buf, track, key}
+		if fb.data[fb.start].track == 64 {
+			fb.headCluster = fb.data[fb.start].buf
+		}
+		fb.data[fb.start] = packed
 		fb.start = (fb.start + 1) % len(fb.data)
 	} else {
-		fb.data = append(fb.data, frame{buf, track, key})
+		fb.data = append(fb.data, packed)
 	}
 }
 
-func (fb *framebuffer) Read(cluster []byte, cb func(cluster []byte, forceCluster bool, buf []byte, track uint64, key bool)) {
-	forceCluster := true
+func (fb *framebuffer) Read(cb func(cluster []byte, forceCluster bool, packed frame)) {
+	cluster, forceCluster := fb.headCluster, true
 	for i, s, n := 0, fb.start, len(fb.data); i < n; i++ {
 		f := fb.data[(i+s)%n]
 		if f.track == 64 {
 			cluster = f.buf
 			forceCluster = true
-		} else {
-			cb(cluster, forceCluster, f.buf, f.track, f.key)
+		} else if cluster != nil {
+			cb(cluster, forceCluster, f)
 			forceCluster = false
 		}
 	}
@@ -192,16 +196,16 @@ type viewer struct {
 	seenKeyframes uint32
 }
 
-func (cb *viewer) WriteFrame(cluster []byte, forceCluster bool, buf []byte, track uint64, key bool) {
-	trackMask := uint32(1) << track
-	if key {
+func (cb *viewer) WriteFrame(cluster []byte, forceCluster bool, packed frame) {
+	trackMask := uint32(1) << packed.track
+	if packed.key {
 		cb.seenKeyframes |= trackMask
 	}
 	if cb.seenKeyframes&trackMask != 0 {
 		if !cb.skipCluster || forceCluster {
 			cb.skipCluster = cb.write(cluster)
 		}
-		if !cb.skipCluster || !cb.write(buf) {
+		if !cb.skipCluster || !cb.write(packed.buf) {
 			cb.seenKeyframes &= ^trackMask
 		}
 	}
@@ -268,7 +272,7 @@ func (ctx *BroadcastSet) Writable(id string) (*Broadcast, bool) {
 	}
 	cast := Broadcast{
 		closing:             -1,
-		frames:              framebuffer{make([]frame, 0, 240), 0},
+		frames:              framebuffer{make([]frame, 0, 240), 0, nil},
 		viewers:             make(map[chan<- []byte]*viewer),
 		sentClusterTimecode: 0xFFFFFFFFFFFFFFFF,
 	}
@@ -543,22 +547,23 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 				byte(ctc >> 56), byte(ctc >> 48), byte(ctc >> 40), byte(ctc >> 32),
 				byte(ctc >> 24), byte(ctc >> 16), byte(ctc >> 8), byte(ctc),
 			}
+			packed := frame{buf, track, key}
+
 			forceCluster := ctc != cast.sentClusterTimecode
 			if forceCluster {
 				cast.frames.PushCluster(cluster)
 			}
-			cast.frames.PushFrame(buf, track, key)
-
+			cast.frames.PushFrame(packed)
 			cast.vlock.Lock()
 			for _, cb := range cast.viewers {
 				if !cb.skipHeaders {
 					if !cb.write(cast.header) || !cb.write(cast.tracks) {
-						continue
+						continue // FIXME: if second write failed, the stream will not be a valid mkv
 					}
 					cb.skipHeaders = true
-					cast.frames.Read(cluster, cb.WriteFrame)
+					cast.frames.Read(cb.WriteFrame)
 				}
-				cb.WriteFrame(cluster, forceCluster, buf, track, key)
+				cb.WriteFrame(cluster, forceCluster, packed)
 			}
 			cast.vlock.Unlock()
 			cast.sentClusterTimecode = ctc
