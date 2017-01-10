@@ -399,7 +399,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 		case ebmlTagSegment:
 			cast.StreamTrackInfo = StreamTrackInfo{}
-			// Always reset length to indeteminate.
+			// Always reset length to indeterminate.
 			cast.tracks = append([]byte{}, buf[0], buf[1], buf[2], buf[3], 0xFF)
 			// Will recalculate this when the first block arrives.
 			cast.timecodeShift = 0
