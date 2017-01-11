@@ -198,11 +198,14 @@ type viewer struct {
 
 func (cb *viewer) WriteFrame(cluster []byte, forceCluster bool, packed frame) {
 	trackMask := uint32(1) << packed.track
+	if forceCluster {
+		cb.skipCluster = false
+	}
 	if packed.key {
 		cb.seenKeyframes |= trackMask
 	}
 	if cb.seenKeyframes&trackMask != 0 {
-		if !cb.skipCluster || forceCluster {
+		if !cb.skipCluster {
 			cb.skipCluster = cb.write(cluster)
 		}
 		if !cb.skipCluster || !cb.write(packed.buf) {
