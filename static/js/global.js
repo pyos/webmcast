@@ -260,6 +260,24 @@ $.extend({
     },
 
     'x-columns'(e) {
+        let equalize = (cols) => {
+            let my = 0;
+            let mh = 0;
+            for (let i = 0; i < cols.length; i++) {
+                if (my < cols[i].offsetTop)
+                    my = cols[i].offsetTop, mh = 0;
+                if (my === cols[i].offsetTop)
+                    mh = Math.max(mh, cols[i].offsetHeight);
+            }
+            for (let i = 0; i < cols.length; i++) {
+                if (my === cols[i].offsetTop && mh !== cols[i].offsetHeight) {
+                    let c = document.createElement('div');
+                    c.style.height = `${mh - cols[i].offsetHeight}px`;
+                    c.dataset.order = Infinity;
+                    cols[i].appendChild(c);
+                }
+            }
+        }
         let reflow = () => {
             mut.disconnect();
             // keep total size constant while inner elements are being repositioned
@@ -270,11 +288,17 @@ $.extend({
             for (let c of cols)
                 c.innerHTML = '';
             for (let c of cells.sort((x, y) => x.dataset.order - y.dataset.order)) {
+                if (c.dataset.order == 'Infinity')
+                    continue;
+                if (c.dataset.onlyInRow)
+                    equalize(cols);
                 let k = 0;
                 for (let i = 1; i < cols.length; i++)
                     if (cols[i].offsetTop + cols[i].offsetHeight < cols[k].offsetTop + cols[k].offsetHeight)
                         k = i;
                 cols[k].appendChild(c);
+                if (c.dataset.onlyInRow)
+                    equalize(cols);
             }
             e.style.height = '';
             mut.observe(e, opt);

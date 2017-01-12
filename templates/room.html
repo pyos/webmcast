@@ -9,9 +9,10 @@
     </head>
     <!-- {{$NSFW := and .Meta.NSFW (or .Online (not .Live))}} -->
     <body class="{{if not .Meta.HasVideo}}aside-chat audio-only{{end}}"
-            {{- if .Live}} data-stream-id="{{.ID}}"{{else}} data-stream-src="/static/recorded/{{.Meta.Path}}"{{end}} {{if $NSFW}}data-unconfirmed{{end}}>
+            {{- if .Live}} data-stream-id="{{.ID}}"{{else}} data-stream-src="/static/recorded/{{.Meta.Path}}"{{end}}
+            {{- if $NSFW}} data-unconfirmed{{end}}>
+        {{ template "nav.html" . }}
         <div class="bg">
-            {{ template "nav.html" . }}
             <section class="player-block">
                 <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
                                   {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
@@ -106,7 +107,7 @@
                     </x-panel>
                 {{- end }}
                 {{- if .Editable }}
-                    <x-panel class="dotted" data-order="-{{len .Meta.Panels}}">
+                    <x-panel class="dotted" data-order="-{{len .Meta.Panels}}" data-only-in-row="1">
                         <p data-markup></p>
                         <x-panel-footer>
                             <span>New panel</span>
