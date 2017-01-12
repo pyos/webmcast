@@ -202,12 +202,6 @@
     overflow: hidden;
 }
 
-body:not(.aside-chat) .chat {
-    background: #222;
-    color: #fff;
-    box-shadow: 0 0 6px rgba(0,0,0,0.5) inset;
-}
-
 .chat h1 {
     margin: 0 1em;
     padding: 0.5em 0;
@@ -251,7 +245,7 @@ body:not(.aside-chat) .chat {
 .chat form {
     position: relative;
     text-align: right;
-    padding: 0 1em;
+    padding: 1em 1em 0 1em;
 }
 
 .chat form .error {
@@ -340,7 +334,13 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
         height: calc(100vh - 7.33em);
         max-height: 45rem;
         margin-left: -20rem;
-        color: #222;
+        margin-bottom: 2rem;
+        background: #f7f7f3;
+    }
+
+    body.aside-chat .chat .offline-message,
+    body.aside-chat .chat form {
+        background: #eee;
     }
 
     body.aside-chat .stream-header,
@@ -361,7 +361,7 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
         left: 100%;
         bottom: 0;
         z-index: 128;
-        background: #0a0a0a;
+        background: rgba(255,255,255,0.9);
         transition: transform 0.4s ease-in-out;
     }
 
@@ -373,7 +373,7 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
         height: 2.82em;
         z-index: 127;
         background: #0a0a0a;
-        border-left: 1px solid #333;
+        border-left: 1px solid #555;
         transform: rotate(45deg);
     }
 

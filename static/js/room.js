@@ -172,7 +172,7 @@ let withRPC = rpc => ({
             let nameSpan = document.createElement('span');
             let textSpan = document.createElement('span');
             nameSpan.classList.add('name');
-            nameSpan.style.color = `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 50}%)`;
+            nameSpan.style.color = `hsl(${h % 359},${(h / 359|0) % 60 + 30}%,${((h / 359|0) / 60|0) % 30 + 10}%)`;
             nameSpan.textContent = name;
             nameSpan.setAttribute('title', login);
             textSpan.textContent = text;
