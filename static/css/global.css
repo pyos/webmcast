@@ -14,15 +14,7 @@ html {
 
 html, body {
     margin: 0;
-    overflow: hidden;
     position: relative;
-}
-
-@media screen {
-    html, body, main[data-scrollbar] {
-        /* this is easier than dealing with `overflow:scroll` on `body`. */
-        height: 100%;
-    }
 }
 
 h1, h2, h3 {

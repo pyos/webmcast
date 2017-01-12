@@ -314,6 +314,26 @@ $.extend({
         e.addEventListener('mousemove', showControls);
         e.addEventListener('focusin',   showControls);
         e.addEventListener('keydown',   showControls);
+
+        const SCROLL_RANGE = 30;
+        let scrollIfNear = $.delayedPair(500,
+            () => {},
+            () => {
+                let r = e.getBoundingClientRect();
+                if (Math.abs(r.top) < SCROLL_RANGE)
+                    window.scrollBy({top: r.top, left: 0, behavior: 'smooth'});
+            }
+        );
+        window.addEventListener('scroll', ev => {
+            let r = e.getBoundingClientRect();
+            let s = e.classList.contains('pinned');
+            if (!s && r.bottom <= 0)
+                e.classList.add('pinned');
+            else if (s && r.bottom > 0)
+                e.classList.remove('pinned');
+            else if ((r.bottom - r.top) > window.innerHeight - SCROLL_RANGE && Math.abs(r.top) < SCROLL_RANGE)
+                scrollIfNear();
+        });
     },
 
     '.stream-header'(e) {
@@ -340,31 +360,6 @@ $.extend({
             e.insertBefore(f, e.children[0]);
             i.value = e.querySelector('[data-markup=""]').textContent;
             i.focus();
-        });
-    },
-
-    'main'(e) {
-        const SCROLL_RANGE = 30;
-        let player = e.querySelector('.player');
-        let switched = false;
-        let scrollToIfNear = $.delayedPair(500,
-            pos => {},
-            pos => {
-                if (Math.abs(e.scrollTop - pos) < SCROLL_RANGE)
-                    e.scrollTop = pos;  // TODO: smoothly?
-            }
-        );
-        e.addEventListener('scroll', ev => {
-            let r = player.getBoundingClientRect();
-            if (!switched && r.bottom <= 0) {
-                player.classList.add('pinned');
-                switched = true;
-            } else if (switched && r.bottom > 0) {
-                player.classList.remove('pinned');
-                switched = false;
-            } else if ((r.bottom - r.top) > e.clientHeight - SCROLL_RANGE && Math.abs(r.top) < SCROLL_RANGE) {
-                scrollToIfNear(r.top + e.scrollTop);
-            }
         });
     },
 });

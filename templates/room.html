@@ -10,127 +10,125 @@
     <!-- {{$NSFW := and .Meta.NSFW (or .Online (not .Live))}} -->
     <body class="{{if not .Meta.HasVideo}}aside-chat audio-only{{end}}"
             {{- if .Live}} data-stream-id="{{.ID}}"{{else}} data-stream-src="/static/recorded/{{.Meta.Path}}"{{end}} {{if $NSFW}}data-unconfirmed{{end}}>
-        <main data-scrollbar>
-            <div class="bg">
-                {{ template "nav.html" . }}
-                <section class="player-block">
-                    <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
-                                      {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
-                        <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
-                        <video crossorigin="anonymous"></video><div class="controls">
-                            <a href="#" class="button icon play" title="Play">&#xf04b;</a>
-                            <a href=""  class="button icon reload" title="Reload">&#xf021;</a>
-                            <a href="#" class="button icon stop" title="Stop">&#xf04c;</a>
-                            <a href="#" class="button icon mute" title="Mute">&#xf028;</a>
-                            <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
-                            <x-range tabindex="0" class="volume" title="Volume"></x-range>
-                            <div class="status">not connected</div>
-                            <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
-                            <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
-                            <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
-                            <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
-                        </div>
-                    {{- if $NSFW }}
-                        <div class="nsfw-message">
-                            <p>This stream is for a mature audience only. // <a href="#" class="confirm-age">Proceed</a></p>
-                        </div>
-                    {{- end }}
+        <div class="bg">
+            {{ template "nav.html" . }}
+            <section class="player-block">
+                <div class="player{{- if .Meta.HasVideo}} has-video{{end}}
+                                  {{- if .Meta.HasAudio}} has-audio{{end}}" data-src="" data-status="stopped">
+                    <svg width="{{or .Meta.Width 853}}" height="{{or .Meta.Height 480}}"></svg>
+                    <video crossorigin="anonymous"></video><div class="controls">
+                        <a href="#" class="button icon play" title="Play">&#xf04b;</a>
+                        <a href=""  class="button icon reload" title="Reload">&#xf021;</a>
+                        <a href="#" class="button icon stop" title="Stop">&#xf04c;</a>
+                        <a href="#" class="button icon mute" title="Mute">&#xf028;</a>
+                        <a href="#" class="button icon unmute" title="Unmute">&#xf026;</a>
+                        <x-range tabindex="0" class="volume" title="Volume"></x-range>
+                        <div class="status">not connected</div>
+                        <x-range tabindex="0" class="seek" title="Seek position" data-step="0.02"></x-range>
+                        <a href="#" class="button icon theatre" title="Theatre mode">&#xf065;</a>
+                        <a href="#" class="button icon collapse" title="Normal view">&#xf066;</a>
+                        <a href="#" class="button icon fullscreen" title="Fullscreen">&#xf0b2;</a>
                     </div>
-                    <div class="chat-tab"></div>
-                    <aside class="chat">
-                        <ul class="log" data-scrollbar></ul>
-                        <div class="offline-message">The chat is offline.</div>
-                        <form class="login-form" data-rpc="Chat.SetName">
-                            <textarea tabindex="1" cols="1" rows="1" placeholder="What's your name?" data-arg data-submit></textarea>
-                            <p class="error"></p>
-                            <a href="#" class="button icon join" title="Join" data-submit>&#xf090;</a>
-                        </form>
-                        <form class="input-form" data-rpc="Chat.SendMessage">
-                            <textarea tabindex="1" cols="1" rows="1" data-arg data-submit></textarea>
-                            <p class="error"></p>
-                            <a href="#" class="button icon ins-emoji" title="Emoji...">&#xf118;</a>
-                            <a href="#" class="button icon send" title="Send" data-submit>&#xf1d8;</a>
-                        </form>
-                    </aside>
-                </section>
-            </div>
-            <section class="stream-header user-header">
-                <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
-            {{- if .Editable }}
-                <template id="edit-name-template">
-                    <form method="POST" action="/user/set-stream-name">
-                        <input type="text" name="value" />
-                        <button type="submit">Save</button>
-                        <input type="checkbox" name="nsfw" value="yes" {{if .Meta.NSFW}}checked{{end}} />
-                        <label>Mature content</label>
-                    </form>
-                </template>
-                <a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>
-            {{- end }}
-                <h1 class="name">{{or .Meta.Name "<unnamed>"}}</h1>
-                <div>
-                    <span class="subheading">{{if not .Live}}<a href="/{{.ID}}">{{end}}{{or .Meta.UserName "anonymous"}}{{if not .Live}}</a>{{end}}</span>
-                    {{if not .Live}}<time>{{.Meta.Timestamp.Format "02.01.2006 15:04:05"}}</time>{{end}}
-                    <a href="/rec/{{.ID}}"><i class="icon">&#xf187;</i> Stream archives</a>
-                    <a href="{{if .Live}}/stream/{{.ID}}{{else}}/static/recorded/{{.Meta.Path}}{{end}}"><i class="icon">&#xf019;</i> Raw WebM</a>
-                    {{if .Meta.NSFW}}<x-badge>18+</x-badge>{{end}}
-                    <x-spacer></x-spacer>
-                    {{if .Live}}<span class="subheading" title="Viewers"><i class="icon">&#xf06e;</i> <span class="viewers">0</span></span>{{end}}
+                {{- if $NSFW }}
+                    <div class="nsfw-message">
+                        <p>This stream is for a mature audience only. // <a href="#" class="confirm-age">Proceed</a></p>
+                    </div>
+                {{- end }}
                 </div>
-            </section>
-            <section class="stream-meta" data-tabs>
-            {{- if .Editable }}
-                <template id="edit-panel-template">
-                    <form method="POST" action="/user/set-stream-panel">
-                        <input type="hidden" name="id" value="" />
-                        <textarea name="value" rows="6" cols="10"></textarea>
+                <div class="chat-tab"></div>
+                <aside class="chat">
+                    <ul class="log" data-scrollbar></ul>
+                    <div class="offline-message">The chat is offline.</div>
+                    <form class="login-form" data-rpc="Chat.SetName">
+                        <textarea tabindex="1" cols="1" rows="1" placeholder="What's your name?" data-arg data-submit></textarea>
                         <p class="error"></p>
-                        <button type="reset" class="secondary">Cancel</button>
-                        <button type="submit" class="remove secondary">Remove</button>
-                        <button type="submit">Save</button>
+                        <a href="#" class="button icon join" title="Join" data-submit>&#xf090;</a>
                     </form>
-                </template>
-            {{- end }}
-            {{- if or .Meta.Panels .Editable }}
-                <x-columns class="stream-about" data-tab="Stream description">
-                    <div>
-                    {{- range $id, $_ := .Meta.Panels }}
-                        <x-panel data-order="-{{$id}}">
-                            <p data-markup>{{.Text}}</p>
-                            <x-panel-footer>
-                                <time>{{.Created.Format "02.01.2006 15:04:05"}}</time>
-                            {{- if $.Editable }}
-                                <x-spacer></x-spacer>
-                                <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
-                            {{- end }}
-                            </x-panel-footer>
-                        </x-panel>
-                    {{- end }}
-                    {{- if .Editable }}
-                        <x-panel class="dotted" data-order="-{{len .Meta.Panels}}">
-                            <p data-markup></p>
-                            <x-panel-footer>
-                                <span>New panel</span>
-                                <x-spacer></x-spacer>
-                                <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
-                            </x-panel-footer>
-                        </x-panel>
-                    {{- end }}
-                    </div>
-                    <div></div>
-                </x-columns>
-            {{- end }}
-            {{- if .Meta.UserAbout }}
-                <x-panel data-tab="About {{.Meta.UserName}}">
-                    <p data-markup>{{.Meta.UserAbout}}</p>
-                </x-panel>
-            {{- end }}
+                    <form class="input-form" data-rpc="Chat.SendMessage">
+                        <textarea tabindex="1" cols="1" rows="1" data-arg data-submit></textarea>
+                        <p class="error"></p>
+                        <a href="#" class="button icon ins-emoji" title="Emoji...">&#xf118;</a>
+                        <a href="#" class="button icon send" title="Send" data-submit>&#xf1d8;</a>
+                    </form>
+                </aside>
             </section>
-            {{ template "footer.html" }}
-            <script src="/static/js/vendored.min.js"></script>
-            <script src="/static/js/global.js"></script>
-            <script src="/static/js/room.js"></script>
-            <script src="/static/js/emoji.js"></script>
-        </main>
+        </div>
+        <section class="stream-header user-header">
+            <img width="60" height="60" src="{{.Meta.Avatar 60}}" alt="{{.ID}}" />
+        {{- if .Editable }}
+            <template id="edit-name-template">
+                <form method="POST" action="/user/set-stream-name">
+                    <input type="text" name="value" />
+                    <button type="submit">Save</button>
+                    <input type="checkbox" name="nsfw" value="yes" {{if .Meta.NSFW}}checked{{end}} />
+                    <label>Mature content</label>
+                </form>
+            </template>
+            <a href="#" class="button icon edit" title="Edit name...">&#xf040;</a>
+        {{- end }}
+            <h1 class="name">{{or .Meta.Name "<unnamed>"}}</h1>
+            <div>
+                <span class="subheading">{{if not .Live}}<a href="/{{.ID}}">{{end}}{{or .Meta.UserName "anonymous"}}{{if not .Live}}</a>{{end}}</span>
+                {{if not .Live}}<time>{{.Meta.Timestamp.Format "02.01.2006 15:04:05"}}</time>{{end}}
+                <a href="/rec/{{.ID}}"><i class="icon">&#xf187;</i> Stream archives</a>
+                <a href="{{if .Live}}/stream/{{.ID}}{{else}}/static/recorded/{{.Meta.Path}}{{end}}"><i class="icon">&#xf019;</i> Raw WebM</a>
+                {{if .Meta.NSFW}}<x-badge>18+</x-badge>{{end}}
+                <x-spacer></x-spacer>
+                {{if .Live}}<span class="subheading" title="Viewers"><i class="icon">&#xf06e;</i> <span class="viewers">0</span></span>{{end}}
+            </div>
+        </section>
+        <section class="stream-meta" data-tabs>
+        {{- if .Editable }}
+            <template id="edit-panel-template">
+                <form method="POST" action="/user/set-stream-panel">
+                    <input type="hidden" name="id" value="" />
+                    <textarea name="value" rows="6" cols="10"></textarea>
+                    <p class="error"></p>
+                    <button type="reset" class="secondary">Cancel</button>
+                    <button type="submit" class="remove secondary">Remove</button>
+                    <button type="submit">Save</button>
+                </form>
+            </template>
+        {{- end }}
+        {{- if or .Meta.Panels .Editable }}
+            <x-columns class="stream-about" data-tab="Stream description">
+                <div>
+                {{- range $id, $_ := .Meta.Panels }}
+                    <x-panel data-order="-{{$id}}">
+                        <p data-markup>{{.Text}}</p>
+                        <x-panel-footer>
+                            <time>{{.Created.Format "02.01.2006 15:04:05"}}</time>
+                        {{- if $.Editable }}
+                            <x-spacer></x-spacer>
+                            <a href="#" class="button edit icon" title="Edit panel..." data-panel="{{$id}}">&#xf040;</a>
+                        {{- end }}
+                        </x-panel-footer>
+                    </x-panel>
+                {{- end }}
+                {{- if .Editable }}
+                    <x-panel class="dotted" data-order="-{{len .Meta.Panels}}">
+                        <p data-markup></p>
+                        <x-panel-footer>
+                            <span>New panel</span>
+                            <x-spacer></x-spacer>
+                            <a href="#" class="button icon edit" title="New panel..." data-panel="">&#xf040;</a>
+                        </x-panel-footer>
+                    </x-panel>
+                {{- end }}
+                </div>
+                <div></div>
+            </x-columns>
+        {{- end }}
+        {{- if .Meta.UserAbout }}
+            <x-panel data-tab="About {{.Meta.UserName}}">
+                <p data-markup>{{.Meta.UserAbout}}</p>
+            </x-panel>
+        {{- end }}
+        </section>
+        {{ template "footer.html" }}
+        <script src="/static/js/vendored.min.js"></script>
+        <script src="/static/js/global.js"></script>
+        <script src="/static/js/room.js"></script>
+        <script src="/static/js/emoji.js"></script>
     </body>
 </html>

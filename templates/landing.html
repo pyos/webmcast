@@ -16,14 +16,12 @@
         </style>
     </head>
     <body>
-        <div data-scrollbar>
-            {{ template "nav.html" . }}
-            <section id="fullscreen">
-                <h1></h1>
-                <p></p>
-            </section>
-            {{ template "footer.html" }}
-            <script src="/static/js/global.js"></script>
-        </div>
+        {{ template "nav.html" . }}
+        <section id="fullscreen">
+            <h1></h1>
+            <p></p>
+        </section>
+        {{ template "footer.html" }}
+        <script src="/static/js/global.js"></script>
     </body>
 </html>

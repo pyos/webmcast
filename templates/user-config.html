@@ -7,65 +7,63 @@
         <title>Your profile in webmcast</title>
     </head>
     <body>
-        <main data-scrollbar>
-            {{ template "nav.html" . }}
-            <section class="user-header">
-                <img width="60" height="60" src="{{.User.Avatar 60}}" alt="Gravatar" />
-                <h1>Hey there, {{.User.Name}}.</h1>
+        {{ template "nav.html" . }}
+        <section class="user-header">
+            <img width="60" height="60" src="{{.User.Avatar 60}}" alt="Gravatar" />
+            <h1>Hey there, {{.User.Name}}.</h1>
+            <div>
+                <span class="subheading">Stream actions:</span>
+                <a class="subheading" href="/stream/{{.User.Login}}?{{.User.StreamToken}}"><i class="icon">&#xf1e0;</i> Broadcast</a>
+                <a class="subheading" href="/{{.User.Login}}"><i class="icon">&#xf06e;</i> Watch</a>
+                <a class="subheading" href="/stream/{{.User.Login}}"><i class="icon">&#xf019;</i> Download</a>
+            </div>
+        </section>
+        <section style="padding: 0 1rem">
+            <x-columns>
                 <div>
-                    <span class="subheading">Stream actions:</span>
-                    <a class="subheading" href="/stream/{{.User.Login}}?{{.User.StreamToken}}"><i class="icon">&#xf1e0;</i> Broadcast</a>
-                    <a class="subheading" href="/{{.User.Login}}"><i class="icon">&#xf06e;</i> Watch</a>
-                    <a class="subheading" href="/stream/{{.User.Login}}"><i class="icon">&#xf019;</i> Download</a>
+            {{- if not .User.Activated }}
+                    <form class="block warning" method="GET" action="/user/activate" data-order="-1">
+                        <label>Your account is not activated.</label>
+                        <p>You will not be able to broadcast until you confirm
+                           your email address, {{.User.Email}}. (Check the inbox.)</p>
+                        {{/* TODO remove this and instead offer to send another email. */}}
+                        <input type="hidden" name="uid" value="{{.User.ID}}" />
+                        <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
+                        <p><button type="submit">Or click here. Mail is not implemented yet.</button></p>
+                    </form>
+            {{- end }}
+                    <form class="block" method="POST" action="" data-order="0">
+                        <label>Old password</label>
+                        <input name="password-old" type="password" placeholder="Required to change anything." />
+                        <label>Username</label>
+                        <input name="username" type="text" placeholder="{{.User.Login}}" />
+                        <label>Display name</label>
+                        <input name="displayname" type="text" placeholder="{{.User.Name}}" />
+                        <label>Email</label>
+                        <input name="email" type="email" placeholder="{{.User.Email}}" />
+                        <label>New password</label>
+                        <input name="password" type="password" placeholder="Leave empty to keep the old one." />
+                        <label>About yourself</label>
+                        <textarea name="about" rows="6">{{.User.About}}</textarea>
+                        <p class="error"></p>
+                        <p><button type="submit">Update</button></p>
+                    </form>
                 </div>
-            </section>
-            <section style="padding: 0 1rem">
-                <x-columns>
-                    <div>
-                {{- if not .User.Activated }}
-                        <form class="block warning" method="GET" action="/user/activate" data-order="-1">
-                            <label>Your account is not activated.</label>
-                            <p>You will not be able to broadcast until you confirm
-                               your email address, {{.User.Email}}. (Check the inbox.)</p>
-                            {{/* TODO remove this and instead offer to send another email. */}}
-                            <input type="hidden" name="uid" value="{{.User.ID}}" />
-                            <input type="hidden" name="token" value="{{.User.ActivationToken}}" />
-                            <p><button type="submit">Or click here. Mail is not implemented yet.</button></p>
-                        </form>
-                {{- end }}
-                        <form class="block" method="POST" action="" data-order="0">
-                            <label>Old password</label>
-                            <input name="password-old" type="password" placeholder="Required to change anything." />
-                            <label>Username</label>
-                            <input name="username" type="text" placeholder="{{.User.Login}}" />
-                            <label>Display name</label>
-                            <input name="displayname" type="text" placeholder="{{.User.Name}}" />
-                            <label>Email</label>
-                            <input name="email" type="email" placeholder="{{.User.Email}}" />
-                            <label>New password</label>
-                            <input name="password" type="password" placeholder="Leave empty to keep the old one." />
-                            <label>About yourself</label>
-                            <textarea name="about" rows="6">{{.User.About}}</textarea>
-                            <p class="error"></p>
-                            <p><button type="submit">Update</button></p>
-                        </form>
-                    </div>
-                    <div>
-                        <form class="block" data-order="1">
-                            <label>Your avatar is provided by Gravatar.</label>
-                            <p>Visit <a href="https://gravatar.com/">gravatar.com</a> to change it.</p>
-                        </form>
-                        <form class="block" method="POST" action="/user/new-token" data-order="2">
-                            <label>Your authentication token is</label>
-                            <input type="text" value="{{.User.StreamToken}}" readonly />
-                            <p>It's at the end of the "Broadcast" URL. Think it might have been compromised?</p>
-                            <p><button type="submit">Get a new token</button></p>
-                        </form>
-                    </div>
-                </x-columns>
-            </section>
-            {{ template "footer.html" }}
-            <script src="/static/js/global.js"></script>
-        </main>
+                <div>
+                    <form class="block" data-order="1">
+                        <label>Your avatar is provided by Gravatar.</label>
+                        <p>Visit <a href="https://gravatar.com/">gravatar.com</a> to change it.</p>
+                    </form>
+                    <form class="block" method="POST" action="/user/new-token" data-order="2">
+                        <label>Your authentication token is</label>
+                        <input type="text" value="{{.User.StreamToken}}" readonly />
+                        <p>It's at the end of the "Broadcast" URL. Think it might have been compromised?</p>
+                        <p><button type="submit">Get a new token</button></p>
+                    </form>
+                </div>
+            </x-columns>
+        </section>
+        {{ template "footer.html" }}
+        <script src="/static/js/global.js"></script>
     </body>
 </html>
