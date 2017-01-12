@@ -321,7 +321,7 @@ $.extend({
             () => {
                 let r = e.getBoundingClientRect();
                 if (Math.abs(r.top) < SCROLL_RANGE)
-                    window.scrollBy({top: r.top, left: 0, behavior: 'smooth'});
+                    window.scrollBy(0, r.top);
             }
         );
         window.addEventListener('scroll', ev => {
