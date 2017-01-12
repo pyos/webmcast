@@ -10,6 +10,11 @@
 html {
     font: normal 14px/1.5 'Source Sans Pro', 'Trebuchet MS', Helvetica, sans-serif;
     color: #222;
+    height: 100%;
+}
+
+body {
+    min-height: 100%;
 }
 
 html, body {
