@@ -233,11 +233,12 @@ type Broadcast struct {
 	header  []byte // The EBML (DocType) tag.
 	tracks  []byte // The beginning of the Segment (Tracks + Info).
 	frames  framebuffer
-	// outbound blocks must have monotonically increasing timecodes even if the inbound
-	// stream restarts from the beginning, so we'll shift clusters' timecodes.
-	blockTimecode       uint64
-	recvClusterTimecode uint64
+	// outbound clusters must have monotonically increasing timecodes even if the inbound
+	// stream restarts from the beginning.
+	firstBlockInSegment bool
+	sentTimecode        uint64
 	sentClusterTimecode uint64
+	recvClusterTimecode uint64
 	timecodeShift       uint64
 	// these values are for the whole stream, so they include audio and muxing overhead.
 	// the latter is negligible, however, and the former is normally about 64k,
@@ -407,6 +408,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			cast.tracks = append([]byte{}, buf[0], buf[1], buf[2], buf[3], 0xFF)
 			// Will recalculate this when the first block arrives.
 			cast.timecodeShift = 0
+			cast.firstBlockInSegment = true
 
 		case ebmlTagInfo:
 			// Default timecode resolution in Matroska is 1 ms. This value is required
@@ -495,7 +497,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			cast.tracks = append(cast.tracks, buf...)
 
 		case ebmlTagTimecode:
-			// Will reencode it when sending a Cluster.
 			cast.recvClusterTimecode = fixedUint(tag.Contents(buf)) + cast.timecodeShift
 
 		case ebmlTagBlockGroup, ebmlTagSimpleBlock:
@@ -536,11 +537,17 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			key = key || block[consumed+2]&0x80 != 0
 			// Block timecodes are relative to cluster ones.
 			timecode := uint64(block[consumed+0])<<8 | uint64(block[consumed+1])
-			if cast.recvClusterTimecode+timecode < cast.blockTimecode {
-				cast.timecodeShift += cast.blockTimecode - (cast.recvClusterTimecode + timecode)
-				cast.recvClusterTimecode = cast.blockTimecode - timecode
+			if cast.recvClusterTimecode+timecode < cast.sentTimecode {
+				// Allow non-monotonic blocks within a single segment (this simply means that
+				// coding order is not the same as display order)
+				if cast.firstBlockInSegment {
+					shift := cast.sentTimecode - (cast.recvClusterTimecode + timecode)
+					cast.timecodeShift += shift
+					cast.recvClusterTimecode += shift
+				}
+			} else {
+				cast.sentTimecode = cast.recvClusterTimecode + timecode
 			}
-			cast.blockTimecode = cast.recvClusterTimecode + timecode
 
 			ctc := cast.recvClusterTimecode
 			cluster := []byte{
@@ -571,6 +578,7 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			}
 			cast.frames.PushFrame(packed)
 			cast.sentClusterTimecode = ctc
+			cast.firstBlockInSegment = false
 
 		default:
 			return 0, errors.New("unknown EBML tag")
