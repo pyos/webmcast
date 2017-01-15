@@ -430,3 +430,10 @@ body:not(.aside-chat) .player-block:not(.theatre) .player:not(.is-fullscreen) .c
     body:not(.audio-only) footer { max-width: 106rem; }
     body:not(.audio-only) .player-block { max-width: 102rem; }
 }
+
+@media (min-width: 105em) and (min-height: 60em) {
+    body:not(.audio-only) nav,
+    body:not(.audio-only) section,
+    body:not(.audio-only) footer { max-width: 120rem; }
+    body:not(.audio-only) .player-block { max-width: 116rem; }
+}
