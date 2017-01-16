@@ -424,15 +424,13 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					return 0, errors.New("malformed EBML")
 
 				case ebmlTagDuration:
-					total := tag2.Length + uint64(tag2.Consumed) - 2
-					if total > 0x7F {
-						// I'd rather avoid shifting memory. What kind of integer
-						// needs 128 bytes, anyway?
+					// Live streams must not have a duration.
+					void := tag2.Length + uint64(tag2.Consumed) - 2
+					if void > 0x7F {
 						return 0, errors.New("EBML Duration too large")
 					}
-					// Live streams must not have a duration.
 					buf2[0] = ebmlTagVoid
-					buf2[1] = 0x80 | byte(total)
+					buf2[1] = 0x80 | byte(void)
 
 				case ebmlTagTimecodeScale:
 					scale = fixedUint(tag2.Contents(buf2))
@@ -448,8 +446,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 			cast.tracks = append(cast.tracks, buf...)
 
 		case ebmlTagTrackEntry:
-			// Since `viewer.seenKeyframes` is a 32-bit vector,
-			// we need to check that there are at most 32 tracks.
 			for buf2 := tag.Contents(buf); len(buf2) != 0; {
 				tag2 := ebmlParseTag(buf2)
 
@@ -458,9 +454,9 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 					return 0, errors.New("malformed EBML")
 
 				case ebmlTagTrackNumber:
-					// go needs sizeof.
+					// `viewer.seenKeyframes` is a 32-bit vector.
 					if fixedUint(tag2.Contents(buf2)) >= 32 {
-						return 0, errors.New("too many tracks?")
+						return 0, errors.New("too many tracks")
 					}
 
 				case ebmlTagAudio:
@@ -468,7 +464,6 @@ func (cast *Broadcast) Write(data []byte) (int, error) {
 
 				case ebmlTagVideo:
 					cast.HasVideo = true
-					// While we're here, let's grab some metadata, too.
 					for buf3 := tag2.Contents(buf2); len(buf3) != 0; {
 						tag3 := ebmlParseTag(buf3)
 
