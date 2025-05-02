@@ -111,11 +111,11 @@ func (d anonymousDAO) SetStreamTrackInfo(id string, info *StreamTrackInfo) error
 }
 
 func (d anonymousDAO) GetRecordings(id string) (*StreamHistory, error) {
-	return nil, ErrUserNotExist
+	return nil, ErrStreamNotExist
 }
 
 func (d anonymousDAO) GetRecording(id string, recid int64) (*StreamRecording, error) {
-	return nil, ErrNotSupported
+	return nil, ErrStreamNotExist
 }
 
 func (d anonymousDAO) StartRecording(id string, filename string) (recid int64, sizeLimit int64, e error) {
