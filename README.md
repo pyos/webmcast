@@ -49,7 +49,9 @@ thought to do that. That's right! We're
 This code!
 
 ```bash
-go build -i
+go mod init github.com/pyos/webmcast
+go mod tidy
+go build
 ./webmcast
 ```
 
